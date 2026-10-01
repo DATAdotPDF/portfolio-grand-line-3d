@@ -24,6 +24,7 @@ extends Node3D
 		_update_preview()
 
 @export_group("Aim")
+## Mantido só por compatibilidade: o canhão NÃO gira na horizontal (carro fixo no convés).
 @export_range(-45.0, 45.0, 0.5) var preview_yaw_degrees := 0.0:
 	set(value):
 		preview_yaw_degrees = value
@@ -36,7 +37,8 @@ extends Node3D
 	set(value):
 		preview_recoil_distance = value
 		_update_preview()
-@export var max_yaw := 45.0
+## Sem giro horizontal: só o cano inclina nos munhões (eixo vertical de mira).
+@export var max_yaw := 0.0
 @export var min_pitch := -3.0
 @export var max_pitch := 30.0
 @export var aim_smoothness := 7.0
@@ -110,15 +112,16 @@ func _update_preview() -> void:
 	if not is_inside_tree() or not is_node_ready():
 		return
 	_fit_models()
-	rotation.y = deg_to_rad(mount_yaw_degrees + preview_yaw_degrees)
+	rotation.y = deg_to_rad(mount_yaw_degrees)
 	pitch_pivot.position.y = cradle_height
 	if Engine.is_editor_hint():
 		pitch_pivot.rotation.x = deg_to_rad(preview_pitch_degrees)
 		recoil_pivot.position.z = preview_recoil_distance
 		carriage.position = carriage_base + Vector3(0.0, 0.0, preview_recoil_distance * 0.4)
 
-func set_target_yaw(yaw: float) -> void:
-	target_yaw = clampf(yaw, deg_to_rad(-max_yaw), deg_to_rad(max_yaw))
+func set_target_yaw(_yaw: float) -> void:
+	# Regra do projeto: o canhão só se move no eixo vertical (pitch do cano).
+	target_yaw = 0.0
 
 func set_target_pitch(pitch: float) -> void:
 	target_pitch = clampf(pitch, deg_to_rad(min_pitch), deg_to_rad(max_pitch))
@@ -132,8 +135,7 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	var weight := 1.0 - exp(-aim_smoothness * delta)
-	var desired_yaw := Quaternion(Vector3.UP, deg_to_rad(mount_yaw_degrees) + target_yaw)
-	quaternion = quaternion.slerp(desired_yaw, weight).normalized()
+	rotation.y = deg_to_rad(mount_yaw_degrees)
 	current_pitch = lerp_angle(current_pitch, target_pitch, weight)
 	var remaining := minf(delta, 0.25)
 	while remaining > 0.0:

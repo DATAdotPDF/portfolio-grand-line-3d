@@ -331,9 +331,9 @@ func _physics_process(delta: float) -> void:
 			fuse_audio.stop()
 			_launch()
 	var pitch_axis := clampf(float(Input.is_physical_key_pressed(KEY_R)) - float(Input.is_physical_key_pressed(KEY_F)) + virtual_aim.y, -1.0, 1.0)
-	var yaw_axis := clampf(float(Input.is_physical_key_pressed(KEY_E)) - float(Input.is_physical_key_pressed(KEY_Q)) + virtual_aim.x, -1.0, 1.0)
+	# Só eixo vertical: o cano inclina nos munhões; não há giro horizontal.
 	aim_elevation = clampf(aim_elevation + pitch_axis * delta * 0.5, deg_to_rad(float(cannon.get("min_pitch"))), deg_to_rad(float(cannon.get("max_pitch"))))
-	aim_azimuth = clampf(aim_azimuth + yaw_axis * delta * 0.65, deg_to_rad(-float(cannon.get("max_yaw"))), deg_to_rad(float(cannon.get("max_yaw"))))
+	aim_azimuth = 0.0
 	_update_aim()
 	for target in targets:
 		var node: Node3D = target.node
@@ -409,9 +409,9 @@ func _process(_delta: float) -> void:
 	if time_attack_mode:
 		var seconds := ceili(time_attack_remaining)
 		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == course_count else "TEMPO ESGOTADO")
-		hud.text = "TIME ATTACK  %02d:%02d · Boias %d/%d · %s\nCANHÃO  Q/E girar · R/F inclinar · Espaço atirar" % [floori(float(seconds) / 60.0), seconds % 60, time_attack_hits.size(), course_count, result]
+		hud.text = "TIME ATTACK  %02d:%02d · Boias %d/%d · %s\nCANHÃO  R/F inclina · Espaço atira" % [floori(float(seconds) / 60.0), seconds % 60, time_attack_hits.size(), course_count, result]
 	else:
-		hud.text = "CANHÃO  Q/E girar · R/F inclinar · Espaço atirar\n%s   |   Yaw %.0f° · Pitch %.0f°   |   Acertos %d"%[state,rad_to_deg(aim_azimuth),rad_to_deg(aim_elevation),score]
+		hud.text = "CANHÃO  R/F inclina · Espaço atira\n%s   |   Elevação %.0f°   |   Acertos %d"%[state,rad_to_deg(aim_elevation),score]
 
 func _play_impact(kind: String, point: Vector3) -> void:
 	var sound:=AudioStreamPlayer3D.new()

@@ -1,0 +1,77 @@
+{
+  "_source": "Textos do portfólio publicado em portfolio-data-cybersecurity.data-pedutraferreira.workers.dev (capturado em 2026-10-01). Fonte única para os painéis das ilhas no Godot e para a landing web.",
+  "name": "Pedro D. Ferreira",
+  "role": "Junior Data Engineer",
+  "tagline": "Data Analytics · BI · Data Operations · Cybersecurity",
+  "pitch": "Transformo dados em decisões, automações e produtos confiáveis.",
+  "status": "Disponível para novos desafios",
+  "stats": [
+    {"value": "12+", "label": "anos de experiência profissional"},
+    {"value": "10+", "label": "projetos públicos no GitHub"}
+  ],
+  "links": {
+    "whatsapp": "https://api.whatsapp.com/send/?phone=5521964094297&text&type=phone_number&app_absent=0",
+    "linkedin": "https://www.linkedin.com/in/data-pdf/",
+    "github": "https://github.com/DATAdotPDF",
+    "github_repos": "https://github.com/DATAdotPDF?tab=repositories"
+  },
+  "islands": [
+    {
+      "id": "sobre",
+      "kicker": "01 / Sobre",
+      "title": "Dados com contexto de negócio.",
+      "paragraphs": [
+        "Minha trajetória reúne mais de uma década no mercado de trabalho, com projetos, operações, melhoria de processos e gestão de stakeholders. Após a formação em Engenharia de Dados na Escola DNC, atuei por 1 ano e 2 meses na CEPA Mobility Brazil.",
+        "Na CEPA, apoiei operações internacionais e qualidade de dados para o programa J&J Safe Fleet em 10 países. Antes da transição para dados, conduzi projetos audiovisuais para marcas como Disney+, Canal Futura e Expedia.",
+        "Hoje conecto Python, SQL, ETL, dashboards e automação para organizar informações, reduzir trabalho manual e apoiar decisões."
+      ],
+      "facts": [
+        {"label": "Engenharia de dados", "value": "Python · SQL · ETL · Pipelines"},
+        {"label": "Analytics e BI", "value": "Power BI · Pandas · Dashboards"},
+        {"label": "Operações", "value": "Data Quality · Automação · Reporting"},
+        {"label": "Cibersegurança", "value": "Formação em andamento · Senac 2026"}
+      ]
+    },
+    {
+      "id": "experiencia",
+      "kicker": "02 / Experiência",
+      "title": "Trajetória profissional.",
+      "entries": [
+        {"period": "2025 — 2026", "title": "Data Analyst", "org": "CEPA Mobility Brazil", "text": "Suporte ao J&J Safe Fleet em 10 países, com rotinas de dados, relatórios, qualidade e acompanhamento operacional entre APAC, Japão e EMEA."},
+        {"period": "2012 — 2025", "title": "CEO e produtor", "org": "Varanda Vista Filmes", "text": "Gestão de projetos, prazos, custos, processos e clientes em produções audiovisuais para empresas nacionais e internacionais."}
+      ]
+    },
+    {
+      "id": "formacao",
+      "kicker": "03 / Formação",
+      "title": "Formação contínua.",
+      "entries": [
+        {"period": "2026 — atual", "title": "Cibersegurança", "org": "Senac", "text": ""},
+        {"period": "2024 — 2025", "title": "Engenharia de Dados", "org": "Escola DNC", "text": ""},
+        {"period": "2021 — 2023", "title": "Mecatrônica", "org": "Electra", "text": ""},
+        {"period": "2008 — 2021", "title": "Cinema e Audiovisual", "org": "IBMR", "text": ""}
+      ]
+    },
+    {
+      "id": "projetos",
+      "kicker": "04 / Projetos",
+      "title": "Código aplicado a problemas concretos.",
+      "projects": [
+        {"title": "Detecção de fraudes com IA generativa", "text": "API e análise de relações para identificar comportamentos suspeitos em transações.", "stack": ["Python", "FastAPI", "NetworkX", "Docker"], "url": "https://github.com/DATAdotPDF/Desafio_Final_II_DNC_RID211401"},
+        {"title": "Pipeline ETL Bronze, Silver e Gold", "text": "Orquestração de dados em camadas, armazenamento em S3 e visualização analítica.", "stack": ["Airflow", "Python", "AWS S3", "Plotly Dash"], "url": "https://github.com/DATAdotPDF/Desafio_Final_DNC_RID211401"},
+        {"title": "Dados públicos do SIDRA e IBGE", "text": "Modelagem dimensional e painel para explorar indicadores públicos com clareza.", "stack": ["Power BI", "Power Query", "SIDRA", "Star Schema"], "url": "https://github.com/DATAdotPDF/Desafio_Pratico_DNC_Grupo6"},
+        {"title": "Bot financeiro para WhatsApp", "text": "Automação para registrar movimentações financeiras por mensagens no WhatsApp.", "stack": ["Node.js", "JavaScript", "WhatsApp", "Automação"], "url": "https://github.com/DATAdotPDF/BOT_Financeiro_WPP"}
+      ]
+    },
+    {
+      "id": "contato",
+      "kicker": "05 / Contato",
+      "title": "Vamos conversar sobre dados, operações ou segurança?",
+      "contacts": [
+        {"label": "WhatsApp", "key": "whatsapp"},
+        {"label": "LinkedIn", "key": "linkedin"},
+        {"label": "GitHub", "key": "github"}
+      ]
+    }
+  ]
+}
