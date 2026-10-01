@@ -41,4 +41,6 @@ submersion = 3.6
 [resource]
 script = ExtResource("1_layout")
 planet_radius = 800.0
+swell_wavelength = 85.0
+swell_amplitude = 1.9
 islands = Array[ExtResource("2_anchor")]([SubResource("Anchor_sobre"), SubResource("Anchor_experiencia"), SubResource("Anchor_formacao"), SubResource("Anchor_projetos"), SubResource("Anchor_contato")])

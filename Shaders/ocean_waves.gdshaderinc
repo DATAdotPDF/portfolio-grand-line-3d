@@ -36,10 +36,18 @@ uniform float patch_radius = 0.0;
 
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 // Cores calibradas para o Compatibility (sem HDR): valores altos estouram em ciano.
-uniform vec3 deep_ocean_color : source_color = vec3(0.0, 0.2, 0.42);
-uniform vec3 shallow_ocean_color : source_color = vec3(0.02, 0.43, 0.56);
-uniform vec3 crest_color : source_color = vec3(0.2, 0.6, 0.66);
-uniform vec3 foam_color : source_color = vec3(0.86, 0.95, 0.97);
+// Paleta turquesa (referência Seagazer). Valores moderados porque o Compatibility não tem HDR.
+uniform vec3 deep_ocean_color : source_color = vec3(0.0, 0.3, 0.44);
+uniform vec3 shallow_ocean_color : source_color = vec3(0.03, 0.5, 0.55);
+uniform vec3 crest_color : source_color = vec3(0.3, 0.7, 0.72);
+uniform vec3 foam_color : source_color = vec3(0.9, 0.98, 0.98);
+// Reflexo do céu por Fresnel: o brilho pálido e vítreo perto do horizonte.
+uniform vec3 sky_reflection_color : source_color = vec3(0.78, 0.85, 0.96);
+uniform float fresnel_power : hint_range(1.0, 8.0) = 4.0;
+uniform float fresnel_amount : hint_range(0.0, 1.0) = 0.6;
+// 0 = dia, 1 = noite (enviado pelo main_world). À noite a esteira brilha (bioluminescência).
+uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
+uniform vec3 night_glow_color : source_color = vec3(0.2, 0.95, 0.85);
 uniform float toon_bands : hint_range(1.0, 8.0) = 3.0;
 uniform float crest_line_amount : hint_range(0.0, 1.0) = 0.4;
 uniform float shoreline_width = 0.45;
@@ -155,12 +163,17 @@ float wake_foam(vec3 p) {
 	if (life <= 0.0) {
 		return 0.0;
 	}
-	// Esteira estilo Wind Waker: duas linhas que se abrem com a idade, centro quase limpo.
+	// Esteira estilo Wind Waker (adaptada de water-wakes/trail2): duas bordas que se
+	// abrem com a idade e arcos em "V" entre elas, que ficam para trás do barco.
 	float spread = 0.6 + (1.0 - life) * 2.4;
 	float line_width = 0.16 + (1.0 - life) * 0.22;
 	float edge = 1.0 - smoothstep(line_width * 0.4, line_width, abs(distance_to_wake - spread));
+	float across = clamp(distance_to_wake / spread, 0.0, 1.0);
+	float arch_coord = fract(life * 18.0 + across * across * 0.6);
+	float arch = (1.0 - smoothstep(0.035, 0.07, abs(arch_coord - 0.5))) * step(distance_to_wake, spread);
+	arch *= 1.0 - smoothstep(0.95, 0.995, life); // arcos começam logo atrás da popa
 	float core = (1.0 - smoothstep(0.0, 0.5, distance_to_wake)) * 0.3;
-	return max(edge, core) * life * life;
+	return max(max(edge * life * life, arch * sqrt(life)), core * life);
 }
 
 // Espuma de costa pela profundidade da cena (funciona no Compatibility e no Forward+).
@@ -195,7 +208,20 @@ vec3 ocean_albedo(vec3 p, float h, float crest, float ripple_glow, float shore, 
 	float crest_line = smoothstep(0.32, 0.62, crest) * crest_line_amount;
 	color = mix(color, crest_color, crest_line);
 	color = mix(color, foam_color, clamp(ripple_glow, 0.0, 1.0) * 0.55);
-	float foam = max(shore, wake_foam(p) * 0.75);
+	float wake = wake_foam(p);
+	float foam = max(shore, wake * 0.75);
 	foam_out = foam;
 	return mix(color, foam_color, clamp(foam, 0.0, 0.96));
+}
+
+// Acabamento comum: reflexo do céu (Fresnel) e brilho noturno da esteira.
+// normal_view/view em espaço de câmera. Escreve parte da cor como emissão.
+void ocean_finish(vec3 p, vec3 normal_view, vec3 view, float foam, inout vec3 albedo, out vec3 emission) {
+	float facing = clamp(dot(normalize(normal_view), normalize(view)), 0.0, 1.0);
+	float fresnel = pow(1.0 - facing, fresnel_power) * fresnel_amount * (1.0 - foam);
+	float day = 1.0 - night_amount;
+	emission = sky_reflection_color * fresnel * mix(0.1, 0.4, day);
+	albedo = mix(albedo, albedo * 0.6, fresnel);
+	// Só as linhas da esteira brilham à noite (o miolo junto ao casco fica discreto).
+	emission += night_glow_color * smoothstep(0.35, 0.8, wake_foam(p)) * night_amount * 1.3;
 }

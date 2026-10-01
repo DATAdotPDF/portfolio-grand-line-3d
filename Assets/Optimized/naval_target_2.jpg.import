@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qcmywfd6hskx"
-path="res://.godot/imported/naval_target_2.jpg-d457dab5b5b0c7d6df8fc6ea6304815d.ctex"
+path.s3tc="res://.godot/imported/naval_target_2.jpg-d457dab5b5b0c7d6df8fc6ea6304815d.s3tc.ctex"
+path.etc2="res://.godot/imported/naval_target_2.jpg-d457dab5b5b0c7d6df8fc6ea6304815d.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8d0ed051198c63c12acefa606985c3e6"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Optimized/naval_target_2.jpg"
-dest_files=["res://.godot/imported/naval_target_2.jpg-d457dab5b5b0c7d6df8fc6ea6304815d.ctex"]
+dest_files=["res://.godot/imported/naval_target_2.jpg-d457dab5b5b0c7d6df8fc6ea6304815d.s3tc.ctex", "res://.godot/imported/naval_target_2.jpg-d457dab5b5b0c7d6df8fc6ea6304815d.etc2.ctex"]
 
 [params]
 
-compress/mode=4
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=512
-detect_3d/compress_to=1
+detect_3d/compress_to=0

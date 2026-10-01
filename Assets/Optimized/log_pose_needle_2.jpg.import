@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ssii31erwicx"
-path="res://.godot/imported/log_pose_needle_2.jpg-07c33a859bbda8a881b8e844ac2882c1.ctex"
+path.s3tc="res://.godot/imported/log_pose_needle_2.jpg-07c33a859bbda8a881b8e844ac2882c1.s3tc.ctex"
+path.etc2="res://.godot/imported/log_pose_needle_2.jpg-07c33a859bbda8a881b8e844ac2882c1.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7a3cb4d9692b66b17b0d24911b94ad25"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Optimized/log_pose_needle_2.jpg"
-dest_files=["res://.godot/imported/log_pose_needle_2.jpg-07c33a859bbda8a881b8e844ac2882c1.ctex"]
+dest_files=["res://.godot/imported/log_pose_needle_2.jpg-07c33a859bbda8a881b8e844ac2882c1.s3tc.ctex", "res://.godot/imported/log_pose_needle_2.jpg-07c33a859bbda8a881b8e844ac2882c1.etc2.ctex"]
 
 [params]
 
-compress/mode=4
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=512
-detect_3d/compress_to=1
+detect_3d/compress_to=0

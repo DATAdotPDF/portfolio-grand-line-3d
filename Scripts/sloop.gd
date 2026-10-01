@@ -30,6 +30,11 @@ var virtual_boost := false
 ## Quanto o vento global (WindManager) altera a velocidade: 0 = nada, 1 = 72%–100%.
 @export_range(0.0, 1.0, 0.05) var wind_strength := 1.0
 @export_group("Flutuação")
+## Pontos onde o casco "sente" a água (proa/popa e bordos), em metros.
+@export var hull_half_length := 2.0
+@export var hull_half_beam := 0.8
+## Quão rápido o casco acompanha a inclinação da onda (menor = mais peso/inércia).
+@export var wave_follow_rate := 3.5
 @export var buoyancy_spring := 22.0
 @export var buoyancy_damping := 6.2
 @export var max_bank_angle := deg_to_rad(15.0)
@@ -105,10 +110,10 @@ func _physics_process(delta: float) -> void:
 	else:
 		drive_speed = move_toward(drive_speed, target_speed, (boost_acceleration if boost else cruise_acceleration) * delta)
 	var right := heading.cross(up).normalized()
-	var front: Vector3 = ocean.surface_at(global_position + heading * 1.45)
-	var rear: Vector3 = ocean.surface_at(global_position - heading * 1.45)
-	var port: Vector3 = ocean.surface_at(global_position - right * 0.55)
-	var starboard: Vector3 = ocean.surface_at(global_position + right * 0.55)
+	var front: Vector3 = ocean.surface_at(global_position + heading * hull_half_length)
+	var rear: Vector3 = ocean.surface_at(global_position - heading * hull_half_length)
+	var port: Vector3 = ocean.surface_at(global_position - right * hull_half_beam)
+	var starboard: Vector3 = ocean.surface_at(global_position + right * hull_half_beam)
 	var target_radius: float = (front.length() + rear.length() + port.length() + starboard.length()) * 0.25
 	var error := target_radius - global_position.length()
 	radial_speed += (error * buoyancy_spring - radial_speed * buoyancy_damping) * delta
@@ -135,10 +140,10 @@ func _physics_process(delta: float) -> void:
 		var visual_forward := heading.slide(wave_up).normalized()
 		var desired_global := Basis(visual_forward.cross(wave_up), wave_up, -visual_forward).orthonormalized()
 		var desired_local := basis.inverse() * desired_global
-		wave_basis = wave_basis.slerp(desired_local, 1.0 - exp(-5.0 * delta)).orthonormalized()
+		wave_basis = wave_basis.slerp(desired_local, 1.0 - exp(-wave_follow_rate * delta)).orthonormalized()
 		update_attitude(delta,acceleration)
 		float_visual.basis = wave_basis * Basis.from_euler(Vector3(acceleration_pitch,0,bank_roll))
-	if measured_speed > 0.3 and global_position.distance_to(last_wake) > 0.65:
+	if measured_speed > 0.3 and global_position.distance_to(last_wake) > 2.0:
 		ocean.add_wake(global_position - heading * 1.7)
 		last_wake = global_position
 

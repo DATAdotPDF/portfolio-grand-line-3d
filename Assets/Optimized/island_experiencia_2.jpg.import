@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://vst73r7ri37s"
-path="res://.godot/imported/island_experiencia_2.jpg-0be6f7cfc67b6e042b94640ac629649d.ctex"
+path.s3tc="res://.godot/imported/island_experiencia_2.jpg-0be6f7cfc67b6e042b94640ac629649d.s3tc.ctex"
+path.etc2="res://.godot/imported/island_experiencia_2.jpg-0be6f7cfc67b6e042b94640ac629649d.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f845e2d4a1e2983fc8d72fa50b8cb057"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Optimized/island_experiencia_2.jpg"
-dest_files=["res://.godot/imported/island_experiencia_2.jpg-0be6f7cfc67b6e042b94640ac629649d.ctex"]
+dest_files=["res://.godot/imported/island_experiencia_2.jpg-0be6f7cfc67b6e042b94640ac629649d.s3tc.ctex", "res://.godot/imported/island_experiencia_2.jpg-0be6f7cfc67b6e042b94640ac629649d.etc2.ctex"]
 
 [params]
 
-compress/mode=4
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=1024
-detect_3d/compress_to=1
+detect_3d/compress_to=0

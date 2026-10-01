@@ -45,6 +45,25 @@ func run() -> void:
 		world.camera.yaw = 0.0
 		world.camera.pitch = 0.0
 		world.ship.test_controls = Vector3.ZERO
+	if wants("close"):
+		world.ship.controls_override = true
+		world.ship.test_controls = Vector3(1, 0.1, 1)
+		world.camera.follow_distance = 7.0
+		world.camera.follow_height = 1.6
+		world.camera.yaw = 0.75
+		await wait(6.0)
+		await shot("close_bow")
+		world.camera.yaw = 2.6
+		await wait(1.5)
+		await shot("close_stern")
+		world.clock.set_time(0.02, true)
+		world.camera.yaw = 0.0
+		world.camera.follow_distance = 12.0
+		world.camera.follow_height = 5.0
+		await wait(2.5)
+		await shot("night")
+		world.clock.set_time(0.42, true)
+		world.ship.test_controls = Vector3.ZERO
 	if wants("ripple"):
 		await wait(4.0)
 		var ahead: Vector3 = world.ship.global_position - world.ship.global_basis.z * 14.0

@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bxo84sa6aaxck"
-path="res://.godot/imported/log_pose_dome_1.jpg-5a9baa44362a9281838a0e2939c2f16c.ctex"
+path.s3tc="res://.godot/imported/log_pose_dome_1.jpg-5a9baa44362a9281838a0e2939c2f16c.s3tc.ctex"
+path.etc2="res://.godot/imported/log_pose_dome_1.jpg-5a9baa44362a9281838a0e2939c2f16c.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "554deb329d8104950f0672cad4de3e23"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Optimized/log_pose_dome_1.jpg"
-dest_files=["res://.godot/imported/log_pose_dome_1.jpg-5a9baa44362a9281838a0e2939c2f16c.ctex"]
+dest_files=["res://.godot/imported/log_pose_dome_1.jpg-5a9baa44362a9281838a0e2939c2f16c.s3tc.ctex", "res://.godot/imported/log_pose_dome_1.jpg-5a9baa44362a9281838a0e2939c2f16c.etc2.ctex"]
 
 [params]
 
-compress/mode=4
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=512
-detect_3d/compress_to=1
+detect_3d/compress_to=0

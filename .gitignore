@@ -21,3 +21,10 @@
 /Assets/godot-4-stylized-sky-main/
 /References/
 /Documentation/Previews/*.png
+
+# Projetos de referência extraídos na raiz (têm project.godot próprio; o Godot os ignora)
+/water-wakes/
+/godot-4-stylized-sky-main/
+/godot-mcp-main/
+/godot-water-shader-main/
+

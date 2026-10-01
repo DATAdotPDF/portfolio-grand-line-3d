@@ -53,8 +53,9 @@ func start_time_attack() -> void:
 	time_attack_remaining = time_attack_duration
 	time_attack_hits.clear()
 	time_attack_events.clear()
+	# Durante a regata só as boias do percurso ficam na água.
 	for target in targets:
-		_set_target_active(target, true)
+		_set_target_active(target, is_course_target(target))
 
 func leave_time_attack() -> void:
 	time_attack_mode = false
@@ -78,7 +79,7 @@ func _finish_time_attack(completed: bool) -> void:
 	time_attack_finished.emit(
 		completed,
 		time_attack_hits.size(),
-		targets.size(),
+		course_count,
 		time_attack_duration - time_attack_remaining,
 		time_attack_events.duplicate(true)
 	)
@@ -123,54 +124,58 @@ func _update_aim() -> void:
 	cannon.set_target_pitch(aim_elevation)
 	cannon.set_target_yaw(aim_azimuth)
 
+## Regata do Time Attack: slalom de 20 boias em volta da ilha de spawn (IDs
+## buoy_00..buoy_19, os mesmos do contrato do placar). Uma volta tem ~1,3 km,
+## possível em 180 s mesmo com o globo de 800 m.
+@export var course_island := 0
+@export var course_count := 20
+@export var course_radius_inner := 170.0
+@export var course_radius_outer := 230.0
+## Boias livres perto de cada ilha (distâncias da costa medida).
+@export var island_buoy_distances: Array[float] = [25.0, 40.0, 55.0, 70.0]
+
 func _build_targets() -> void:
+	var center: Node3D = world.islands[clampi(course_island, 0, world.islands.size() - 1)]
+	var center_normal := center.position.normalized()
+	var center_basis := Scale.surface_basis(center_normal)
+	for i in range(course_count):
+		var angle := TAU * float(i) / float(course_count)
+		var radius := course_radius_inner if i % 2 == 0 else course_radius_outer
+		var tangent := center_basis.x * cos(angle) + center_basis.z * sin(angle)
+		var direction := center_normal * cos(radius / OCEAN_RADIUS) + tangent * sin(radius / OCEAN_RADIUS)
+		_add_target(direction, -2, "buoy_%02d" % i)
 	for i in range(world.islands.size()):
 		var island: Node3D = world.islands[i]
-		for j in range(3):
-			var a := j*TAU/3.0+0.4
-			var tangent: Vector3 = island.basis*Vector3(cos(a),0,sin(a))
+		for j in range(island_buoy_distances.size()):
+			var a := j * TAU / float(island_buoy_distances.size()) + 0.4
+			var tangent: Vector3 = island.basis * Vector3(cos(a), 0, sin(a))
 			var normal := island.position.normalized()
 			var direction := normal
-			var desired: float = [20.0, 35.0, 50.0][j]
+			var desired: float = island_buoy_distances[j]
 			# Walk outward until the requested distance from the measured coast is reached.
-			for distance in range(8,95):
-				direction = normal*cos(distance/OCEAN_RADIUS)+tangent*sin(distance/OCEAN_RADIUS)
-				if Shore.distance_to_coast(island,direction*OCEAN_RADIUS)>=desired: break
-			_add_target(direction,i)
-	# Golden-angle candidates cover both hemispheres. Choose five by maximum
-	# distance from coast and from already selected ocean targets.
-	var candidates: Array[Vector3] = []
-	for i in range(96):
-		var y := 1.0-2.0*(float(i)+0.5)/96.0
-		var angle := float(i)*2.39996323
-		candidates.append(Vector3(cos(angle)*sqrt(1.0-y*y),y,sin(angle)*sqrt(1.0-y*y)))
-	var selected: Array[Vector3] = []
-	for placement in range(5):
-		var best_score := -INF
-		var best := Vector3.ZERO
-		for direction in candidates:
-			var nearest := INF
-			for island in world.islands:
-				nearest=minf(nearest,direction.angle_to(island.position.normalized())*OCEAN_RADIUS-35.0)
-			for placed_direction in selected:
-				nearest=minf(nearest,direction.angle_to(placed_direction)*OCEAN_RADIUS)
-			if nearest>best_score:
-				best_score=nearest
-				best=direction
-		selected.append(best)
-		candidates.erase(best)
-		_add_target(best,-1)
-	var placed := selected.size()
-	print("NAVAL_TARGETS total=",targets.size()," open_sea=",placed)
+			for distance in range(8, 140):
+				direction = normal * cos(distance / OCEAN_RADIUS) + tangent * sin(distance / OCEAN_RADIUS)
+				if Shore.distance_to_coast(island, direction * OCEAN_RADIUS) >= desired: break
+			_add_target(direction, i, "free_%d_%d" % [i, j])
+	print("NAVAL_TARGETS total=", targets.size(), " course=", course_count)
 
-func _add_target(normal: Vector3, island_index: int) -> void:
+func is_course_target(target: Dictionary) -> bool:
+	return int(target.island) == -2
+
+func course_targets() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for target in targets:
+		if is_course_target(target):
+			result.append(target)
+	return result
+
+func _add_target(normal: Vector3, island_index: int, target_id: String) -> void:
 	normal = normal.normalized()
 	var body := Area3D.new()
 	body.name = "NavalTarget_%02d"%targets.size()
 	body.collision_layer = 4
 	body.collision_mask = 0
 	body.add_to_group("naval_target")
-	var target_id := "buoy_%02d" % targets.size()
 	body.set_meta("target_index",targets.size())
 	body.set_meta("target_id",target_id)
 	add_child(body)
@@ -262,13 +267,13 @@ func hit_target(index: int, point: Vector3) -> void:
 	else:
 		_play_impact("wood", point)
 	score += 1
-	if time_attack_running:
+	if time_attack_running and is_course_target(target):
 		time_attack_hits[index] = true
 		time_attack_events.append({
 			"target_id": target.id,
 			"at_seconds": time_attack_duration - time_attack_remaining
 		})
-		if time_attack_hits.size() == targets.size():
+		if time_attack_hits.size() == course_count:
 			_finish_time_attack(true)
 	burst(point,true)
 	world.ocean.touch(point)
@@ -403,8 +408,8 @@ func _process(_delta: float) -> void:
 	var state := "PAVIO %.1fs"%fuse_remaining if fuse_remaining>0.0 else ("RECARREGANDO" if cooldown>0.0 else "PRONTO")
 	if time_attack_mode:
 		var seconds := ceili(time_attack_remaining)
-		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == targets.size() else "TEMPO ESGOTADO")
-		hud.text = "TIME ATTACK  %02d:%02d · Boias %d/%d · %s\nCANHÃO  Q/E girar · R/F inclinar · Espaço atirar" % [floori(float(seconds) / 60.0), seconds % 60, time_attack_hits.size(), targets.size(), result]
+		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == course_count else "TEMPO ESGOTADO")
+		hud.text = "TIME ATTACK  %02d:%02d · Boias %d/%d · %s\nCANHÃO  Q/E girar · R/F inclinar · Espaço atirar" % [floori(float(seconds) / 60.0), seconds % 60, time_attack_hits.size(), course_count, result]
 	else:
 		hud.text = "CANHÃO  Q/E girar · R/F inclinar · Espaço atirar\n%s   |   Yaw %.0f° · Pitch %.0f°   |   Acertos %d"%[state,rad_to_deg(aim_azimuth),rad_to_deg(aim_elevation),score]
 

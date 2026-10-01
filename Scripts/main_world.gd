@@ -494,29 +494,28 @@ func _build_bow_wave() -> void:
 		bow_wave_meshes.append(mesh)
 	water_droplets = GPUParticles3D.new()
 	water_droplets.name = "WaterDroplets"
-	water_droplets.position = Vector3(0,0.38,-1.48)
-	water_droplets.amount = 12
-	water_droplets.lifetime = 0.4
+	# Gotas soltas das cristas das folhas da proa (Seagazer). Quantidade segue a
+	# velocidade; a gravidade é atualizada para a vertical local em _process.
+	water_droplets.position = Vector3(0,0.55,-1.1)
+	water_droplets.amount = 40
+	water_droplets.lifetime = 0.75
 	water_droplets.emitting = false
-	water_droplets.visibility_aabb = AABB(Vector3(-2,-2,-2),Vector3(4,4,4))
+	water_droplets.visibility_aabb = AABB(Vector3(-4,-3,-4),Vector3(8,6,8))
 	var droplet_motion := ParticleProcessMaterial.new()
 	droplet_motion.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	droplet_motion.emission_box_extents = Vector3(0.55,0.03,0.08)
-	droplet_motion.direction = Vector3(0,1,0)
-	droplet_motion.spread = 36.0
-	droplet_motion.initial_velocity_min = 1.2
-	droplet_motion.initial_velocity_max = 2.2
-	droplet_motion.gravity = Vector3(0,-5.0,0)
+	droplet_motion.emission_box_extents = Vector3(1.0,0.08,0.7)
+	droplet_motion.direction = Vector3(0,1,0.35)
+	droplet_motion.spread = 50.0
+	droplet_motion.initial_velocity_min = 1.6
+	droplet_motion.initial_velocity_max = 3.4
+	droplet_motion.gravity = Vector3(0,-9.8,0)
+	droplet_motion.scale_min = 0.6
+	droplet_motion.scale_max = 1.5
 	water_droplets.process_material = droplet_motion
-	var drop_mesh := SphereMesh.new()
-	drop_mesh.radius = 0.025
-	drop_mesh.height = 0.05
-	drop_mesh.radial_segments = 6
-	drop_mesh.rings = 3
-	var drop_material := StandardMaterial3D.new()
-	drop_material.albedo_color = Color(0.82,0.96,0.99,0.85)
-	drop_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	drop_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var drop_mesh := QuadMesh.new()
+	drop_mesh.size = Vector2(0.11, 0.11)
+	var drop_material := ShaderMaterial.new()
+	drop_material.shader = load("res://Shaders/water_drop.gdshader")
 	drop_mesh.material = drop_material
 	water_droplets.draw_pass_1 = drop_mesh
 	ship.float_visual.add_child(water_droplets)
@@ -686,7 +685,12 @@ func _process(delta: float) -> void:
 		material.set_shader_parameter("daylight",1.0-clock.night_at(render_position))
 	for mesh in bow_wave_meshes:
 		mesh.visible = ship.measured_speed > 0.4
-	water_droplets.emitting = ship.measured_speed > 3.0
+	# Mais gotas com velocidade e quando a proa mergulha na onda (slam).
+	var bow_dip := clampf((back_height - front_height) * 0.8, 0.0, 1.0)
+	water_droplets.emitting = ship.measured_speed > 2.5
+	water_droplets.amount_ratio = clampf(ship.measured_speed / 12.0 + bow_dip, 0.15, 1.0)
+	(water_droplets.process_material as ParticleProcessMaterial).gravity = -visual_transform.origin.normalized() * 9.8
+	(water_droplets.draw_pass_1.surface_get_material(0) as ShaderMaterial).set_shader_parameter("daylight", 1.0 - clock.night_at(render_position))
 	lantern.visible = lantern_enabled and clock.night_at(render_position)>0.05
 	lantern.light_energy = 2.0*clock.night_at(render_position)
 	var nearest := INF
@@ -885,3 +889,9 @@ func _update_day(_delta: float) -> void:
 	sun.light_color = Color(1.0,0.57,0.31).lerp(Color(1.0,0.96,0.87), smoothstep(0.0,0.55,elevation))
 	environment.ambient_light_color = Color(0.23,0.34,0.58).lerp(Color(0.69,0.79,0.89), daylight)
 	environment.ambient_light_energy = lerpf(0.3, 0.55, daylight)
+	# Reflexo do céu na água acompanha o horário (pastel de dia, quente no poente, azul à noite).
+	var dusk := 1.0 - absf(smoothstep(-0.16, 0.4, elevation) * 2.0 - 1.0)
+	var reflection := Color(0.12, 0.17, 0.36).lerp(Color(0.78, 0.85, 0.96), daylight).lerp(Color(1.0, 0.78, 0.68), dusk * 0.6)
+	for material in ocean.materials:
+		material.set_shader_parameter("night_amount", 1.0 - daylight)
+		material.set_shader_parameter("sky_reflection_color", reflection)
