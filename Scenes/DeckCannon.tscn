@@ -1,8 +1,8 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://Scripts/DeckCannonArticulated.gd" id="1_cannon"]
-[ext_resource type="PackedScene" path="res://Assets/Meshy_AI_cannon_carriage_corre_0930210048_image-to-3d-texture.glb" id="2_carriage"]
-[ext_resource type="PackedScene" path="res://Assets/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture.glb" id="3_barrel"]
+[ext_resource type="PackedScene" path="res://Assets/Optimized/cannon_carriage.glb" id="2_carriage"]
+[ext_resource type="PackedScene" path="res://Assets/Optimized/cannon_barrel.glb" id="3_barrel"]
 [ext_resource type="AudioStream" path="res://Assets/Sound/SFX/FUSE SFX.wav" id="4_fuse"]
 [ext_resource type="AudioStream" path="res://Assets/Sound/SFX/CANNON SHOT SFX.wav" id="5_shot"]
 

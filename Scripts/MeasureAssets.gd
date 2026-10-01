@@ -1,11 +1,11 @@
 extends Node3D
 
 const ASSETS := [
-	["ilha_sobre", "res://Assets/Meshy_AI_island_1_about_harbor_0929193106_image-to-3d-texture.glb"],
-	["ilha_experiencia", "res://Assets/Meshy_AI_island_2_experience_f_0929193424_image-to-3d-texture.glb"],
-	["ilha_formacao", "res://Assets/Meshy_AI_island_3_formation_po_0929193844_image-to-3d-texture.glb"],
-	["ilha_projetos", "res://Assets/Meshy_AI_island_4_projects_shi_0929194206_image-to-3d-texture.glb"],
-	["ilha_contato", "res://Assets/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture.glb"],
+	["ilha_sobre", "res://Assets/Optimized/island_sobre.glb"],
+	["ilha_experiencia", "res://Assets/Optimized/island_experiencia.glb"],
+	["ilha_formacao", "res://Assets/Optimized/island_formacao.glb"],
+	["ilha_projetos", "res://Assets/Optimized/island_projetos.glb"],
+	["ilha_contato", "res://Assets/Optimized/island_contato.glb"],
 	["placa_sobre", "res://Assets/Optimized/title_sobre.glb"],
 	["placa_experiencia", "res://Assets/Optimized/title_experiencia.glb"],
 	["placa_formacao", "res://Assets/Optimized/title_formacao.glb"],

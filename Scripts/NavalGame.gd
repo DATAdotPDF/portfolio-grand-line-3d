@@ -2,9 +2,8 @@ extends Node3D
 
 signal time_attack_finished(completed: bool, hits: int, total: int, seconds_used: float, hit_events: Array[Dictionary])
 
-const CANNON = preload("res://Assets/Meshy_AI_sloop_deck_cannon_3d_0930155614_image-to-3d-texture.glb")
-const TARGET = preload("res://Assets/Meshy_AI_floating_naval_target_0930160055_image-to-3d-texture.glb")
-const BALL = preload("res://Assets/Meshy_AI_stylized_cannonball_3_0930161217_image-to-3d-texture.glb")
+const TARGET = preload("res://Assets/Optimized/naval_target.glb")
+const BALL = preload("res://Assets/Optimized/cannonball.glb")
 const DOPPLER_SFX = preload("res://Assets/Sound/SFX/CANON BALL DOPPLER SFX.wav")
 const EXPLOSION_SFX = preload("res://Assets/Sound/SFX/EXPLOSION SFX.wav")
 const SPLASH_SFX = preload("res://Assets/Sound/SFX/WATER SPLASH CANON BALL SFX.wav")

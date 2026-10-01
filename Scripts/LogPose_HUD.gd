@@ -33,11 +33,11 @@ func _ready() -> void:
 	_update_nearest_island()
 
 func _build_models() -> void:
-	var base := (load("res://Assets/Meshy_AI_log_pose_modular_base_1001025605_image-to-3d-texture.glb") as PackedScene).instantiate() as Node3D
+	var base := (load("res://Assets/Optimized/log_pose_base.glb") as PackedScene).instantiate() as Node3D
 	base.name = "Base_Mesh"
 	add_child(base)
 	base.scale = Vector3.ONE * 0.82
-	var needle := (load("res://Assets/Meshy_AI_log_pose_needle_isola_1001025714_image-to-3d-texture.glb") as PackedScene).instantiate() as Node3D
+	var needle := (load("res://Assets/Optimized/log_pose_needle.glb") as PackedScene).instantiate() as Node3D
 	needle.name = "Needle_Mesh"
 	needle_pivot.add_child(needle)
 	needle.scale = Vector3.ONE * 0.56
@@ -53,7 +53,7 @@ func _build_models() -> void:
 				paint.emission_texture = paint.albedo_texture
 				paint.emission_energy_multiplier = 0.35
 				mesh.set_surface_override_material(surface,paint)
-	var dome_resource := load("res://Assets/Meshy_AI_log_pose_glass_dome_3_1001030520_image-to-3d-texture.glb") as PackedScene
+	var dome_resource := load("res://Assets/Optimized/log_pose_dome.glb") as PackedScene
 	if dome_resource:
 		var dome := dome_resource.instantiate() as Node3D
 		dome.name = "GlassDome_Mesh"

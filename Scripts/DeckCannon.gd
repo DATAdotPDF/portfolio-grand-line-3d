@@ -1,7 +1,7 @@
 extends Node3D
 
-const CARRIAGE = preload("res://Assets/Meshy_AI_cannon_carriage_corre_0930210048_image-to-3d-texture.glb")
-const BARREL = preload("res://Assets/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture.glb")
+const CARRIAGE = preload("res://Assets/Optimized/cannon_carriage.glb")
+const BARREL = preload("res://Assets/Optimized/cannon_barrel.glb")
 
 @export_group("Mira")
 @export var min_pitch := -3.0

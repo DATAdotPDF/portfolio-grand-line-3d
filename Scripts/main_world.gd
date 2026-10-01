@@ -18,13 +18,13 @@ const SHIP_LENGTH := 4.8
 const SEABED_DEPTH := 25.0
 const CORE_DEPTH := 30.0
 const ISLANDS := [
-	{"name":"Sobre", "file":"Meshy_AI_island_1_about_harbor_0929193106_image-to-3d-texture.glb", "width":28.0},
-	{"name":"Experiência", "file":"Meshy_AI_island_2_experience_f_0929193424_image-to-3d-texture.glb", "width":32.0},
-	{"name":"Formação", "file":"Meshy_AI_island_3_formation_po_0929193844_image-to-3d-texture.glb", "width":30.0},
-	{"name":"Projetos", "file":"Meshy_AI_island_4_projects_shi_0929194206_image-to-3d-texture.glb", "width":32.0},
-	{"name":"Contato", "file":"Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture.glb", "width":26.0}
+	{"name":"Sobre", "file":"Optimized/island_sobre.glb", "width":28.0},
+	{"name":"Experiência", "file":"Optimized/island_experiencia.glb", "width":32.0},
+	{"name":"Formação", "file":"Optimized/island_formacao.glb", "width":30.0},
+	{"name":"Projetos", "file":"Optimized/island_projetos.glb", "width":32.0},
+	{"name":"Contato", "file":"Optimized/island_contato.glb", "width":26.0}
 ]
-const SHIP_PATH := "res://Assets/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture.glb"
+const SHIP_PATH := "res://Assets/Optimized/sloop_clean_sail.glb"
 
 ## Configuração do mundo (raio, vento, ondas, lat/lon das ilhas). Edite aqui ou
 ## direto em Config/world_layout.tres: a cena 3D do editor se atualiza sozinha.
@@ -49,6 +49,8 @@ var music_button: Button
 var playlist: Array[String] = []
 var music_bag: Array[String] = []
 var current_track := ""
+var web_music := false
+var web_music_timer := 0.0
 var naval: Node3D
 var time_mode := "auto"
 var time_buttons: Array[Button] = []
@@ -655,6 +657,10 @@ func _process(delta: float) -> void:
 		cloth.set_shader_parameter("boat_speed",ship.measured_speed)
 		cloth.set_shader_parameter("wind_strength",(0.04+minf(ship.measured_speed,12.0)*0.004)+0.06*wind_world.length())
 	sky_material.set_shader_parameter("local_up", camera.global_position.normalized())
+	web_music_timer -= delta
+	if web_music_timer <= 0.0:
+		web_music_timer = 1.0
+		_poll_web_music()
 	_update_day(delta)
 	if water_held:
 		_drag_water(water_cursor)
@@ -705,7 +711,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.physical_keycode == KEY_B:
 			camera.return_to_boat()
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_M:
-		music.stream_paused = not music.stream_paused
+		toggle_music_pause()
+	if web_music and (event is InputEventMouseButton or event is InputEventScreenTouch or event is InputEventKey) and event.is_pressed():
+		_web_music("if (window.__portfolioMusicBlocked) { window.__portfolioMusicBlocked = false; a.play().catch(function(){}); }")
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_N:
 		next_track()
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_L:
@@ -769,14 +777,59 @@ func _build_audio() -> void:
 	music.name = "BackgroundMusic"
 	music.volume_db = -18.0
 	add_child(music)
-	for file in DirAccess.get_files_at("res://Assets/Sound"):
+	if OS.has_feature("web"):
+		# Na web a música fica fora do .pck (110 MB) e é tocada pelo <audio> do
+		# navegador, sob demanda, a partir de music/<arquivo> ao lado do index.html.
+		web_music = true
+		var manifest := FileAccess.get_file_as_string("res://Config/music_playlist.json")
+		var parsed: Variant = JSON.parse_string(manifest)
+		if parsed is Dictionary:
+			for file in parsed.get("tracks", []):
+				playlist.append(str(file))
+		next_track()
+		return
+	# ResourceLoader enxerga os recursos também no export (DirAccess veria só .import/.remap).
+	for file in ResourceLoader.list_directory("res://Assets/Sound"):
 		if file.get_extension().to_lower() in ["mp3","ogg","wav"]:
 			playlist.append("res://Assets/Sound/"+file)
 	music.finished.connect(next_track)
 	next_track()
 
+func _web_music(command: String) -> Variant:
+	var script := """(function(){
+		var a = window.__portfolioMusic;
+		if (!a) {
+			a = new Audio(); a.volume = 0.126; a.preload = 'auto';
+			a.addEventListener('ended', function(){ window.__portfolioMusicEnded = true; });
+			window.__portfolioMusic = a;
+		}
+		%s
+	})()""" % command
+	return JavaScriptBridge.eval(script, true)
+
+func _poll_web_music() -> void:
+	if not web_music:
+		return
+	if bool(_web_music("var e = window.__portfolioMusicEnded === true; window.__portfolioMusicEnded = false; return e;")):
+		next_track()
+
+func toggle_music_pause() -> void:
+	if web_music:
+		_web_music("if (a.paused) { a.play().catch(function(){}); } else { a.pause(); }")
+	else:
+		music.stream_paused = not music.stream_paused
+
 func next_track() -> void:
 	if playlist.is_empty(): return
+	if web_music:
+		if music_bag.is_empty():
+			music_bag.assign(playlist)
+			music_bag.shuffle()
+		current_track = music_bag.pop_back()
+		if music_button: music_button.tooltip_text = "Tocando: " + current_track.get_basename()
+		# Autoplay pode ser bloqueado até o primeiro gesto; o clique seguinte retoma.
+		_web_music("a.src = 'music/' + encodeURIComponent(%s); a.play().catch(function(){ window.__portfolioMusicBlocked = true; });" % JSON.stringify(current_track))
+		return
 	var was_paused := music.stream_paused
 	if music_bag.is_empty():
 		music_bag.assign(playlist)

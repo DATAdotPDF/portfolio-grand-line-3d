@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "godot-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server@14", "Builds/Web", "-p", "8060", "-c-1", "--cors"],
+      "port": 8060
+    }
+  ]
+}

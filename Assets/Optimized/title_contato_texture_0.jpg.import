@@ -3,11 +3,9 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://766tmxswbnsa"
-path.s3tc="res://.godot/imported/title_contato_texture_0.jpg-f0b38ead9cc2878f44e6c584faf6886a.s3tc.ctex"
-path.etc2="res://.godot/imported/title_contato_texture_0.jpg-f0b38ead9cc2878f44e6c584faf6886a.etc2.ctex"
+path="res://.godot/imported/title_contato_texture_0.jpg-f0b38ead9cc2878f44e6c584faf6886a.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 generator_parameters={
 "md5": "524ed17530270d671da5d5ad0472d201"
@@ -16,15 +14,15 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Optimized/title_contato_texture_0.jpg"
-dest_files=["res://.godot/imported/title_contato_texture_0.jpg-f0b38ead9cc2878f44e6c584faf6886a.s3tc.ctex", "res://.godot/imported/title_contato_texture_0.jpg-f0b38ead9cc2878f44e6c584faf6886a.etc2.ctex"]
+dest_files=["res://.godot/imported/title_contato_texture_0.jpg-f0b38ead9cc2878f44e6c584faf6886a.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=4
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
-compress/rdo_quality_loss=0.0
+compress/rdo_quality_loss=1.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
