@@ -46,7 +46,8 @@ static func font(kind: String) -> Font:
 	return result
 
 static func palette(daylight: float) -> Dictionary:
-	var t := clampf(daylight, 0.0, 1.0)
+	# Troca curta entre dia e noite: o meio-termo creme/azul fica "lamacento" e ilegível.
+	var t := smoothstep(0.38, 0.62, clampf(daylight, 0.0, 1.0))
 	var out := {}
 	for key in DAY.keys():
 		out[key] = (NIGHT[key] as Color).lerp(DAY[key], t)
@@ -67,7 +68,7 @@ static func paper_box(colors: Dictionary, alpha := 0.94) -> StyleBoxFlat:
 
 static func button_box(colors: Dictionary, state: String) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color(colors.paper, 0.0 if state == "normal" else 0.55)
+	box.bg_color = Color(colors.paper, 0.78 if state == "normal" else 0.95)
 	if state == "pressed":
 		box.bg_color = Color(colors.ink, 0.12)
 	box.border_color = colors.accent if state == "hover" else Color(colors.ink, 0.42)

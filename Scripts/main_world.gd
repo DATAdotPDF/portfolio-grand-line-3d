@@ -14,6 +14,7 @@ const WindRibbon = preload("res://Scenes/WindRibbon.tscn")
 const PortfolioCamera = preload("res://Scripts/PortfolioCameraController.gd")
 const OceanPatchScript = preload("res://Scripts/OceanPatch.gd")
 const TouchControlsScript = preload("res://Scripts/TouchControls.gd")
+const PortfolioHUDScript = preload("res://Scripts/UI/PortfolioHUD.gd")
 const SHIP_LENGTH := 4.8
 const SEABED_DEPTH := 25.0
 const CORE_DEPTH := 30.0
@@ -71,7 +72,7 @@ var sail_model: Node3D
 var wind_streaks: Node3D
 var bow_wave_meshes: Array[MeshInstance3D] = []
 var islands: Array[Node3D] = []
-var status: Label
+var hud: CanvasLayer
 var log_pose: Node3D
 @export_group("Editor Planet")
 @export_node_path("MeshInstance3D") var ocean_mesh_path: NodePath = ^"OceanMesh"
@@ -533,86 +534,44 @@ func _fit_ui_to_screen() -> void:
 	var window := get_tree().root
 	var screen := Vector2(window.size)
 	window.content_scale_size = Vector2i(480, 854) if screen.x < screen.y else Vector2i(1152, 648)
+	# Log Pose menor em tela em pé, para não cobrir a masthead.
+	var pose := get_node_or_null("LogPose_HUD/MarginContainer") as Control
+	if pose != null:
+		var side := 120.0 if screen.x < screen.y else 220.0
+		pose.offset_left = -side - 12.0
+		pose.offset_right = -12.0
+		pose.offset_top = 12.0
+		pose.offset_bottom = 12.0 + side
+		(pose.get_child(0) as Control).custom_minimum_size = Vector2(side, side)
 
 func _build_hud() -> void:
 	_fit_ui_to_screen()
 	get_tree().root.size_changed.connect(_fit_ui_to_screen)
+	# Camada mantida com o nome antigo para compatibilidade com testes/ferramentas.
 	var layer := CanvasLayer.new()
 	layer.name = "NavigationHUD"
 	add_child(layer)
-	var instructions := Label.new()
-	if DisplayServer.is_touchscreen_available():
-		instructions.text = "NAVIO  joystick esquerdo · IMPULSO segure\nCANHÃO  joystick direito mira · FOGO atira\nÁGUA  arraste um dedo · CÂMERA  arraste dois dedos"
-	else:
-		instructions.text = "NAVIO  W/S acelera e freia · A/D vira · Shift impulso\nBÚSSOLA  ilha mais próxima · 1–5 visita · 0/Esc barco · Tab globo\nÁGUA  arraste esquerdo · CÂMERA  arraste direito"
-	instructions.position = Vector2(24, 20)
-	instructions.add_theme_font_size_override("font_size", 16)
-	instructions.add_theme_color_override("font_color", Color(0.91,0.96,1.0))
-	instructions.add_theme_color_override("font_shadow_color", Color(0.0,0.02,0.06,0.95))
-	instructions.add_theme_constant_override("shadow_offset_x", 1)
-	instructions.add_theme_constant_override("shadow_offset_y", 2)
-	layer.add_child(instructions)
-	status = Label.new()
-	status.position = Vector2(24, 96)
-	status.add_theme_font_size_override("font_size", 16)
-	status.add_theme_color_override("font_color", Color(0.91,0.96,1.0))
-	status.add_theme_color_override("font_shadow_color", Color(0.0,0.02,0.06,0.95))
-	status.add_theme_constant_override("shadow_offset_y", 2)
-	layer.add_child(status)
-	# Quebra em várias linhas em telas estreitas (mobile em pé).
-	var mode_bar := HFlowContainer.new()
-	mode_bar.position = Vector2(24, 196)
-	mode_bar.size.x = get_viewport().get_visible_rect().size.x - 48.0
-	get_viewport().size_changed.connect(func(): mode_bar.size.x = get_viewport().get_visible_rect().size.x - 48.0)
-	mode_bar.add_theme_constant_override("h_separation", 8)
-	mode_bar.add_theme_constant_override("v_separation", 8)
-	layer.add_child(mode_bar)
-	var free_button := Button.new()
-	free_button.text = "Navegar livre"
-	free_button.focus_mode = Control.FOCUS_NONE
-	free_button.pressed.connect(_return_to_navigation)
-	mode_bar.add_child(free_button)
-	for index in range(islands.size()):
-		var island_button := Button.new()
-		island_button.text = "%d %s" % [index + 1, ISLANDS[index].name]
-		island_button.focus_mode = Control.FOCUS_NONE
-		island_button.pressed.connect(_select_island.bind(index))
-		mode_bar.add_child(island_button)
-	var attack_button := Button.new()
-	attack_button.text = "Time Attack · 3 min"
-	attack_button.focus_mode = Control.FOCUS_NONE
-	attack_button.pressed.connect(_start_time_attack)
-	mode_bar.add_child(attack_button)
-	var panel := HBoxContainer.new()
-	panel.position = Vector2(get_viewport().get_visible_rect().size.x-220,244)
-	get_viewport().size_changed.connect(func(): panel.position.x=get_viewport().get_visible_rect().size.x-220)
-	layer.add_child(panel)
-	for mode in ["auto","day","night"]:
-		var button := Button.new()
-		button.text = {"auto":"Ciclo","day":"Dia","night":"Noite"}[mode]
-		button.toggle_mode = true
-		button.button_pressed = mode==time_mode
-		button.focus_mode = Control.FOCUS_NONE
-		button.pressed.connect(select_time.bind(mode))
-		panel.add_child(button)
-		time_buttons.append(button)
-	music_button = Button.new()
-	music_button.text = "Próxima música (N)"
-	music_button.position = Vector2(get_viewport().get_visible_rect().size.x-185,284)
-	music_button.focus_mode = Control.FOCUS_NONE
-	music_button.pressed.connect(next_track)
-	get_viewport().size_changed.connect(func(): music_button.position.x=get_viewport().get_visible_rect().size.x-185)
-	layer.add_child(music_button)
-
+	hud = PortfolioHUDScript.new()
+	hud.name = "PortfolioHUD"
+	add_child(hud)
+	hud.free_sail_pressed.connect(_return_to_navigation)
+	hud.island_pressed.connect(_select_island)
+	hud.time_attack_pressed.connect(_start_time_attack)
+	hud.time_mode_pressed.connect(select_time)
+	hud.next_track_pressed.connect(next_track)
+	hud.panel_closed.connect(_return_to_navigation)
+	hud.set_time_mode(time_mode)
 func _select_island(index: int) -> void:
 	if is_instance_valid(camera) and index >= 0 and index < islands.size():
 		camera.focus_island(islands[index])
 
-func _on_island_visit_started(_index: int) -> void:
+func _on_island_visit_started(index: int) -> void:
+	if hud: hud.show_island(index)
 	if is_instance_valid(naval) and bool(naval.get("time_attack_mode")):
 		naval.call("leave_time_attack")
 
 func _return_to_navigation() -> void:
+	if hud: hud.hide_island()
 	if is_instance_valid(naval):
 		naval.call("leave_time_attack")
 	if is_instance_valid(camera):
@@ -627,16 +586,31 @@ func _start_time_attack() -> void:
 		naval.call("start_time_attack")
 
 func _build_log_pose() -> void:
-	var hud := LogPose.instantiate()
-	add_child(hud)
-	log_pose = hud.get_node("MarginContainer/SubViewportContainer/SubViewport/LogPose_Master")
+	var pose_layer := LogPose.instantiate()
+	add_child(pose_layer)
+	log_pose = pose_layer.get_node("MarginContainer/SubViewportContainer/SubViewport/LogPose_Master")
 	log_pose.player_sloop = ship
 	log_pose.islands_parent = get_node(island_anchors_path)
+	_fit_ui_to_screen()
 
 func wind_at(point: Vector3) -> Vector3:
 	if wind_manager != null:
 		return wind_manager.wind_at(point)
 	return Scale.wind_at(point)
+
+func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
+	hud.set_status(section, nearest, ship.measured_speed, Engine.get_frames_per_second())
+	# Perto de uma ilha (e navegando), oferece abrir a seção dela.
+	var close := nearest_index >= 0 and nearest < 110.0 and camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW
+	hud.set_approach(nearest_index if close else -1)
+	hud.set_daylight(1.0 - clock.night_at(camera.global_position))
+	if is_instance_valid(naval):
+		var finished := ""
+		if naval.time_attack_mode and not naval.time_attack_running:
+			finished = "CONCLUÍDA" if naval.time_attack_hits.size() == naval.course_count else "FIM"
+		hud.set_race(naval.time_attack_mode, naval.time_attack_remaining, naval.time_attack_hits.size(), naval.course_count, finished)
+	if ship.measured_speed > 1.0:
+		hud.notify_player_input()
 
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -695,12 +669,15 @@ func _process(delta: float) -> void:
 	lantern.light_energy = 2.0*clock.night_at(render_position)
 	var nearest := INF
 	var section := ""
-	for island in islands:
+	var nearest_index := -1
+	for i in range(islands.size()):
+		var island := islands[i]
 		var distance := acos(clampf(up.dot(island.position.normalized()), -1.0, 1.0)) * planet_radius
 		if distance < nearest:
 			nearest = distance
+			nearest_index = i
 			section = island.get_meta("section")
-	status.text = "%s · %.0f m    |    %.1f m/s    |    %d FPS" % [section, nearest, ship.measured_speed, Engine.get_frames_per_second()]
+	_update_hud(section, nearest, nearest_index)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
@@ -830,7 +807,7 @@ func next_track() -> void:
 			music_bag.assign(playlist)
 			music_bag.shuffle()
 		current_track = music_bag.pop_back()
-		if music_button: music_button.tooltip_text = "Tocando: " + current_track.get_basename()
+		if hud: hud.set_track(current_track.get_basename())
 		# Autoplay pode ser bloqueado até o primeiro gesto; o clique seguinte retoma.
 		_web_music("a.src = 'music/' + encodeURIComponent(%s); a.play().catch(function(){ window.__portfolioMusicBlocked = true; });" % JSON.stringify(current_track))
 		return
@@ -843,7 +820,7 @@ func next_track() -> void:
 			music_bag[0] = music_bag[-1]
 			music_bag[-1] = swap
 	current_track = music_bag.pop_back()
-	if music_button: music_button.tooltip_text = "Tocando: "+current_track.get_file().get_basename()
+	if hud: hud.set_track(current_track.get_file().get_basename())
 	var track := load(current_track) as AudioStream
 	if track is AudioStreamMP3 or track is AudioStreamOggVorbis: track.loop=false
 	elif track is AudioStreamWAV: track.loop_mode=AudioStreamWAV.LOOP_DISABLED
@@ -854,7 +831,7 @@ func next_track() -> void:
 func select_time(mode: String) -> void:
 	time_mode = mode
 	water_held = false
-	for i in range(time_buttons.size()): time_buttons[i].button_pressed = ["auto","day","night"][i]==mode
+	if hud: hud.set_time_mode(mode)
 	if mode=="auto":
 		clock.paused = false
 	else:

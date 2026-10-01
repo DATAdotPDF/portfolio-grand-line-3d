@@ -74,6 +74,20 @@ func run() -> void:
 		world.ocean.touch(ahead + side * 6.0, 0.55, 3.0)
 		await wait(1.1)
 		await shot("ripple")
+	if wants("hud"):
+		world.camera.focus_island(world.islands[3])
+		await wait(2.8)
+		await shot("hud_island_panel")
+		world.clock.set_time(0.02, true)
+		await wait(1.0)
+		await shot("hud_island_panel_night")
+		world.clock.set_time(0.42, true)
+		world._return_to_navigation()
+		await wait(2.5)
+		world._start_time_attack()
+		await wait(3.5)
+		await shot("hud_race")
+		world._return_to_navigation()
 	if wants("islands"):
 		for i in range(world.islands.size()):
 			world.camera.focus_island(world.islands[i])

@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const HudTheme = preload("res://Scripts/UI/HudTheme.gd")
+
 ## Controles de toque para a versão mobile (web). Aparecem só em telas de toque
 ## (ou com force_visible). Um dedo fora dos controles mexe na água (mouse emulado);
 ## dois dedos giram a câmera.
@@ -34,6 +36,7 @@ func enable() -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = HudTheme.build_theme(HudTheme.palette(1.0))
 	add_child(root)
 	drive_pad = _make_pad(root, Control.PRESET_BOTTOM_LEFT, Vector2(36, -36), "drive")
 	aim_pad = _make_pad(root, Control.PRESET_BOTTOM_RIGHT, Vector2(-36, -36), "aim")
@@ -81,9 +84,10 @@ func _make_button(parent: Control, text: String, right_side: bool, action: Calla
 
 func _draw_pad(pad: Control) -> void:
 	var center := pad.size * 0.5
-	pad.draw_circle(center, STICK_RADIUS, Color(0.02, 0.1, 0.18, 0.35))
-	pad.draw_arc(center, STICK_RADIUS, 0.0, TAU, 48, Color(0.9, 0.97, 1.0, 0.6), 2.0, true)
-	pad.draw_circle(center + pad.get_meta("knob") * (STICK_RADIUS - KNOB_RADIUS), KNOB_RADIUS, Color(0.95, 0.85, 0.55, 0.8))
+	var colors := HudTheme.palette(1.0)
+	pad.draw_circle(center, STICK_RADIUS, Color(colors.paper, 0.55))
+	pad.draw_arc(center, STICK_RADIUS, 0.0, TAU, 48, Color(colors.ink, 0.55), 1.5, true)
+	pad.draw_circle(center + pad.get_meta("knob") * (STICK_RADIUS - KNOB_RADIUS), KNOB_RADIUS, Color(colors.accent, 0.85))
 
 func _pad_input(event: InputEvent, pad: Control) -> void:
 	var position := Vector2.INF

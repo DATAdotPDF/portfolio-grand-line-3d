@@ -90,12 +90,14 @@ func _ready() -> void:
 	_build_cannon()
 	_build_targets()
 	_build_particles()
-	hud = Label.new()
-	hud.position = Vector2(24,124)
-	hud.add_theme_font_size_override("font_size",16)
-	hud.add_theme_color_override("font_shadow_color",Color.BLACK)
-	hud.add_theme_constant_override("shadow_offset_y",2)
-	world.get_node("NavigationHUD").add_child(hud)
+	# O HUD do portfólio fornece o painel do canhão; sem ele, cai no rótulo simples.
+	var portfolio_hud: Variant = world.get("hud")
+	if portfolio_hud != null and portfolio_hud.get("cannon_label") != null:
+		hud = portfolio_hud.cannon_label
+	else:
+		hud = Label.new()
+		hud.position = Vector2(24,124)
+		world.get_node("NavigationHUD").add_child(hud)
 
 func fit(model: Node3D, size: float, axis: int, floor_fraction: float=0.0) -> AABB:
 	var bounds: AABB = world._model_bounds(model)
