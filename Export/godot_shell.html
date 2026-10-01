@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+		<title>Pedro D. Ferreira · Mundo 3D</title>
+		<meta name="theme-color" content="#efe4cc">
+		<style>
+@font-face { font-family: "IM Fell English"; font-style: italic; src: url("/fonts/IMFellEnglish-Italic.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Variable.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("/fonts/Inter-Variable.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+:root { --paper: #efe4cc; --ink: #2b2118; --muted: #7a6a55; --line: rgba(43, 33, 24, 0.3); --accent: #9e1b2b; }
+@media (prefers-color-scheme: dark) { :root { --paper: #1d2537; --ink: #efe4cc; --muted: #a9b3c7; --line: rgba(239, 228, 204, 0.3); --accent: #e7a44a; } }
+html, body, #canvas { margin: 0; padding: 0; border: 0; }
+body { background: var(--paper); color: var(--ink); overflow: hidden; touch-action: none; }
+#canvas { display: block; }
+#canvas:focus { outline: none; }
+#status { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center;
+	gap: 14px; padding: 24px; background: var(--paper); visibility: hidden; text-align: center; font-family: "Inter", system-ui, sans-serif; }
+.kicker { font: 600 11px/1.4 "Inter", system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.title { font: italic 400 clamp(40px, 8vw, 76px)/.9 "IM Fell English", Georgia, serif; margin: 0; }
+.hint { color: var(--muted); max-width: 46ch; font-size: 14px; margin: 0; }
+.meter { width: min(420px, 80vw); height: 6px; border: 1px solid var(--line); position: relative; overflow: hidden; }
+.meter span { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ink); transition: width .2s; }
+.meter.indeterminate span { width: 30%; animation: sweep 1.4s ease-in-out infinite; }
+@keyframes sweep { 0% { left: -30%; } 100% { left: 100%; } }
+#status-numbers { font: 500 12px "JetBrains Mono", monospace; color: var(--muted); font-variant-numeric: tabular-nums; }
+#status-notice { display: none; border: 1px solid var(--accent); padding: 14px 18px; max-width: 520px; font-size: 14px; }
+.back { color: var(--ink); font-size: 13px; }
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">Seu navegador não suporta canvas.</canvas>
+		<noscript>O mundo 3D precisa de JavaScript. O portfólio completo está em <a href="/">/</a>.</noscript>
+
+		<div id="status" role="status" aria-live="polite">
+			<p class="kicker">Pedro D. Ferreira · Carta de navegação</p>
+			<p class="title">Içando as velas…</p>
+			<div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div>
+			<p id="status-numbers">preparando o mar</p>
+			<p class="hint">Primeira visita: o mundo tem cerca de 80 MB e fica em cache para as próximas. W A S D para navegar, ou use os controles na tela.</p>
+			<div id="status-notice"></div>
+			<a class="back" href="/">← Ler o portfólio sem o 3D</a>
+		</div>
+
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const meter = document.getElementById('meter');
+	const meterBar = document.getElementById('meter-bar');
+	const numbers = document.getElementById('status-numbers');
+	const statusNotice = document.getElementById('status-notice');
+	let initializing = true;
+
+	function hideStatus() {
+		statusOverlay.remove();
+		initializing = false;
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Erro desconhecido.');
+		statusNotice.textContent = 'Não foi possível abrir o mundo 3D neste navegador (' + message + '). Todo o portfólio continua disponível na página inicial.';
+		statusNotice.style.display = 'block';
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	statusOverlay.style.visibility = 'visible';
+	if (missing.length !== 0) {
+		displayFailureNotice('recursos ausentes: ' + missing.join(', '));
+		return;
+	}
+	engine.startGame({
+		'onProgress': function (current, total) {
+			if (!initializing) return;
+			if (current > 0 && total > 0) {
+				meter.classList.remove('indeterminate');
+				meterBar.style.width = Math.min(100, current / total * 100).toFixed(1) + '%';
+				numbers.textContent = (current / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB';
+			}
+		},
+	}).then(hideStatus, displayFailureNotice);
+}());
+		</script>
+	</body>
+</html>

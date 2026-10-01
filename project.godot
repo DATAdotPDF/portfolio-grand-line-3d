@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Portifolio_PedroFerreira_3D_2026"
+config/name="Pedro D. Ferreira · Mundo 3D"
 run/main_scene="res://MainWorld.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"

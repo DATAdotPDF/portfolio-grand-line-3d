@@ -28,3 +28,13 @@
 /godot-mcp-main/
 /godot-water-shader-main/
 
+
+# Saída do Web/build.ps1 (regenerável)
+/Web/public/world/
+/Web/public/fonts/
+/Web/public/classico/
+/Web/public/portfolio_content.json
+/Web/public/world_config.json
+/Web/.wrangler/
+/.wrangler/
+

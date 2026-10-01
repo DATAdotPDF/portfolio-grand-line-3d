@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="day">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<title>Pedro D. Ferreira · Carta de Navegação</title>
+	<meta name="description" content="Portfólio de Pedro D. Ferreira — Junior Data Engineer (Data Analytics, BI, Data Operations, Cybersecurity). Leia o portfólio ou navegue pelas cinco ilhas num mundo 3D.">
+	<meta name="theme-color" content="#efe4cc">
+	<link rel="preload" href="/fonts/IMFellEnglish-Italic.ttf" as="font" type="font/ttf" crossorigin>
+	<link rel="stylesheet" href="/styles.css">
+	<script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js"}}</script>
+</head>
+<body>
+	<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+	<header class="bar">
+		<a class="brand" href="#topo"><span class="kicker">Pedro D. Ferreira</span><span class="kicker faint">· Carta de navegação</span></a>
+		<nav aria-label="Seções">
+			<a href="#sobre">Sobre</a><a href="#experiencia">Experiência</a><a href="#formacao">Formação</a><a href="#projetos">Projetos</a><a href="#contato">Contato</a>
+		</nav>
+		<div class="bar-tools">
+			<button class="hair small" id="theme-toggle" type="button" aria-label="Alternar dia e noite">☾ Noite</button>
+			<a class="hair small" href="/classico/">Versão clássica</a>
+		</div>
+	</header>
+
+	<main id="conteudo">
+		<section class="hero" id="topo">
+			<div class="hero-copy">
+				<p class="status mono"><span class="dot" aria-hidden="true"></span><span data-content="status"></span></p>
+				<h1 class="masthead" data-content="name">Pedro D. Ferreira</h1>
+				<p class="role"><span data-content="role"></span></p>
+				<p class="kicker" data-content="tagline"></p>
+				<p class="pitch" data-content="pitch"></p>
+				<div class="cta">
+					<a class="hair primary" id="sail" href="/world/">⚓ Zarpar no mundo 3D</a>
+					<a class="hair" href="#sobre">Ler o portfólio ↓</a>
+					<a class="hair" data-link="whatsapp" target="_blank" rel="noopener">WhatsApp ↗</a>
+				</div>
+				<p class="world-status mono" id="world-status" aria-live="polite">Mundo 3D · velejar pela Grand Line com as cinco ilhas do currículo</p>
+				<dl class="stats" id="stats"></dl>
+			</div>
+			<figure class="globe">
+				<canvas id="globe" aria-label="Globo navegável com as cinco ilhas do portfólio"></canvas>
+				<div class="pins" id="pins"></div>
+				<figcaption class="mono faint">Arraste para girar · toque numa ilha</figcaption>
+			</figure>
+		</section>
+
+		<div id="sections"></div>
+	</main>
+
+	<footer class="foot">
+		<p class="kicker">Pedro D. Ferreira · <span data-content="role"></span></p>
+		<p class="faint">Mundo 3D feito em Godot · modelos, código e textos próprios · fontes IM Fell English, Inter e JetBrains Mono (OFL).</p>
+	</footer>
+
+	<script type="module" src="/landing.js"></script>
+</body>
+</html>

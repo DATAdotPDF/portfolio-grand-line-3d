@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "http-server@14", "Builds/Web", "-p", "8060", "-c-1", "--cors"],
       "port": 8060
+    },
+    {
+      "name": "site-worker",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "wrangler@4", "dev", "--config", "Web/wrangler.toml", "--port", "8787", "--ip", "127.0.0.1"],
+      "port": 8787
     }
   ]
 }

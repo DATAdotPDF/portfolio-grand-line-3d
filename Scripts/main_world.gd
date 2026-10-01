@@ -142,6 +142,8 @@ func _ready() -> void:
 	touch.naval = naval
 	touch.camera = camera
 	add_child(touch)
+	if OS.has_feature("web"):
+		_apply_web_deeplink.call_deferred()
 	print("WORLD_READY radius=", planet_radius, " ship_length=", SHIP_LENGTH, " islands=", islands.size(), " max_wave=", snappedf(Scale.max_wave_height(), 0.01))
 
 # --- Editor: o mundo inteiro acompanha o layout sem precisar do Play ---------------
@@ -561,6 +563,21 @@ func _build_hud() -> void:
 	hud.next_track_pressed.connect(next_track)
 	hud.panel_closed.connect(_return_to_navigation)
 	hud.set_time_mode(time_mode)
+## Links da landing: /world/?ilha=projetos abre direto na ilha; ?modo=regata inicia a regata.
+func _apply_web_deeplink() -> void:
+	var query := str(JavaScriptBridge.eval("window.location.search", true))
+	var params := {}
+	for pair in query.trim_prefix("?").split("&", false):
+		var parts := pair.split("=")
+		params[parts[0].uri_decode()] = parts[1].uri_decode() if parts.size() > 1 else ""
+	print("DEEPLINK ", params)
+	await get_tree().create_timer(0.8).timeout
+	var ids := ["sobre", "experiencia", "formacao", "projetos", "contato"]
+	if params.has("ilha") and ids.has(params.ilha):
+		_select_island(ids.find(params.ilha))
+	elif params.get("modo", "") == "regata":
+		_start_time_attack()
+
 func _select_island(index: int) -> void:
 	if is_instance_valid(camera) and index >= 0 and index < islands.size():
 		camera.focus_island(islands[index])
