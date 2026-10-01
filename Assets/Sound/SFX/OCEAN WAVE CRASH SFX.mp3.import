@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://busm6jy6mntb4"
+path="res://.godot/imported/OCEAN WAVE CRASH SFX.mp3-84bb9081db2ea15559e48390ca9fdd47.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/SFX/OCEAN WAVE CRASH SFX.mp3"
+dest_files=["res://.godot/imported/OCEAN WAVE CRASH SFX.mp3-84bb9081db2ea15559e48390ca9fdd47.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

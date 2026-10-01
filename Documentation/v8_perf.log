@@ -1,0 +1,18 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 617.14 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 3060 Ti
+
+COAST_WALL Island_01 segments=2946
+COAST_WALL Island_02 segments=5727
+PART_EXTRACTED FortCannon triangles=21253
+PART_EXTRACTED FortCannon triangles=46471
+COAST_WALL Island_03 segments=1806
+PONEGLYPH_EXTRACTED triangles=20682 bounds=[P: (-0.196, 0.034, -0.234), S: (0.37, 0.393, 0.36)]
+COAST_WALL Island_04 segments=1204
+COAST_WALL Island_05 segments=580
+PART_EXTRACTED DenDenMushi triangles=73483
+MODULAR_CANNON carriage=[P: (-0.951484, -0.482751, -0.734285), S: (1.902532, 0.964358, 1.466335)] barrel=[P: (-0.944034, -0.227495, -0.575835), S: (1.894597, 0.447059, 1.15101)]
+NAVAL_TARGETS total=20 open_sea=5
+WORLD_READY radius=200.0 ship_length=4.8 islands=5 solid_colliders=5
+warmup frames=90 elapsed_ms=1376 fps=76.0
+with_logpose frames=120 elapsed_ms=1599 fps=75.0
+without_logpose_render frames=120 elapsed_ms=1599 fps=75.0

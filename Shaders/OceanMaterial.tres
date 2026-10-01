@@ -1,0 +1,18 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://Shaders/ocean.gdshader" id="1_ocean"]
+
+[resource]
+shader = ExtResource("1_ocean")
+shader_parameter/planet_radius = 200.0
+shader_parameter/wave_strength = 3.0
+shader_parameter/wavelength_scale = 1.0
+shader_parameter/wave_speed = 1.0
+shader_parameter/wind_direction = Vector3(0.9, 0.15, 0.3)
+shader_parameter/swell_foam_threshold = 3.1
+shader_parameter/swell_foam_amount = 0.16
+shader_parameter/deep_ocean_color = Color(0.015, 0.29, 0.53, 1)
+shader_parameter/shallow_ocean_color = Color(0.04, 0.61, 0.75, 1)
+shader_parameter/shoreline_width = 1.2
+shader_parameter/boat_cutout_enabled = false
+shader_parameter/use_simulation_time = false

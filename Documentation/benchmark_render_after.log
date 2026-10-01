@@ -1,0 +1,6 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+D3D12 12_0 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce RTX 3060 Ti
+
+PONEGLYPH_EXTRACTED triangles=20682 bounds=[P: (-0.196, 0.034, -0.234), S: (0.37, 0.393, 0.36)]
+WORLD_READY radius=90 ship_length=4.8 islands=5 solid_colliders=5
+BENCHMARK {"draw_calls":14.0,"frames":14980,"mean_fps":1498.07520337526,"median_ms":0.659,"p95_ms":0.774,"p99_ms":0.901,"primitives":747555.0}

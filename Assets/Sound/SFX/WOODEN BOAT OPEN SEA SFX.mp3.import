@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dv014n2ovorl6"
+path="res://.godot/imported/WOODEN BOAT OPEN SEA SFX.mp3-a173a92af94aed1c616ef602ac1a4c49.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/SFX/WOODEN BOAT OPEN SEA SFX.mp3"
+dest_files=["res://.godot/imported/WOODEN BOAT OPEN SEA SFX.mp3-a173a92af94aed1c616ef602ac1a4c49.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

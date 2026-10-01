@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "language": "pt-BR",
+  "opening": {
+    "title": "Pedro Ferreira",
+    "subtitle": "Navegue pelo meu portfólio 3D.",
+    "modes": [
+      { "id": "free_sail", "label": "Navegar livre" },
+      { "id": "island_visit", "label": "Explorar ilhas" },
+      { "id": "time_attack", "label": "Time Attack" }
+    ]
+  },
+  "islands": [
+    { "id": "sobre", "name": "Sobre", "key": "1", "focus_height_m": 6.0, "orbit_distance_m": 38.0, "camera_elevation_deg": 10.0 },
+    { "id": "experiencia", "name": "Experiência", "key": "2", "focus_height_m": 9.0, "orbit_distance_m": 44.0, "camera_elevation_deg": 12.0 },
+    { "id": "formacao", "name": "Formação", "key": "3", "focus_height_m": 7.5, "orbit_distance_m": 40.0, "camera_elevation_deg": 10.0 },
+    { "id": "projetos", "name": "Projetos", "key": "4", "focus_height_m": 8.0, "orbit_distance_m": 42.0, "camera_elevation_deg": 12.0 },
+    { "id": "contato", "name": "Contato", "key": "5", "focus_height_m": 24.0, "orbit_distance_m": 68.0, "camera_elevation_deg": 16.0 }
+  ],
+  "camera": {
+    "boat_follow_distance_m": 12.0,
+    "boat_follow_height_m": 5.0,
+    "fov_deg": 65.0,
+    "island_orbit_speed_rad_per_s": 0.12
+  },
+  "compass": { "target": "nearest_island_by_spherical_arc" },
+  "time_attack": {
+    "duration_seconds": 180.0,
+    "target_count": 20,
+    "goal": "hit_every_unique_buoy_with_cannon",
+    "target_id_format": "buoy_%02d",
+    "leaderboard": "server_persistent_completed_runs_ordered_by_elapsed_time"
+  },
+  "controls": [
+    { "action": "Acelerar e frear", "input": "W / S" },
+    { "action": "Virar", "input": "A / D" },
+    { "action": "Impulso", "input": "Shift" },
+    { "action": "Girar o canhão", "input": "Q / E" },
+    { "action": "Inclinar o canhão", "input": "R / F" },
+    { "action": "Atirar", "input": "Espaço" },
+    { "action": "Manipular a água", "input": "Arrastar com botão esquerdo" },
+    { "action": "Girar a câmera", "input": "Arrastar com botão direito" },
+    { "action": "Visitar uma ilha", "input": "1–5 ou menu" },
+    { "action": "Voltar ao barco", "input": "0 / Esc" },
+    { "action": "Visão do planeta", "input": "Tab" }
+  ]
+}

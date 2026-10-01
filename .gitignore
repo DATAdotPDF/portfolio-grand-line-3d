@@ -1,0 +1,23 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+*.tmp
+
+# Builds e backups locais
+/Builds/
+/_backup/
+
+# Binários pesados (GLBs originais de 24-110 MB, texturas 4k, áudio, vídeos).
+# Ficam fora do Git sem LFS; os arquivos .import continuam versionados.
+/Assets/**/*.glb
+/Assets/**/*.jpg
+/Assets/**/*.jpeg
+/Assets/**/*.png
+/Assets/**/*.mp3
+/Assets/**/*.wav
+/Assets/**/*.FBX
+/Assets/water-wakes/
+/Assets/godot-water-shader-main/
+/Assets/godot-4-stylized-sky-main/
+/References/
+/Documentation/Previews/*.png

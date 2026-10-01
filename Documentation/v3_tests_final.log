@@ -1,0 +1,94 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+COAST_WALL Island_01 segments=1743
+COAST_WALL Island_02 segments=6001
+PART_EXTRACTED FortCannon triangles=21253
+PART_EXTRACTED FortCannon triangles=46471
+COAST_WALL Island_03 segments=1329
+PONEGLYPH_EXTRACTED triangles=20682 bounds=[P: (-0.196, 0.034, -0.234), S: (0.37, 0.393, 0.36)]
+COAST_WALL Island_04 segments=1006
+COAST_WALL Island_05 segments=487
+PART_EXTRACTED DenDenMushi triangles=73483
+NAVAL_TARGETS total=21 open_sea=6
+WORLD_READY radius=90 ship_length=4.8 islands=5 solid_colliders=5
+PASS buoyancy at rest
+PASS no drift at rest
+PASS About near north pole
+PASS Contact near south pole
+PASS island 1 near equator
+PASS island 2 near equator
+PASS island 3 near equator
+PASS Shift reaches 12.5 m/s
+PASS buoyancy with Shift
+PASS moving wake
+PASS wake fades at rest
+PASS cannot climb or cross island Island_01 from four sides at full Shift
+PASS cannot climb or cross island Island_02 from four sides at full Shift
+PASS cannot climb or cross island Island_03 from four sides at full Shift
+PASS cannot climb or cross island Island_04 from four sides at full Shift
+PASS cannot climb or cross island Island_05 from four sides at full Shift
+PASS touch displaces water height
+PASS holding mouse sustains waves
+PASS drag moves disturbance center
+PASS water disturbance dissipates after release
+PASS day and night change lighting
+PASS random playlist playing without single-track loop
+PASS M pauses music
+PASS orientation follows southern hemisphere
+PASS wave phase wraps for long sessions
+PASS opposite hemispheres have local night and day
+PASS Poneglyph isolated
+PASS Poneglyph floats and rotates
+PASS south lighthouse lights at local night
+PASS south lighthouse switches off at local day
+PASS boat lamp receives night factor
+PASS L disables boat lamp
+PASS manual day follows boat hemisphere
+PASS manual night follows boat hemisphere
+PASS automatic cycle resumes
+PASS playlist does not repeat track 0
+PASS playlist does not repeat track 1
+PASS playlist does not repeat track 2
+PASS playlist does not repeat track 3
+PASS playlist does not repeat track 4
+PASS playlist does not repeat track 5
+PASS playlist does not repeat track 6
+PASS playlist does not repeat track 7
+PASS playlist does not repeat track 8
+PASS playlist does not repeat track 9
+PASS playlist does not repeat track 10
+PASS playlist does not repeat track 11
+PASS playlist does not repeat track 12
+PASS playlist does not repeat track 13
+PASS playlist does not repeat track 14
+PASS playlist does not repeat track 15
+PASS playlist does not repeat track 16
+PASS playlist does not repeat track 17
+PASS playlist does not repeat track 18
+PASS playlist does not repeat track 19
+PASS playlist does not repeat track 20
+PASS playlist does not repeat track 21
+PASS 21 targets generated
+PASS three targets near island 0
+PASS three targets near island 1
+PASS three targets near island 2
+PASS three targets near island 3
+PASS three targets near island 4
+PASS cannon fires
+PASS cannon cooldown prevents spam
+PASS projectile inherits boat velocity
+PASS swept projectile hits target and scores once
+PASS target hit debounce
+PASS projectile water impact splashes
+PASS island has parchment title
+PASS island has parchment title
+PASS island has parchment title
+PASS island has parchment title
+PASS island has parchment title
+PASS two fort cannon pieces separated
+PASS decorative cannon recoil runs
+PASS Den Den Mushi separated
+PASS treasure spark emitters exist
+PASS parchment reveals near coast
+PASS parchment hides far from coast
+REVISION_TESTS failures=0

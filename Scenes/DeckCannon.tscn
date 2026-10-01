@@ -1,0 +1,44 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://Scripts/DeckCannonArticulated.gd" id="1_cannon"]
+[ext_resource type="PackedScene" path="res://Assets/Meshy_AI_cannon_carriage_corre_0930210048_image-to-3d-texture.glb" id="2_carriage"]
+[ext_resource type="PackedScene" path="res://Assets/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture.glb" id="3_barrel"]
+[ext_resource type="AudioStream" path="res://Assets/Sound/SFX/FUSE SFX.wav" id="4_fuse"]
+[ext_resource type="AudioStream" path="res://Assets/Sound/SFX/CANNON SHOT SFX.wav" id="5_shot"]
+
+[node name="DeckCannon" type="Node3D"]
+rotation = Vector3(0, 1.5707964, 0)
+script = ExtResource("1_cannon")
+
+[node name="CannonCarriage_Mesh" parent="." instance=ExtResource("2_carriage")]
+
+[node name="PitchPivot" type="Node3D" parent="."]
+position = Vector3(0, 0.45, 0)
+rotation = Vector3(0.2094395, 0, 0)
+
+[node name="RecoilPivot" type="Node3D" parent="PitchPivot"]
+
+[node name="CannonBarrel_Mesh" parent="PitchPivot/RecoilPivot" instance=ExtResource("3_barrel")]
+
+[node name="MuzzlePoint" type="Marker3D" parent="PitchPivot/RecoilPivot"]
+position = Vector3(0, 0.07, -0.53)
+
+[node name="FuseAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("4_fuse")
+volume_db = -12.0
+unit_size = 8.0
+max_distance = 50.0
+
+[node name="ShotAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("5_shot")
+volume_db = -6.0
+unit_size = 20.0
+max_distance = 120.0
+
+[node name="FuseEmber" type="OmniLight3D" parent="."]
+position = Vector3(0, 0.63, -0.32)
+visible = false
+light_color = Color(1, 0.46, 0.11, 1)
+light_energy = 0.8
+omni_range = 1.8
+shadow_enabled = false

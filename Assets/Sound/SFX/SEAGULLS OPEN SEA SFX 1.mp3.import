@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://wffqbccu7pew"
+path="res://.godot/imported/SEAGULLS OPEN SEA SFX 1.mp3-72b45b3514b2a3e6dcb3d21cb1b74194.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/SFX/SEAGULLS OPEN SEA SFX 1.mp3"
+dest_files=["res://.godot/imported/SEAGULLS OPEN SEA SFX 1.mp3-72b45b3514b2a3e6dcb3d21cb1b74194.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bpe04abo7wq27"
+path="res://.godot/imported/WATER SPLASH CANON BALL SFX.wav-f3b32ff02b330e332f2984fec09eea79.sample"
+
+[deps]
+
+source_file="res://Assets/Sound/SFX/WATER SPLASH CANON BALL SFX.wav"
+dest_files=["res://.godot/imported/WATER SPLASH CANON BALL SFX.wav-f3b32ff02b330e332f2984fec09eea79.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

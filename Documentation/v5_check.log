@@ -1,0 +1,28 @@
+PASS modular cannon mount
+PASS separate carriage and barrel
+PASS barrel under independent recoil pivot
+PASS pitch pivot at U cradle
+PASS 15 coastal and six open-sea targets
+PASS coastal target spacing island 0
+PASS concise sign 0
+PASS coastal target spacing island 1
+PASS concise sign 1
+PASS coastal target spacing island 2
+PASS concise sign 2
+PASS coastal target spacing island 3
+PASS concise sign 3
+PASS coastal target spacing island 4
+PASS concise sign 4
+PASS 2D hitmarker ready
+PASS sail material with wind and emblem
+PASS wind streaks created
+CANNON_GLOBAL=(-0.4, 90.204, 0.4) MUZZLE=(-0.93, 90.564, 0.4) CARRIAGE=(-0.399442, 90.44505, 0.399891)
+PASS pitch leaves wheels on deck
+PASS barrel elevates
+PASS fuse starts
+PASS cannon fires after fuse
+PASS target destroyed
+PASS hitmarker sounds
+PASS positional wood hit sounds
+PASS all checks
+FAILURES=0

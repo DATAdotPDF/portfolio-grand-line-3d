@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://2j13tr0etr5y"
+path="res://.godot/imported/Black Salt Armada 1.mp3-9d762efd3025ca8ae53915ae334012f5.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Black Salt Armada 1.mp3"
+dest_files=["res://.godot/imported/Black Salt Armada 1.mp3-9d762efd3025ca8ae53915ae334012f5.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

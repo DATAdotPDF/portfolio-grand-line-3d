@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://k14akffbiy3c"
+path="res://.godot/imported/The Great Sea (The Legend of Zelda Wind Waker) OST Remastered - OST Remastered.mp3-339fb7908cb594d982191aaf9417a96d.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/The Great Sea (The Legend of Zelda Wind Waker) OST Remastered - OST Remastered.mp3"
+dest_files=["res://.godot/imported/The Great Sea (The Legend of Zelda Wind Waker) OST Remastered - OST Remastered.mp3-339fb7908cb594d982191aaf9417a96d.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

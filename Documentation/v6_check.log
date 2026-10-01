@@ -1,0 +1,54 @@
+PASS modular cannon mount
+PASS cannon yaw fixed at zero
+PASS fixed port orientation inside cradle
+PASS separate carriage and barrel
+PASS barrel under independent recoil pivot
+PASS pitch pivot at U cradle
+PASS 15 coastal and six open-sea targets
+PASS coastal target spacing island 0
+PASS concise sign 0
+PASS coastal target spacing island 1
+PASS concise sign 1
+PASS coastal target spacing island 2
+PASS concise sign 2
+PASS coastal target spacing island 3
+PASS concise sign 3
+PASS coastal target spacing island 4
+PASS concise sign 4
+PASS 2D hitmarker ready
+PASS sail material with wind and emblem
+PASS wind streaks created
+PASS ocean ambience loops separately from music
+PASS open-sea gull calls loaded
+PASS boat creak loaded as loop
+PASS bow wave crash loaded
+PASS two continuous bow sheets
+PASS bow sheet attached to sloop
+PASS bow sheet attached to sloop
+PASS rare short-lived crest droplets
+PASS droplets stop at rest
+PASS new fuse recording
+PASS new cannon recording
+PASS new ambient tracks discovered
+PASS music skip button changes track
+PASS music skip preserves pause
+CANNON_GLOBAL=(-0.4, 90.204, 0.4) MUZZLE=(-0.93, 90.564, 0.4) CARRIAGE=(-0.399891, 90.44505, 0.400558)
+PASS bow sheets visible while sailing
+PASS crest droplets start above 3 m/s
+PASS wooden hull audio starts with movement
+PASS no CPU droplet cloud follows the ship
+BOW_REST speed=0.0 mesh=false droplets=false
+PASS bow wave fades at rest
+PASS pitch leaves wheels on deck
+PASS barrel elevates
+PASS fuse starts
+PASS cannon fires after fuse
+PASS projectile plays Doppler SFX
+PASS fire keeps carriage fixed
+PASS target destroyed
+PASS hitmarker sounds
+PASS positional wood hit sounds
+PASS new wood impact recording
+PASS new explosion and water splash recordings
+PASS all checks
+FAILURES=0

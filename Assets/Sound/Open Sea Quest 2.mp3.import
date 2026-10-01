@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cdltjk8hgyska"
+path="res://.godot/imported/Open Sea Quest 2.mp3-1815085cdfa39cebf5b2637178714d83.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Open Sea Quest 2.mp3"
+dest_files=["res://.godot/imported/Open Sea Quest 2.mp3-1815085cdfa39cebf5b2637178714d83.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

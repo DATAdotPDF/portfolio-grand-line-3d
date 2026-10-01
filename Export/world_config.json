@@ -1,0 +1,782 @@
+{
+  "snapshot_status": "stale_do_not_use",
+  "boat": {
+    "cruise_speed": 4.2,
+    "length": 4.8,
+    "model": "Assets/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture.glb",
+    "model_local": {
+      "position": [
+        0.0,
+        1.5335,
+        0.0
+      ],
+      "quaternion_xyzw": [
+        0.0,
+        -0.707107,
+        0.0,
+        0.707107
+      ],
+      "scale": [
+        2.5708,
+        2.5708,
+        2.5708
+      ]
+    },
+    "shift_speed": 12.5,
+    "spawn": {
+      "position": [
+        195.1795,
+        43.6459,
+        0.0
+      ],
+      "quaternion_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "camera": {
+    "follow_distance": 17.0,
+    "follow_height": 9.5,
+    "island_orbit_radius": 43.0,
+    "overview_radius": 510.0
+  },
+  "coordinate_system": "right-handed, Y up, -Z forward",
+  "day_night": {
+    "cycle_seconds": 1800.0,
+    "manual_options": [
+      "auto",
+      "day",
+      "night"
+    ]
+  },
+  "gameplay": {
+    "cannon_fuse_seconds": 1.0,
+    "target_respawn_seconds": 20.0
+  },
+  "islands": [
+    {
+      "coast_width": 28.0,
+      "id": "sobre",
+      "model": "Assets/Meshy_AI_island_1_about_harbor_0929193106_image-to-3d-texture.glb",
+      "model_local": {
+        "position": [
+          0.0,
+          4.3883,
+          0.0
+        ],
+        "quaternion_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          14.7164,
+          14.7164,
+          14.7164
+        ]
+      },
+      "mount": {
+        "position": [
+          200.0,
+          0.0,
+          0.0
+        ],
+        "quaternion_xyzw": [
+          0.5,
+          0.5,
+          -0.5,
+          0.5
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "title": "Sobre",
+      "title_model": "Assets/Optimized/title_sobre.glb",
+      "waterline_fraction": 0.16
+    },
+    {
+      "coast_width": 32.0,
+      "id": "experiencia",
+      "model": "Assets/Meshy_AI_island_2_experience_f_0929193424_image-to-3d-texture.glb",
+      "model_local": {
+        "position": [
+          0.0,
+          5.6471,
+          0.0
+        ],
+        "quaternion_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          16.8164,
+          16.8164,
+          16.8164
+        ]
+      },
+      "mount": {
+        "position": [
+          61.6293,
+          15.0,
+          189.6756
+        ],
+        "quaternion_xyzw": [
+          0.671701,
+          0.114689,
+          -0.106387,
+          0.724118
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "title": "Experiência",
+      "title_model": "Assets/Optimized/title_experiencia.glb",
+      "waterline_fraction": 0.23
+    },
+    {
+      "coast_width": 30.0,
+      "id": "formacao",
+      "model": "Assets/Meshy_AI_island_3_formation_po_0929193844_image-to-3d-texture.glb",
+      "model_local": {
+        "position": [
+          0.0,
+          4.2532,
+          0.0
+        ],
+        "quaternion_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          15.7693,
+          15.7693,
+          15.7693
+        ]
+      },
+      "mount": {
+        "position": [
+          -161.601,
+          -10.0,
+          117.41
+        ],
+        "quaternion_xyzw": [
+          0.645596,
+          -0.312891,
+          0.328947,
+          0.614084
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "title": "Formação",
+      "title_model": "Assets/Optimized/title_formacao.glb",
+      "waterline_fraction": 0.33
+    },
+    {
+      "coast_width": 32.0,
+      "id": "projetos",
+      "model": "Assets/Meshy_AI_island_4_projects_shi_0929194206_image-to-3d-texture.glb",
+      "model_local": {
+        "position": [
+          0.0,
+          8.3887,
+          0.0
+        ],
+        "quaternion_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          16.8107,
+          16.8107,
+          16.8107
+        ]
+      },
+      "mount": {
+        "position": [
+          -161.5119,
+          12.0,
+          -117.3453
+        ],
+        "quaternion_xyzw": [
+          -0.31124,
+          0.648663,
+          -0.610843,
+          -0.33051
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "title": "Projetos",
+      "title_model": "Assets/Optimized/title_projetos.glb",
+      "waterline_fraction": 0.13
+    },
+    {
+      "coast_width": 26.0,
+      "id": "contato",
+      "model": "Assets/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture.glb",
+      "model_local": {
+        "position": [
+          0.0,
+          15.2146,
+          0.0
+        ],
+        "quaternion_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          19.9703,
+          19.9703,
+          19.9703
+        ]
+      },
+      "mount": {
+        "position": [
+          61.6293,
+          -15.0,
+          -189.6756
+        ],
+        "quaternion_xyzw": [
+          -0.114689,
+          -0.671701,
+          0.724118,
+          -0.106387
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "title": "Contato",
+      "title_model": "Assets/Optimized/title_contato.glb",
+      "waterline_fraction": 0.1
+    }
+  ],
+  "naval_targets": [
+    {
+      "island_index": 0,
+      "normal": [
+        0.9856,
+        -0.0659,
+        -0.1558
+      ],
+      "position": [
+        197.117,
+        -13.1765,
+        -31.1655
+      ]
+    },
+    {
+      "island_index": 0,
+      "normal": [
+        0.9748,
+        -0.1345,
+        0.178
+      ],
+      "position": [
+        194.9588,
+        -26.9045,
+        35.5978
+      ]
+    },
+    {
+      "island_index": 0,
+      "normal": [
+        0.9477,
+        0.3169,
+        0.0394
+      ],
+      "position": [
+        189.5302,
+        63.3746,
+        7.8732
+      ]
+    },
+    {
+      "island_index": 1,
+      "normal": [
+        0.4575,
+        0.0062,
+        0.8892
+      ],
+      "position": [
+        91.5054,
+        1.2489,
+        177.8348
+      ]
+    },
+    {
+      "island_index": 1,
+      "normal": [
+        0.1103,
+        -0.0791,
+        0.9907
+      ],
+      "position": [
+        22.0642,
+        -15.8178,
+        198.1489
+      ]
+    },
+    {
+      "island_index": 1,
+      "normal": [
+        0.2484,
+        0.3825,
+        0.89
+      ],
+      "position": [
+        49.6772,
+        76.4961,
+        177.9903
+      ]
+    },
+    {
+      "island_index": 2,
+      "normal": [
+        -0.7055,
+        -0.1132,
+        0.6996
+      ],
+      "position": [
+        -141.104,
+        -22.6408,
+        139.9181
+      ]
+    },
+    {
+      "island_index": 2,
+      "normal": [
+        -0.8917,
+        -0.1946,
+        0.4087
+      ],
+      "position": [
+        -178.34,
+        -38.9148,
+        81.7343
+      ]
+    },
+    {
+      "island_index": 2,
+      "normal": [
+        -0.8031,
+        0.2595,
+        0.5363
+      ],
+      "position": [
+        -160.6272,
+        51.9057,
+        107.26
+      ]
+    },
+    {
+      "island_index": 3,
+      "normal": [
+        -0.8928,
+        -0.0086,
+        -0.4504
+      ],
+      "position": [
+        -178.5552,
+        -1.719,
+        -90.0838
+      ]
+    },
+    {
+      "island_index": 3,
+      "normal": [
+        -0.6705,
+        -0.0938,
+        -0.7359
+      ],
+      "position": [
+        -134.109,
+        -18.7517,
+        -147.1841
+      ]
+    },
+    {
+      "island_index": 3,
+      "normal": [
+        -0.7286,
+        0.3686,
+        -0.5773
+      ],
+      "position": [
+        -145.7232,
+        73.7117,
+        -115.4613
+      ]
+    },
+    {
+      "island_index": 4,
+      "normal": [
+        0.1494,
+        -0.1415,
+        -0.9786
+      ],
+      "position": [
+        29.8707,
+        -28.2929,
+        -195.7224
+      ]
+    },
+    {
+      "island_index": 4,
+      "normal": [
+        0.486,
+        -0.2242,
+        -0.8447
+      ],
+      "position": [
+        97.2087,
+        -44.8477,
+        -168.9353
+      ]
+    },
+    {
+      "island_index": 4,
+      "normal": [
+        0.3364,
+        0.2353,
+        -0.9118
+      ],
+      "position": [
+        67.2873,
+        47.0555,
+        -182.3683
+      ]
+    },
+    {
+      "island_index": -1,
+      "normal": [
+        0.144,
+        0.9896,
+        0.0
+      ],
+      "position": [
+        28.7922,
+        197.9167,
+        0.0
+      ]
+    },
+    {
+      "island_index": -1,
+      "normal": [
+        -0.033,
+        -0.9896,
+        0.1401
+      ],
+      "position": [
+        -6.5931,
+        -197.9167,
+        28.0272
+      ]
+    },
+    {
+      "island_index": -1,
+      "normal": [
+        -0.552,
+        0.8021,
+        0.2279
+      ],
+      "position": [
+        -110.4061,
+        160.4167,
+        45.574
+      ]
+    },
+    {
+      "island_index": -1,
+      "normal": [
+        -0.1952,
+        -0.7396,
+        -0.6441
+      ],
+      "position": [
+        -39.0324,
+        -147.9167,
+        -128.8298
+      ]
+    },
+    {
+      "island_index": -1,
+      "normal": [
+        -0.0946,
+        0.6771,
+        -0.7298
+      ],
+      "position": [
+        -18.9144,
+        135.4167,
+        -145.9609
+      ]
+    }
+  ],
+  "planet": {
+    "bed_radius": 196.0,
+    "center": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "water_radius": 200.0
+  },
+  "schema_version": 1,
+  "units": "meters",
+  "waves": {
+    "amplitudes": [
+      0.48,
+      0.22,
+      0.09
+    ],
+    "frequencies": [
+      0.2856,
+      0.5712,
+      1.1424
+    ],
+    "patches": [
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          0.3997,
+          0.9167,
+          0.0
+        ],
+        "direction": [
+          0.4653,
+          -0.2029,
+          0.8616
+        ],
+        "initial_phase": 0.0,
+        "phase_rate": 2.02608346939087,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.41887903213501
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          -0.4877,
+          0.75,
+          0.4468
+        ],
+        "direction": [
+          -0.0558,
+          0.484,
+          -0.8733
+        ],
+        "initial_phase": 1.73,
+        "phase_rate": 1.84955275058746,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.349065840244293
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          0.071,
+          0.5833,
+          -0.8091
+        ],
+        "direction": [
+          -0.6946,
+          0.6111,
+          0.3796
+        ],
+        "initial_phase": 3.46,
+        "phase_rate": 1.71235311031342,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.299199312925339
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          0.5531,
+          0.4167,
+          0.7214
+        ],
+        "direction": [
+          0.7652,
+          0.0883,
+          -0.6377
+        ],
+        "initial_phase": 5.19,
+        "phase_rate": 1.60175967216492,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.261799395084381
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          -0.9534,
+          0.25,
+          -0.1687
+        ],
+        "direction": [
+          0.2278,
+          0.2307,
+          -0.946
+        ],
+        "initial_phase": 0.636814692820414,
+        "phase_rate": 2.02608346939087,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.41887903213501
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          0.8408,
+          0.0833,
+          -0.5349
+        ],
+        "direction": [
+          0.467,
+          0.3881,
+          0.7946
+        ],
+        "initial_phase": 2.36681469282041,
+        "phase_rate": 1.84955275058746,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.349065840244293
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          -0.2587,
+          -0.0833,
+          0.9624
+        ],
+        "direction": [
+          0.7413,
+          0.6217,
+          0.2531
+        ],
+        "initial_phase": 4.09681469282041,
+        "phase_rate": 1.71235311031342,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.299199312925339
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          -0.4463,
+          -0.25,
+          -0.8593
+        ],
+        "direction": [
+          -0.8635,
+          0.3723,
+          0.3402
+        ],
+        "initial_phase": 5.82681469282041,
+        "phase_rate": 1.60175967216492,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.261799395084381
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          0.8539,
+          -0.4167,
+          0.3118
+        ],
+        "direction": [
+          0.3034,
+          0.8854,
+          0.3522
+        ],
+        "initial_phase": 1.27362938564083,
+        "phase_rate": 2.02608346939087,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.41887903213501
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          -0.7508,
+          -0.5833,
+          0.3099
+        ],
+        "direction": [
+          -0.4955,
+          0.1871,
+          -0.8482
+        ],
+        "initial_phase": 3.00362938564083,
+        "phase_rate": 1.84955275058746,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.349065840244293
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          0.2803,
+          -0.75,
+          -0.5991
+        ],
+        "direction": [
+          -0.3099,
+          -0.6614,
+          0.683
+        ],
+        "initial_phase": 4.73362938564083,
+        "phase_rate": 1.71235311031342,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.299199312925339
+      },
+      {
+        "amplitude": 0.720000028610229,
+        "center": [
+          0.1196,
+          -0.9167,
+          0.3813
+        ],
+        "direction": [
+          0.968,
+          0.0223,
+          -0.2501
+        ],
+        "initial_phase": 0.180444078461242,
+        "phase_rate": 1.60175967216492,
+        "steepness": 0.319999992847443,
+        "wave_number": 0.261799395084381
+      }
+    ],
+    "rates": [
+      0.92,
+      1.25,
+      1.7
+    ]
+  }
+}

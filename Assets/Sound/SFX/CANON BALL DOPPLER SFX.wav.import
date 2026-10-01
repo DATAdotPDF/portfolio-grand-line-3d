@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://dh8ejdk5pp1pt"
+path="res://.godot/imported/CANON BALL DOPPLER SFX.wav-d10b5187508ed46be5beb7384471734f.sample"
+
+[deps]
+
+source_file="res://Assets/Sound/SFX/CANON BALL DOPPLER SFX.wav"
+dest_files=["res://.godot/imported/CANON BALL DOPPLER SFX.wav-d10b5187508ed46be5beb7384471734f.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

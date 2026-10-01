@@ -1,0 +1,171 @@
+[gd_scene format=3 uid="uid://cvp237p4vivqu"]
+
+[ext_resource type="Script" uid="uid://c12bixtte2c46" path="res://Scripts/main_world.gd" id="1_world"]
+[ext_resource type="Script" uid="uid://b8s35i3ikwo1w" path="res://Scripts/IslandDistributor.gd" id="2_islands"]
+[ext_resource type="PackedScene" uid="uid://bisp5y6l7dfmj" path="res://Assets/Meshy_AI_island_1_about_harbor_0929193106_image-to-3d-texture.glb" id="4_about"]
+[ext_resource type="PackedScene" uid="uid://c2xrdn3frcglr" path="res://Assets/Meshy_AI_island_2_experience_f_0929193424_image-to-3d-texture.glb" id="5_experience"]
+[ext_resource type="PackedScene" uid="uid://dcrbvndiau2ss" path="res://Assets/Meshy_AI_island_3_formation_po_0929193844_image-to-3d-texture.glb" id="6_education"]
+[ext_resource type="PackedScene" uid="uid://dqbiuxdgiy1qv" path="res://Assets/Meshy_AI_island_4_projects_shi_0929194206_image-to-3d-texture.glb" id="7_projects"]
+[ext_resource type="PackedScene" uid="uid://ca7gsirt5ak7r" path="res://Assets/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture.glb" id="8_contact"]
+[ext_resource type="PackedScene" uid="uid://dpn1yifyqtl53" path="res://Assets/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture.glb" id="9_sloop_model"]
+[ext_resource type="Script" uid="uid://djqd732776nhl" path="res://Scripts/sloop.gd" id="10_sloop"]
+[ext_resource type="Script" uid="uid://dyi5q6ikc28rd" path="res://Scripts/PortfolioCameraController.gd" id="11_camera"]
+[ext_resource type="PackedScene" path="res://Scenes/DeckCannon.tscn" id="12_cannon"]
+[ext_resource type="PackedScene" path="res://Scenes/WindRibbon.tscn" id="13_wind"]
+[ext_resource type="SphereMesh" path="res://Shaders/OceanSphereMesh.tres" id="14_ocean_mesh"]
+[ext_resource type="Material" path="res://Shaders/OceanMaterial.tres" id="15_ocean_material"]
+[ext_resource type="Sky" path="res://Shaders/WorldSky.tres" id="16_world_sky"]
+[ext_resource type="PackedScene" path="res://Scenes/IslandTitleSign.tscn" id="17_title_sign"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_seabed"]
+albedo_color = Color(0.12, 0.17, 0.21, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gqqp0"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_seabed"]
+material = SubResource("StandardMaterial3D_gqqp0")
+radius = 195.0
+height = 390.0
+radial_segments = 128
+rings = 64
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_planet"]
+radius = 196.0
+
+[sub_resource type="Environment" id="Environment_world"]
+background_mode = 2
+background_color = Color(0.42, 0.62, 0.78, 1)
+sky = ExtResource("16_world_sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.66, 0.75, 0.83, 1)
+ambient_light_energy = 0.65
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ship"]
+radius = 0.6
+height = 3.8
+
+[node name="MainWorld" type="Node3D" unique_id=1477310016]
+script = ExtResource("1_world")
+
+[node name="IslandAnchors" type="Node3D" parent="." unique_id=1720439565]
+script = ExtResource("2_islands")
+
+[node name="About" type="Node3D" parent="IslandAnchors" unique_id=484332785]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 200, 0)
+metadata/surface_normal = Vector3(0, 1, 0)
+
+[node name="IslandModel" parent="IslandAnchors/About" unique_id=1269334079 instance=ExtResource("4_about")]
+transform = Transform3D(14.716394, 0, 0, 0, 14.716394, 0, 0, 0, 14.716394, 0, 5.971224, 0)
+
+[node name="IslandTitleSign" parent="IslandAnchors/About" unique_id=1549564617 instance=ExtResource("17_title_sign")]
+physics_interpolation_mode = 2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 18, 0)
+
+[node name="Experience" type="Node3D" parent="IslandAnchors" unique_id=405503584]
+transform = Transform3D(0, 1, 0, 0, 0, -1, -1, 0, 0, 200, 0, 0)
+metadata/surface_normal = Vector3(1, 0, 0)
+
+[node name="IslandModel" parent="IslandAnchors/Experience" unique_id=819004217 instance=ExtResource("5_experience")]
+transform = Transform3D(16.816385, 0, 0, 0, 16.816385, 0, 0, 0, 16.816385, 0, 9.944618, 0)
+
+[node name="IslandTitleSign" parent="IslandAnchors/Experience" unique_id=978492456 instance=ExtResource("17_title_sign")]
+physics_interpolation_mode = 2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 26, 0)
+island_index = 1
+
+[node name="Education" type="Node3D" parent="IslandAnchors" unique_id=2071508863]
+transform = Transform3D(0.8660254, -0.5, 0, 0, 0, -1, 0.5, 0.8660254, 0, -100, 0, 173.20508)
+metadata/surface_normal = Vector3(-0.5, 0, 0.8660254)
+
+[node name="IslandModel" parent="IslandAnchors/Education" unique_id=667537715 instance=ExtResource("6_education")]
+transform = Transform3D(15.769339, 0, 0, 0, 15.769339, 0, 0, 0, 15.769339, 0, 12.027704, 0)
+
+[node name="IslandTitleSign" parent="IslandAnchors/Education" unique_id=168962882 instance=ExtResource("17_title_sign")]
+physics_interpolation_mode = 2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+island_index = 2
+
+[node name="Projects" type="Node3D" parent="IslandAnchors" unique_id=1657933355]
+transform = Transform3D(-0.8660254, -0.5, 0, 0, 0, -1, 0.5, -0.8660254, 0, -100, 0, -173.20508)
+metadata/surface_normal = Vector3(-0.5, 0, -0.8660254)
+
+[node name="IslandModel" parent="IslandAnchors/Projects" unique_id=980629411 instance=ExtResource("7_projects")]
+transform = Transform3D(16.810696, 0, 0, 0, 16.810696, 0, 0, 0, 16.810696, 0, 10.831598, 0)
+
+[node name="IslandTitleSign" parent="IslandAnchors/Projects" unique_id=1206313690 instance=ExtResource("17_title_sign")]
+physics_interpolation_mode = 2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 28, 0)
+island_index = 3
+
+[node name="Contact" type="Node3D" parent="IslandAnchors" unique_id=1028030559]
+transform = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, -1, 0, -200, 0)
+metadata/surface_normal = Vector3(0, -1, 0)
+
+[node name="IslandModel" parent="IslandAnchors/Contact" unique_id=1804762206 instance=ExtResource("8_contact")]
+transform = Transform3D(19.970337, 0, 0, 0, 19.970337, 0, 0, 0, 19.970337, 0, 18.513641, 0)
+
+[node name="IslandTitleSign" parent="IslandAnchors/Contact" unique_id=718074736 instance=ExtResource("17_title_sign")]
+physics_interpolation_mode = 2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 43, 0)
+island_index = 4
+
+[node name="SeabedMesh" type="MeshInstance3D" parent="." unique_id=643503240]
+material_override = SubResource("StandardMaterial3D_seabed")
+mesh = SubResource("SphereMesh_seabed")
+
+[node name="PlanetCore" type="StaticBody3D" parent="." unique_id=601310095]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlanetCore" unique_id=337517526]
+shape = SubResource("SphereShape3D_planet")
+
+[node name="OceanMesh" type="MeshInstance3D" parent="." unique_id=2116111256]
+material_override = ExtResource("15_ocean_material")
+cast_shadow = 0
+extra_cull_margin = 6.0
+mesh = ExtResource("14_ocean_mesh")
+
+[node name="WindRibbonSystem" parent="." unique_id=1699312425 instance=ExtResource("13_wind")]
+wind_direction = Vector3(0.9370426, 0.15617378, 0.31234756)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1546779801]
+environment = SubResource("Environment_world")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=571657331]
+transform = Transform3D(0.7071069, -0.49999982, 0.49999997, 0, 0.7071069, 0.70710665, -0.70710665, -0.49999997, 0.5000002, 0, 0, 0)
+light_energy = 1.2
+
+[node name="PlayerShip" type="CharacterBody3D" parent="." unique_id=784806486]
+transform = Transform3D(1, 0, 0, 0, 0.9759, 0.2182, 0, -0.2182, 0.9759, 0, 195.18, 43.64)
+script = ExtResource("10_sloop")
+
+[node name="HullVisualContainer" type="Node3D" parent="PlayerShip" unique_id=1489832668]
+
+[node name="ShipModel" parent="PlayerShip/HullVisualContainer" unique_id=594831352 instance=ExtResource("9_sloop_model")]
+transform = Transform3D(8.0702335e-07, 0, -2.570822, 0, 2.570822, 0, 2.570822, 0, 8.0702335e-07, 0, 1.533476, 0)
+
+[node name="DeckCannon" parent="PlayerShip/HullVisualContainer" unique_id=743537612 instance=ExtResource("12_cannon")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.4, 0.204, 0.4)
+
+[node name="CabinLantern" type="OmniLight3D" parent="PlayerShip/HullVisualContainer" unique_id=1779909404]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0.5)
+light_color = Color(1, 0.894, 0.541, 1)
+
+[node name="HullCollision" type="CollisionShape3D" parent="PlayerShip" unique_id=791430156]
+transform = Transform3D(1, 0, 0, 0, 3.1391647e-07, -1, 0, 1, 3.1391647e-07, 0, 0.3, 0)
+shape = SubResource("CapsuleShape3D_ship")
+
+[node name="CameraPivot" type="Node3D" parent="." unique_id=1650593334]
+transform = Transform3D(1, 0, 0, 0, 0.94668853, 0.32215032, 0, -0.32215032, 0.94668853, 0, 160, 470)
+
+[node name="FollowCamera" type="Camera3D" parent="CameraPivot" unique_id=315167470]
+current = true
+fov = 65.0
+near = 0.15
+far = 1500.0
+script = ExtResource("11_camera")
+
+[node name="OceanPreviewCamera" type="Camera3D" parent="." unique_id=752998422]
+transform = Transform3D(1, 0, 0, 0, 0.9979527, 0.06395632, 0, -0.06395632, 0.9979527, 0, 197.44, 56.44)
+fov = 65.0
+near = 0.15
+far = 800.0

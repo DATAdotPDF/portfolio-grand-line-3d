@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bw62aaqr6d47w"
+path="res://.godot/imported/FUSE SFX.wav-944c9184434068524319f0e87661249f.sample"
+
+[deps]
+
+source_file="res://Assets/Sound/SFX/FUSE SFX.wav"
+dest_files=["res://.godot/imported/FUSE SFX.wav-944c9184434068524319f0e87661249f.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

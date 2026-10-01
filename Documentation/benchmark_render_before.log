@@ -1,0 +1,5 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+D3D12 12_0 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce RTX 3060 Ti
+
+WORLD_READY radius=90 ship_length=4.8 islands=5 solid_colliders=5
+BENCHMARK {"draw_calls":14.0,"frames":5349,"mean_fps":534.875395731798,"median_ms":1.855,"p95_ms":2.186,"p99_ms":2.436,"primitives":4157404.0}

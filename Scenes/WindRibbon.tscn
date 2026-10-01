@@ -1,0 +1,55 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://Scripts/WindRibbonSystem.gd" id="1"]
+[ext_resource type="Shader" path="res://Shaders/WindRibbon.gdshader" id="2"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ribbon"]
+subdivide_width = 47
+subdivide_depth = 1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gust_0"]
+shader = ExtResource("2")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gust_1"]
+shader = ExtResource("2")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gust_2"]
+shader = ExtResource("2")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gust_3"]
+shader = ExtResource("2")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gust_4"]
+shader = ExtResource("2")
+
+[node name="WindRibbonSystem" type="Node3D"]
+script = ExtResource("1")
+
+[node name="WorldGust_0" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_ribbon")
+material_override = SubResource("ShaderMaterial_gust_0")
+
+[node name="WorldGust_1" type="MeshInstance3D" parent="."]
+visible = false
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_ribbon")
+material_override = SubResource("ShaderMaterial_gust_1")
+
+[node name="WorldGust_2" type="MeshInstance3D" parent="."]
+visible = false
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_ribbon")
+material_override = SubResource("ShaderMaterial_gust_2")
+
+[node name="WorldGust_3" type="MeshInstance3D" parent="."]
+visible = false
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_ribbon")
+material_override = SubResource("ShaderMaterial_gust_3")
+
+[node name="WorldGust_4" type="MeshInstance3D" parent="."]
+visible = false
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_ribbon")
+material_override = SubResource("ShaderMaterial_gust_4")

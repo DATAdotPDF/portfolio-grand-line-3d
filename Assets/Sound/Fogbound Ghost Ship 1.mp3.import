@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cbgamwk1q1cmr"
+path="res://.godot/imported/Fogbound Ghost Ship 1.mp3-2a37eb0ce1c3a637d78683a9e2371751.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Fogbound Ghost Ship 1.mp3"
+dest_files=["res://.godot/imported/Fogbound Ghost Ship 1.mp3-2a37eb0ce1c3a637d78683a9e2371751.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

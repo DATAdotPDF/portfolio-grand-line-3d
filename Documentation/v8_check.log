@@ -1,0 +1,98 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 617.14 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 3060 Ti
+
+COAST_WALL Island_01 segments=2946
+COAST_WALL Island_02 segments=5727
+PART_EXTRACTED FortCannon triangles=21253
+PART_EXTRACTED FortCannon triangles=46471
+COAST_WALL Island_03 segments=1806
+PONEGLYPH_EXTRACTED triangles=20682 bounds=[P: (-0.196, 0.034, -0.234), S: (0.37, 0.393, 0.36)]
+COAST_WALL Island_04 segments=1204
+COAST_WALL Island_05 segments=580
+PART_EXTRACTED DenDenMushi triangles=73483
+MODULAR_CANNON carriage=[P: (-0.951484, -0.482751, -0.734285), S: (1.902532, 0.964358, 1.466335)] barrel=[P: (-0.944034, -0.227495, -0.575835), S: (1.894597, 0.447059, 1.15101)]
+NAVAL_TARGETS total=20 open_sea=5
+WORLD_READY radius=200.0 ship_length=4.8 islands=5 solid_colliders=5
+PASS raio do globo 200 m
+PASS raio da simulacao de agua
+PASS leito a 196 m
+PASS cinco marcadores e ilhas
+PASS marcador 0 na casca
+PASS ilha 0 preserva transformacao do marcador
+PASS ilha 0 alinhada a gravidade
+PASS ilha 0 conserva modelo e costa
+PASS ilha 0 segue rota de 72 graus
+PASS placa 3D leve da ilha 0
+PASS sem texto duplicado na placa 0
+PASS marcador 1 na casca
+PASS ilha 1 preserva transformacao do marcador
+PASS ilha 1 alinhada a gravidade
+PASS ilha 1 conserva modelo e costa
+PASS ilha 1 segue rota de 72 graus
+PASS placa 3D leve da ilha 1
+PASS sem texto duplicado na placa 1
+PASS marcador 2 na casca
+PASS ilha 2 preserva transformacao do marcador
+PASS ilha 2 alinhada a gravidade
+PASS ilha 2 conserva modelo e costa
+PASS ilha 2 segue rota de 72 graus
+PASS placa 3D leve da ilha 2
+PASS sem texto duplicado na placa 2
+PASS marcador 3 na casca
+PASS ilha 3 preserva transformacao do marcador
+PASS ilha 3 alinhada a gravidade
+PASS ilha 3 conserva modelo e costa
+PASS ilha 3 segue rota de 72 graus
+PASS placa 3D leve da ilha 3
+PASS sem texto duplicado na placa 3
+PASS marcador 4 na casca
+PASS ilha 4 preserva transformacao do marcador
+PASS ilha 4 alinhada a gravidade
+PASS ilha 4 conserva modelo e costa
+PASS ilha 4 segue rota de 72 graus
+PASS placa 3D leve da ilha 4
+PASS sem texto duplicado na placa 4
+PASS distancia de arco da rota pentagonal
+PASS chalupa na superficie ampliada
+PASS 15 alvos costeiros e cinco em mar aberto
+PASS alvo costeiro 0/0 acompanha ilha
+PASS alvo costeiro 0/1 acompanha ilha
+PASS alvo costeiro 0/2 acompanha ilha
+PASS alvo costeiro 1/0 acompanha ilha
+PASS alvo costeiro 1/1 acompanha ilha
+PASS alvo costeiro 1/2 acompanha ilha
+PASS alvo costeiro 2/0 acompanha ilha
+PASS alvo costeiro 2/1 acompanha ilha
+PASS alvo costeiro 2/2 acompanha ilha
+PASS alvo costeiro 3/0 acompanha ilha
+PASS alvo costeiro 3/1 acompanha ilha
+PASS alvo costeiro 3/2 acompanha ilha
+PASS alvo costeiro 4/0 acompanha ilha
+PASS alvo costeiro 4/1 acompanha ilha
+PASS alvo costeiro 4/2 acompanha ilha
+PASS quatro fitas em laco e tres brisas
+PASS fita de vento por shader
+PASS fita de vento por shader
+PASS fita de vento por shader
+PASS fita de vento por shader
+PASS fita de vento por shader
+PASS fita de vento por shader
+PASS fita de vento por shader
+PASS placas originais fora do pacote Web
+PASS camera alcanca o globo
+PASS Log Pose ligado a chalupa
+PASS Log Pose ligado as ilhas
+PASS base do Log Pose
+PASS cupula do Log Pose
+PASS agulha separada
+PASS HUD 3D transparente
+PASS Log Pose aponta a ilha mais proxima
+PASS agulha marca proa quando alinhada
+PASS agulha muda com o rumo do navio
+PASS Log Pose troca de ilha durante navegacao
+PASS redistribuicao nao altera modelo interno
+PASS vela preservada
+PASS ondas da proa preservadas
+PASS chalupa navega no globo ampliado
+PASS chalupa acompanha a superficie ampliada
+CHECKS=82 FAILURES=0

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://d4cokgia24s0q"
+path="res://.godot/imported/Sea Wind Overture 1.mp3-f159ec8ba429d0bd46b82d19abf4f362.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Sea Wind Overture 1.mp3"
+dest_files=["res://.godot/imported/Sea Wind Overture 1.mp3-f159ec8ba429d0bd46b82d19abf4f362.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

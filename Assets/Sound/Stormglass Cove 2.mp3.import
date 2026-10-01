@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bjlhlixbs8d31"
+path="res://.godot/imported/Stormglass Cove 2.mp3-cdb5377ca4c060624047b066ac9ea9c6.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Stormglass Cove 2.mp3"
+dest_files=["res://.godot/imported/Stormglass Cove 2.mp3-cdb5377ca4c060624047b066ac9ea9c6.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

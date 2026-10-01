@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bwprxdq5u78ch"
+path="res://.godot/imported/Fogbound Galleon 1.mp3-708a8eea53f096d94bbddaf5e8657aad.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Fogbound Galleon 1.mp3"
+dest_files=["res://.godot/imported/Fogbound Galleon 1.mp3-708a8eea53f096d94bbddaf5e8657aad.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

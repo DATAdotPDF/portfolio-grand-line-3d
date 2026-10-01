@@ -1,0 +1,29 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+WORLD_READY radius=90 ship_length=4.8 islands=5 solid_colliders=5
+PASS buoyancy at rest
+PASS no drift at rest
+PASS 72 degree spacing island 0
+PASS 72 degree spacing island 1
+PASS 72 degree spacing island 2
+PASS 72 degree spacing island 3
+PASS 72 degree spacing island 4
+PASS Shift reaches 12.5 m/s
+PASS buoyancy with Shift
+PASS moving wake
+PASS wake fades at rest
+PASS cannot climb or cross island Island_01 from four sides at full Shift
+PASS cannot climb or cross island Island_02 from four sides at full Shift
+PASS cannot climb or cross island Island_03 from four sides at full Shift
+PASS cannot climb or cross island Island_04 from four sides at full Shift
+PASS cannot climb or cross island Island_05 from four sides at full Shift
+PASS touch displaces water height
+PASS holding mouse sustains waves
+PASS drag moves disturbance center
+PASS water disturbance dissipates after release
+PASS day and night change lighting
+PASS background MP3 playing in loop
+PASS M pauses music
+PASS orientation follows southern hemisphere
+PASS wave phase wraps for long sessions
+REVISION_TESTS failures=0
