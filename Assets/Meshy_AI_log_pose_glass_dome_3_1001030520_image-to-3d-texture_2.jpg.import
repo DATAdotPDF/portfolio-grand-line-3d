@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cposhbkv1cm46"
 path.s3tc="res://.godot/imported/Meshy_AI_log_pose_glass_dome_3_1001030520_image-to-3d-texture_2.jpg-af8fb3e69e0c3db0faaa8f7aaeb70b7e.s3tc.ctex"
+path.etc2="res://.godot/imported/Meshy_AI_log_pose_glass_dome_3_1001030520_image-to-3d-texture_2.jpg-af8fb3e69e0c3db0faaa8f7aaeb70b7e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Meshy_AI_log_pose_glass_dome_3_1001030520_image-to-3d-texture_2.jpg"
-dest_files=["res://.godot/imported/Meshy_AI_log_pose_glass_dome_3_1001030520_image-to-3d-texture_2.jpg-af8fb3e69e0c3db0faaa8f7aaeb70b7e.s3tc.ctex"]
+dest_files=["res://.godot/imported/Meshy_AI_log_pose_glass_dome_3_1001030520_image-to-3d-texture_2.jpg-af8fb3e69e0c3db0faaa8f7aaeb70b7e.s3tc.ctex", "res://.godot/imported/Meshy_AI_log_pose_glass_dome_3_1001030520_image-to-3d-texture_2.jpg-af8fb3e69e0c3db0faaa8f7aaeb70b7e.etc2.ctex"]
 
 [params]
 

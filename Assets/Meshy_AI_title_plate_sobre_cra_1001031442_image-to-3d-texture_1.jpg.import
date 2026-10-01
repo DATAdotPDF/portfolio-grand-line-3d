@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ewespylqxj8y"
 path.s3tc="res://.godot/imported/Meshy_AI_title_plate_sobre_cra_1001031442_image-to-3d-texture_1.jpg-d886d0203bebc3535076651916f050f9.s3tc.ctex"
+path.etc2="res://.godot/imported/Meshy_AI_title_plate_sobre_cra_1001031442_image-to-3d-texture_1.jpg-d886d0203bebc3535076651916f050f9.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Meshy_AI_title_plate_sobre_cra_1001031442_image-to-3d-texture_1.jpg"
-dest_files=["res://.godot/imported/Meshy_AI_title_plate_sobre_cra_1001031442_image-to-3d-texture_1.jpg-d886d0203bebc3535076651916f050f9.s3tc.ctex"]
+dest_files=["res://.godot/imported/Meshy_AI_title_plate_sobre_cra_1001031442_image-to-3d-texture_1.jpg-d886d0203bebc3535076651916f050f9.s3tc.ctex", "res://.godot/imported/Meshy_AI_title_plate_sobre_cra_1001031442_image-to-3d-texture_1.jpg-d886d0203bebc3535076651916f050f9.etc2.ctex"]
 
 [params]
 

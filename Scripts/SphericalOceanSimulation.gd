@@ -1,42 +1,59 @@
+@tool
 extends Node
 
+## Espelho em CPU do campo de ondas de Shaders/ocean_waves.gdshaderinc.
+## Mesma fonte de parâmetros (WorldScale.wave_components), então o barco, as boias
+## e os projéteis flutuam exatamente na onda que aparece na tela.
+
 const Scale = preload("res://Scripts/WorldScale.gd")
-const DIRECTIONS := [
-	Vector3(0.866, 0.0, 0.5),
-	Vector3(-0.5, 0.707, 0.5),
-	Vector3(-0.3, -0.6, 0.74),
-	Vector3(0.43, -0.27, -0.86)
-]
-const AMPLITUDES := [1.55, 0.18, 0.07, 0.03]
-const WAVELENGTHS := [54.0, 32.0, 19.0, 11.0]
-const OFFSETS := [0.0, 1.7, 3.8, 5.1]
+const MAX_RIPPLES := 32
+const MAX_WAKE := 24
+const RIPPLE_LIFETIME := 5.0
 
-@export var radius: float = Scale.OCEAN_RADIUS
-@export var wave_strength: float = 3.0
-@export var wavelength_scale: float = 1.0
-@export var wave_speed: float = 1.0
-
+var radius: float = 800.0
+var wave_scale := 1.0
 var simulation_time := 0.0
 var materials: Array[ShaderMaterial] = []
 var wake: Array[Vector4] = []
 var ripples: Array[Vector4] = []
+var ripple_info: Array[Vector4] = []
 var island_centers := PackedVector3Array()
 var island_radii := PackedFloat32Array()
+var components: Array[Dictionary] = []
 
 func _ready() -> void:
 	process_physics_priority = -20
+	refresh_from_layout()
+	var layout := Scale.layout()
+	if not layout.changed.is_connected(refresh_from_layout):
+		layout.changed.connect(refresh_from_layout)
+
+func refresh_from_layout() -> void:
+	radius = Scale.radius()
+	wave_scale = Scale.layout().wave_scale()
+	components = Scale.wave_components()
+	for material in materials:
+		Scale.push_wave_uniforms(material)
 
 func register_material(material: ShaderMaterial) -> void:
+	if material == null:
+		return
 	if not materials.has(material):
 		materials.append(material)
-	material.set_shader_parameter("planet_radius", radius)
-	material.set_shader_parameter("wave_strength", wave_strength)
-	material.set_shader_parameter("wavelength_scale", wavelength_scale)
-	material.set_shader_parameter("wave_speed", wave_speed)
+	Scale.push_wave_uniforms(material)
 	material.set_shader_parameter("ocean_time", simulation_time)
-	material.set_shader_parameter("use_simulation_time", true)
+	material.set_shader_parameter("use_simulation_time", not Engine.is_editor_hint())
+
+func set_islands(centers: PackedVector3Array, radii: PackedFloat32Array) -> void:
+	island_centers = centers
+	island_radii = radii
+	for material in materials:
+		material.set_shader_parameter("island_centers", centers)
+		material.set_shader_parameter("island_radii", radii)
 
 func _physics_process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	simulation_time += delta
 	for i in range(wake.size() - 1, -1, -1):
 		wake[i].w -= delta / 7.0
@@ -44,59 +61,82 @@ func _physics_process(delta: float) -> void:
 			wake.remove_at(i)
 	for i in range(ripples.size() - 1, -1, -1):
 		ripples[i].w += delta
-		if ripples[i].w > 4.0:
+		if ripples[i].w > RIPPLE_LIFETIME:
 			ripples.remove_at(i)
+			ripple_info.remove_at(i)
 
 func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	var interpolation_delay := (1.0 - Engine.get_physics_interpolation_fraction()) / float(Engine.physics_ticks_per_second)
 	var render_time := maxf(0.0, simulation_time - interpolation_delay)
 	var packed_wake := PackedVector4Array(wake)
-	packed_wake.resize(24)
+	packed_wake.resize(MAX_WAKE)
 	var packed_ripples := PackedVector4Array(ripples)
-	packed_ripples.resize(20)
+	packed_ripples.resize(MAX_RIPPLES)
+	var packed_info := PackedVector4Array(ripple_info)
+	packed_info.resize(MAX_RIPPLES)
 	for material in materials:
 		material.set_shader_parameter("ocean_time", render_time)
 		material.set_shader_parameter("wake_points", packed_wake)
 		material.set_shader_parameter("wake_count", wake.size())
 		material.set_shader_parameter("ripple_points", packed_ripples)
+		material.set_shader_parameter("ripple_info", packed_info)
 		material.set_shader_parameter("ripple_count", ripples.size())
 
-func _component(point: Vector3, index: int) -> float:
-	var k := TAU / maxf(WAVELENGTHS[index] * wavelength_scale, 0.1)
-	var omega := sqrt(9.8 * k)
-	var direction: Vector3 = DIRECTIONS[index]
-	var angle: float = k * point.dot(direction.normalized()) - omega * simulation_time * wave_speed + float(OFFSETS[index])
-	var crest := 0.5 + 0.5 * sin(angle)
-	return AMPLITUDES[index] * (pow(crest, 2.4) - 0.37)
+func _coast_factor(point: Vector3) -> float:
+	var factor := 1.0
+	for i in range(mini(island_centers.size(), island_radii.size())):
+		if island_radii[i] <= 0.0:
+			continue
+		var chord := point.distance_to(island_centers[i] * radius)
+		factor = minf(factor, smoothstep(island_radii[i] * 0.7, island_radii[i] + 25.0 * wave_scale, chord))
+	return lerpf(0.08, 1.0, factor)
 
-func _wave_height(point: Vector3) -> float:
+## Campo Lagrangiano no ponto de repouso p (|p| = radius):
+## xyz = deslocamento tangente, w = altura radial (sem as perturbações).
+func _swell(p: Vector3) -> Vector4:
+	var n := p.normalized()
+	var coast := _coast_factor(p)
+	var disp := Vector3.ZERO
+	var height := 0.0
+	for item in components:
+		var d: Vector3 = item.dir
+		var g := d - n * n.dot(d)
+		var w := Scale.calm_factor(g.length()) * coast
+		var phi: float = float(item.k) * p.dot(d) - float(item.omega) * simulation_time + float(item.phase)
+		var a: float = float(item.amplitude) * w
+		height += a * sin(phi)
+		disp += g * (float(item.steepness) * a * cos(phi))
+	return Vector4(disp.x, disp.y, disp.z, height)
+
+func ripple_height_at(p: Vector3) -> float:
 	var result := 0.0
-	for index in range(DIRECTIONS.size()):
-		result += _component(point, index)
-	var coast_factor := 1.0
-	for index in range(mini(island_centers.size(), island_radii.size())):
-		var chord := point.distance_to(island_centers[index] * radius)
-		coast_factor = minf(coast_factor, smoothstep(
-			island_radii[index] * 0.6,
-			island_radii[index] + 12.0,
-			chord
-		))
-	return result * wave_strength * lerpf(0.08, 1.0, coast_factor)
-
-func field_at(source: Vector3) -> Vector4:
-	var point := source.normalized() * radius
-	return Vector4(0.0, 0.0, 0.0, _wave_height(point))
-
-func ripple_height_at(point: Vector3) -> float:
-	var result := 0.0
-	for ripple in ripples:
-		var ring_distance := point.distance_to(Vector3(ripple.x, ripple.y, ripple.z)) - ripple.w * 2.4
-		result += 0.12 * cos(ring_distance * 4.0) * exp(-ring_distance * ring_distance / 1.44) * (1.0 - ripple.w / 4.0) * smoothstep(0.0, 0.15, ripple.w)
+	for i in range(ripples.size()):
+		var ripple := ripples[i]
+		var info := ripple_info[i]
+		var age := ripple.w
+		var dist := p.distance_to(Vector3(ripple.x, ripple.y, ripple.z))
+		var sigma := 0.9 + 0.55 * age
+		var x := dist - info.y * age
+		var k := TAU / (2.2 + 0.35 * age)
+		var envelope := exp(-x * x / (2.0 * sigma * sigma))
+		var amp := info.x * exp(-age * 0.9) / (1.0 + 0.12 * dist) * smoothstep(0.0, 0.08, age)
+		result += amp * envelope * -cos(k * x)
 	return result
 
+func field_at(source: Vector3) -> Vector4:
+	return _swell(source.normalized() * radius)
+
+## Altura da superfície acima do ponto (Euleriana): inverte o deslocamento
+## horizontal do Gerstner com duas iterações de ponto fixo.
 func height_at(position: Vector3) -> float:
-	var point := position.normalized() * radius
-	return _wave_height(point) + ripple_height_at(point)
+	var target := position.normalized() * radius
+	var rest := target
+	for _i in range(2):
+		var f := _swell(rest)
+		rest = (target - Vector3(f.x, f.y, f.z)).normalized() * radius
+	return _swell(rest).w + ripple_height_at(target)
 
 func surface_at(position: Vector3) -> Vector3:
 	return position.normalized() * (radius + height_at(position))
@@ -107,11 +147,14 @@ func displaced_at(position: Vector3) -> Vector3:
 func add_wake(position: Vector3) -> void:
 	var point := position.normalized() * radius
 	wake.append(Vector4(point.x, point.y, point.z, 1.0))
-	if wake.size() > 24:
+	if wake.size() > MAX_WAKE:
 		wake.pop_front()
 
-func touch(position: Vector3) -> void:
+## strength em metros; speed = velocidade de expansão da frente (m/s).
+func touch(position: Vector3, strength := 0.45, speed := 3.2) -> void:
 	var point := position.normalized() * radius
-	ripples.append(Vector4(point.x, point.y, point.z, 0.01))
-	if ripples.size() > 20:
+	ripples.append(Vector4(point.x, point.y, point.z, 0.0))
+	ripple_info.append(Vector4(strength, speed, 0.0, 0.0))
+	if ripples.size() > MAX_RIPPLES:
 		ripples.pop_front()
+		ripple_info.pop_front()

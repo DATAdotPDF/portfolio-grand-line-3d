@@ -12,13 +12,14 @@ config_version=5
 
 config/name="Portifolio_PedroFerreira_3D_2026"
 run/main_scene="res://MainWorld.tscn"
-config/features=PackedStringArray("4.7", "Forward Plus")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 DayNightCycle="*res://Scripts/DayNightCycle.gd"
 HitSoundManager="*res://Scripts/HitSoundManager.gd"
+WindManager="*res://Scripts/WindManager.gd"
 
 [display]
 
@@ -32,4 +33,7 @@ common/physics_interpolation=true
 
 [rendering]
 
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
 rendering_device/driver.windows="d3d12"
+textures/vram_compression/import_etc2_astc=true

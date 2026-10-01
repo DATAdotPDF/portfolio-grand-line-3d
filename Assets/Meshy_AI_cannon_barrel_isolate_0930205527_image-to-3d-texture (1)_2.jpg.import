@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://nv0o8kj6ucfh"
 path.s3tc="res://.godot/imported/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture (1)_2.jpg-a0a3496c444d5b076ec636d3c957b81a.s3tc.ctex"
+path.etc2="res://.godot/imported/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture (1)_2.jpg-a0a3496c444d5b076ec636d3c957b81a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture (1)_2.jpg"
-dest_files=["res://.godot/imported/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture (1)_2.jpg-a0a3496c444d5b076ec636d3c957b81a.s3tc.ctex"]
+dest_files=["res://.godot/imported/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture (1)_2.jpg-a0a3496c444d5b076ec636d3c957b81a.s3tc.ctex", "res://.godot/imported/Meshy_AI_cannon_barrel_isolate_0930205527_image-to-3d-texture (1)_2.jpg-a0a3496c444d5b076ec636d3c957b81a.etc2.ctex"]
 
 [params]
 

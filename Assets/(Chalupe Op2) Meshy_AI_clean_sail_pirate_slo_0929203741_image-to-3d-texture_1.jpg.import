@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cnew4ye1wblx3"
 path.s3tc="res://.godot/imported/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture_1.jpg-b0bec7d8d28d38c2b584c951dc4e9790.s3tc.ctex"
+path.etc2="res://.godot/imported/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture_1.jpg-b0bec7d8d28d38c2b584c951dc4e9790.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture_1.jpg"
-dest_files=["res://.godot/imported/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture_1.jpg-b0bec7d8d28d38c2b584c951dc4e9790.s3tc.ctex"]
+dest_files=["res://.godot/imported/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture_1.jpg-b0bec7d8d28d38c2b584c951dc4e9790.s3tc.ctex", "res://.godot/imported/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture_1.jpg-b0bec7d8d28d38c2b584c951dc4e9790.etc2.ctex"]
 
 [params]
 

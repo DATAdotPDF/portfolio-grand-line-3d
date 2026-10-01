@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bu8k2xahc7n25"
 path.s3tc="res://.godot/imported/Meshy_AI_stylized_island_namep_0930162353_image-to-3d-texture_2.jpg-3559b155b77ae3ca80abfcfff5cc4ad9.s3tc.ctex"
+path.etc2="res://.godot/imported/Meshy_AI_stylized_island_namep_0930162353_image-to-3d-texture_2.jpg-3559b155b77ae3ca80abfcfff5cc4ad9.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Meshy_AI_stylized_island_namep_0930162353_image-to-3d-texture_2.jpg"
-dest_files=["res://.godot/imported/Meshy_AI_stylized_island_namep_0930162353_image-to-3d-texture_2.jpg-3559b155b77ae3ca80abfcfff5cc4ad9.s3tc.ctex"]
+dest_files=["res://.godot/imported/Meshy_AI_stylized_island_namep_0930162353_image-to-3d-texture_2.jpg-3559b155b77ae3ca80abfcfff5cc4ad9.s3tc.ctex", "res://.godot/imported/Meshy_AI_stylized_island_namep_0930162353_image-to-3d-texture_2.jpg-3559b155b77ae3ca80abfcfff5cc4ad9.etc2.ctex"]
 
 [params]
 

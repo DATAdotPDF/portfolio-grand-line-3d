@@ -12,8 +12,10 @@ const Scale = preload("res://Scripts/WorldScale.gd")
 const LogPose = preload("res://Scenes/LogPose_HUD.tscn")
 const WindRibbon = preload("res://Scenes/WindRibbon.tscn")
 const PortfolioCamera = preload("res://Scripts/PortfolioCameraController.gd")
-const OCEAN_RADIUS := Scale.OCEAN_RADIUS
+const OceanPatchScript = preload("res://Scripts/OceanPatch.gd")
 const SHIP_LENGTH := 4.8
+const SEABED_DEPTH := 25.0
+const CORE_DEPTH := 30.0
 const ISLANDS := [
 	{"name":"Sobre", "file":"Meshy_AI_island_1_about_harbor_0929193106_image-to-3d-texture.glb", "width":28.0},
 	{"name":"Experiência", "file":"Meshy_AI_island_2_experience_f_0929193424_image-to-3d-texture.glb", "width":32.0},
@@ -22,12 +24,24 @@ const ISLANDS := [
 	{"name":"Contato", "file":"Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture.glb", "width":26.0}
 ]
 const SHIP_PATH := "res://Assets/(Chalupe Op2) Meshy_AI_clean_sail_pirate_slo_0929203741_image-to-3d-texture.glb"
+
+## Configuração do mundo (raio, vento, ondas, lat/lon das ilhas). Edite aqui ou
+## direto em Config/world_layout.tres: a cena 3D do editor se atualiza sozinha.
+@export var world_layout: WorldLayout:
+	get:
+		return Scale.layout()
+	set(value):
+		if value != null and value != Scale.layout():
+			Scale._layout = value
+			_connect_layout()
+			_update_editor_world()
 @export var day_duration := 1800.0
 @export_range(0.0, 1.0) var day_phase := 0.12
 var environment: Environment
 var lantern: OmniLight3D
 var lantern_enabled := true
 var clock: Node
+var wind_manager: Node
 var music: AudioStreamPlayer
 var sea_ambience: Node3D
 var music_button: Button
@@ -39,8 +53,9 @@ var time_mode := "auto"
 var time_buttons: Array[Button] = []
 var water_held := false
 var water_cursor := Vector2.ZERO
-var touch_timer := 0.0
+var last_touch_point := Vector3.INF
 var ocean: Node
+var ocean_patch: MeshInstance3D
 var ship: CharacterBody3D
 var camera: PortfolioCamera
 var sun: DirectionalLight3D
@@ -57,71 +72,40 @@ var status: Label
 var log_pose: Node3D
 @export_group("Editor Planet")
 @export_node_path("MeshInstance3D") var ocean_mesh_path: NodePath = ^"OceanMesh"
+@export_node_path("MeshInstance3D") var ocean_patch_path: NodePath = ^"OceanPatch"
 @export_node_path("MeshInstance3D") var seabed_mesh_path: NodePath = ^"SeabedMesh"
 @export_node_path("Node3D") var island_anchors_path: NodePath = ^"IslandAnchors"
 @export_node_path("CharacterBody3D") var player_ship_path: NodePath = ^"PlayerShip"
 @export_node_path("Camera3D") var camera_path: NodePath = ^"CameraPivot/FollowCamera"
-var planet_radius := 200.0
-var wave_strength := 3.0
-var wavelength_scale := 1.0
-var wind_speed := 1.0
-var wind_direction := Vector3(0.9, 0.15, 0.3)
+## Reposiciona a chalupa no spawn do layout ao editar (desligue para mover à mão).
+@export var editor_snap_ship_to_spawn := true
+var planet_radius := 800.0
 
-func _read_ocean_settings() -> void:
-	var ocean_node := get_node_or_null(ocean_mesh_path) as MeshInstance3D
-	if ocean_node == null:
-		return
-	var sphere := ocean_node.mesh as SphereMesh
-	if sphere != null:
-		planet_radius = sphere.radius
-	var material := ocean_node.material_override as ShaderMaterial
-	if material == null:
-		return
-	wave_strength = float(material.get_shader_parameter("wave_strength"))
-	wavelength_scale = float(material.get_shader_parameter("wavelength_scale"))
-	wind_speed = float(material.get_shader_parameter("wave_speed"))
-	wind_direction = material.get_shader_parameter("wind_direction")
-	if wind_direction.length_squared() < 0.0001:
-		wind_direction = Vector3.FORWARD
+func _connect_layout() -> void:
+	var layout := Scale.layout()
+	if not layout.changed.is_connected(_on_layout_changed):
+		layout.changed.connect(_on_layout_changed)
 
-func _on_ocean_mesh_changed() -> void:
-	if not Engine.is_editor_hint():
-		return
-	_read_ocean_settings()
-	_update_editor_ocean()
+func _on_layout_changed() -> void:
+	planet_radius = Scale.radius()
+	if Engine.is_editor_hint():
+		_update_editor_world()
 
 func _ready() -> void:
-	_read_ocean_settings()
+	planet_radius = Scale.radius()
+	_connect_layout()
 	if Engine.is_editor_hint():
-		var ocean_node := get_node_or_null(ocean_mesh_path) as MeshInstance3D
-		if ocean_node != null and ocean_node.mesh is SphereMesh:
-			var sphere := ocean_node.mesh as SphereMesh
-			if not sphere.changed.is_connected(_on_ocean_mesh_changed):
-				sphere.changed.connect(_on_ocean_mesh_changed)
-		_update_editor_ocean()
+		_update_editor_world()
 		return
 	clock = get_node("/root/DayNightCycle")
 	clock.day_duration_seconds = day_duration
+	wind_manager = get_node_or_null("/root/WindManager")
 	ocean = Waves.new()
 	ocean.name = "OceanSimulation"
-	ocean.radius = planet_radius
-	ocean.wave_strength = wave_strength
-	ocean.wavelength_scale = wavelength_scale
-	ocean.wave_speed = wind_speed
 	add_child(ocean)
 	_build_ocean()
 	_build_islands()
-	var coast_centers:=PackedVector3Array()
-	var coast_radii:=PackedFloat32Array()
-	for i in range(islands.size()):
-		coast_centers.append(islands[i].position.normalized())
-		coast_radii.append(float(ISLANDS[i].width)*0.46)
-	ocean.island_centers = coast_centers
-	ocean.island_radii = coast_radii
-	for material in ocean.materials:
-		material.set_shader_parameter("island_centers",coast_centers)
-		material.set_shader_parameter("island_radii",coast_radii)
-		material.set_shader_parameter("shore_screen_enabled",1.0)
+	_update_island_coasts()
 	_build_ship()
 	_build_lighting()
 	_build_bow_wave()
@@ -139,7 +123,7 @@ func _ready() -> void:
 	camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	camera.fov = 65.0
 	camera.near = 0.15
-	camera.far = 1500.0
+	camera.far = planet_radius * 4.5
 	camera.current = true
 	camera.snap_to_boat()
 	_build_titles()
@@ -148,93 +132,134 @@ func _ready() -> void:
 	naval.world = self
 	add_child(naval)
 	camera.island_visit_started.connect(_on_island_visit_started)
-	print("WORLD_READY radius=", OCEAN_RADIUS, " ship_length=4.8 islands=5 solid_colliders=5")
+	print("WORLD_READY radius=", planet_radius, " ship_length=", SHIP_LENGTH, " islands=", islands.size(), " max_wave=", snappedf(Scale.max_wave_height(), 0.01))
 
-func _update_editor_ocean() -> void:
-	var ocean_node := get_node_or_null(ocean_mesh_path) as MeshInstance3D
-	if ocean_node != null:
-		var ocean_material := ocean_node.material_override as ShaderMaterial
-		if ocean_material != null:
-			if Engine.is_editor_hint():
-				ocean_material.set_shader_parameter("boat_cutout_enabled", false)
-				ocean_material.set_shader_parameter("use_simulation_time", false)
-				var anchors := get_node_or_null(island_anchors_path) as Node3D
-				if anchors != null:
-					var centers := PackedVector3Array()
-					var radii := PackedFloat32Array()
-					for index in range(mini(anchors.get_child_count(), ISLANDS.size())):
-						var anchor := anchors.get_child(index) as Node3D
-						centers.append(anchor.global_position.normalized())
-						radii.append(float(ISLANDS[index].width) * 0.46)
-					ocean_material.set_shader_parameter("island_centers", centers)
-					ocean_material.set_shader_parameter("island_radii", radii)
-			ocean_material.set_shader_parameter("planet_radius", planet_radius)
+# --- Editor: o mundo inteiro acompanha o layout sem precisar do Play ---------------
+
+func _update_editor_world() -> void:
+	if not is_inside_tree():
+		return
+	planet_radius = Scale.radius()
+	_apply_planet_geometry()
+	var anchors := get_node_or_null(island_anchors_path)
+	if anchors != null and anchors.has_method("apply_layout"):
+		anchors.apply_layout()
+	var materials := _ocean_materials()
+	for material in materials:
+		Scale.push_wave_uniforms(material)
+		material.set_shader_parameter("boat_cutout_enabled", false)
+		material.set_shader_parameter("use_simulation_time", false)
+	_push_island_coasts(materials)
+	var ship_node := get_node_or_null(player_ship_path) as Node3D
+	if ship_node != null and editor_snap_ship_to_spawn:
+		ship_node.global_transform = _spawn_transform()
 	var wind_node := get_node_or_null("WindRibbonSystem")
 	if wind_node != null:
-		wind_node.wind_direction = wind_direction
+		wind_node.set("wind_direction", Scale.wind_axis())
+	_place_editor_cameras(ship_node)
+
+func _apply_planet_geometry() -> void:
+	var ocean_node := get_node_or_null(ocean_mesh_path) as MeshInstance3D
+	if ocean_node != null:
+		var sphere := ocean_node.mesh as SphereMesh
+		if sphere != null and not is_equal_approx(sphere.radius, planet_radius):
+			sphere.radius = planet_radius
+			sphere.height = planet_radius * 2.0
+		ocean_node.extra_cull_margin = Scale.max_wave_height() + 4.0
 	var bed_node := get_node_or_null(seabed_mesh_path) as MeshInstance3D
 	if bed_node != null:
 		var bed_sphere := bed_node.mesh as SphereMesh
 		if bed_sphere != null:
-			bed_sphere.radius = planet_radius - 5.0
-			bed_sphere.height = (planet_radius - 5.0) * 2.0
+			bed_sphere.radius = planet_radius - SEABED_DEPTH
+			bed_sphere.height = (planet_radius - SEABED_DEPTH) * 2.0
 	var core := get_node_or_null("PlanetCore/CollisionShape3D") as CollisionShape3D
-	if core != null:
-		var core_sphere := core.shape as SphereShape3D
-		if core_sphere != null:
-			core_sphere.radius = planet_radius - 4.0
+	if core != null and core.shape is SphereShape3D:
+		(core.shape as SphereShape3D).radius = planet_radius - CORE_DEPTH
+
+func _ocean_materials() -> Array[ShaderMaterial]:
+	var result: Array[ShaderMaterial] = []
+	for path in [ocean_mesh_path, ocean_patch_path]:
+		var node := get_node_or_null(path) as MeshInstance3D
+		if node != null and node.material_override is ShaderMaterial and not result.has(node.material_override):
+			result.append(node.material_override)
+	return result
+
+func _island_coast_data() -> Array:
+	var centers := PackedVector3Array()
+	var radii := PackedFloat32Array()
+	var anchors := get_node_or_null(island_anchors_path)
+	if anchors != null:
+		for index in range(mini(anchors.get_child_count(), ISLANDS.size())):
+			var anchor := anchors.get_child(index) as Node3D
+			centers.append(anchor.global_position.normalized())
+			radii.append(float(ISLANDS[index].width) * 0.46)
+	return [centers, radii]
+
+func _push_island_coasts(materials: Array[ShaderMaterial]) -> void:
+	var data := _island_coast_data()
+	for material in materials:
+		material.set_shader_parameter("island_centers", data[0])
+		material.set_shader_parameter("island_radii", data[1])
+
+func _update_island_coasts() -> void:
+	var data := _island_coast_data()
+	ocean.set_islands(data[0], data[1])
+
+## Spawn: a spawn_distance metros da ilha escolhida, proa voltada para ela.
+func _spawn_transform() -> Transform3D:
+	var layout := Scale.layout()
+	var index := clampi(layout.spawn_island, 0, maxi(layout.islands.size() - 1, 0))
+	if layout.islands.is_empty():
+		return Transform3D(Basis.IDENTITY, Vector3.UP * planet_radius)
+	var island_basis := Scale.anchor_transform(layout.islands[index], planet_radius).basis
+	var island_up := island_basis.y
+	var outward := island_basis.z.rotated(island_up, deg_to_rad(layout.spawn_bearing_deg))
+	var axis := island_up.cross(outward).normalized()
+	var up := island_up.rotated(axis, layout.spawn_distance / planet_radius).normalized()
+	var heading := (island_up - up * up.dot(island_up)).normalized()
+	return Transform3D(Basis(heading.cross(up).normalized(), up, -heading), up * planet_radius)
+
+func _place_editor_cameras(ship_node: Node3D) -> void:
+	if ship_node == null:
+		return
+	var up := ship_node.global_position.normalized()
+	var forward := -ship_node.global_basis.z
+	var eye := ship_node.global_position - forward * 12.0 + up * 5.0
+	for path in [^"CameraPivot", ^"OceanPreviewCamera"]:
+		var node := get_node_or_null(path) as Node3D
+		if node == null:
+			continue
+		node.global_position = eye
+		node.look_at(ship_node.global_position + up * 1.5, up)
+	var follow := get_node_or_null(camera_path) as Camera3D
+	if follow != null:
+		follow.transform = Transform3D.IDENTITY
+		follow.far = planet_radius * 4.5
+	var preview := get_node_or_null("OceanPreviewCamera") as Camera3D
+	if preview != null:
+		preview.far = planet_radius * 4.5
+
+# --- Construção em runtime ------------------------------------------------------------
 
 func _build_ocean() -> void:
-	var body := get_node_or_null("PlanetCore") as StaticBody3D
-	if body == null:
-		body = StaticBody3D.new()
-		body.name = "PlanetCore"
-		add_child(body)
-	var collision := body.get_node_or_null("CollisionShape3D") as CollisionShape3D
-	if collision == null:
-		collision = CollisionShape3D.new()
-		body.add_child(collision)
-	var shape := collision.shape as SphereShape3D
-	if shape == null:
-		shape = SphereShape3D.new()
-		collision.shape = shape
-	shape.radius = OCEAN_RADIUS - 4.0
-	var bed := get_node_or_null(seabed_mesh_path) as MeshInstance3D
-	if bed == null:
-		bed = MeshInstance3D.new()
-		bed.name = "SeabedMesh"
-		var bed_mesh := SphereMesh.new()
-		bed_mesh.radius = OCEAN_RADIUS - 5.0
-		bed_mesh.height = (OCEAN_RADIUS - 5.0) * 2.0
-		bed_mesh.radial_segments = 128
-		bed_mesh.rings = 64
-		bed.mesh = bed_mesh
-		var bed_material := StandardMaterial3D.new()
-		bed_material.albedo_color = Color("202b35")
-		bed_material.roughness = 1.0
-		bed.material_override = bed_material
-		add_child(bed)
+	_apply_planet_geometry()
 	var ocean_mesh := get_node_or_null(ocean_mesh_path) as MeshInstance3D
-	if ocean_mesh == null:
-		ocean_mesh = MeshInstance3D.new()
-		ocean_mesh.name = "OceanMesh"
-		var sphere := SphereMesh.new()
-		sphere.radius = OCEAN_RADIUS
-		sphere.height = OCEAN_RADIUS * 2.0
-		sphere.radial_segments = 384
-		sphere.rings = 192
-		ocean_mesh.mesh = sphere
-		add_child(ocean_mesh)
-	var material := ocean_mesh.material_override as ShaderMaterial
-	if material == null:
-		material = ShaderMaterial.new()
+	if ocean_mesh.material_override == null:
+		var material := ShaderMaterial.new()
 		material.shader = load("res://Shaders/ocean.gdshader")
 		ocean_mesh.material_override = material
-	material.set_shader_parameter("planet_radius", OCEAN_RADIUS)
-	ocean.register_material(material)
-	ocean_mesh.extra_cull_margin = 6.0
 	ocean_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_update_editor_ocean()
+	ocean.register_material(ocean_mesh.material_override)
+	ocean_patch = get_node_or_null(ocean_patch_path) as MeshInstance3D
+	if ocean_patch == null:
+		ocean_patch = MeshInstance3D.new()
+		ocean_patch.name = "OceanPatch"
+		ocean_patch.set_script(OceanPatchScript)
+		var patch_material := ShaderMaterial.new()
+		patch_material.shader = load("res://Shaders/ocean_patch.gdshader")
+		ocean_patch.material_override = patch_material
+		add_child(ocean_patch)
+	ocean.register_material(ocean_patch.material_override)
 
 func _model_bounds(node: Node3D) -> AABB:
 	var total := AABB()
@@ -247,26 +272,27 @@ func _model_bounds(node: Node3D) -> AABB:
 	return total
 
 func _build_islands() -> void:
+	var anchors := get_node(island_anchors_path)
+	if anchors.has_method("apply_layout"):
+		anchors.apply_layout()
 	for index in range(ISLANDS.size()):
 		var data: Dictionary = ISLANDS[index]
-		var mount := get_node(island_anchors_path).get_child(index) as Node3D
-		mount.set_meta("section", data.name)
+		var mount := anchors.get_child(index) as Node3D
 		var model := mount.get_node_or_null("IslandModel") as Node3D
-		var created_model := model == null
 		if model == null:
 			model = (load("res://Assets/" + data.file) as PackedScene).instantiate() as Node3D
 			model.name = "IslandModel"
+			var raw := _model_bounds(model)
+			model.scale = Vector3.ONE * float(data.width) / maxf(raw.size.x, raw.size.z)
 			mount.add_child(model)
+			if anchors.has_method("apply_layout"):
+				anchors.apply_layout()
+		if not mount.has_meta("section"):
+			mount.set_meta("section", data.name)
 		var bounds := _model_bounds(model)
 		var factor: float = model.scale.x
-		if created_model:
-			factor = float(data.width) / maxf(bounds.size.x, bounds.size.z)
-			model.scale = Vector3.ONE * factor
 		if index == 0:
 			_remove_harbor_baked_water(model, bounds, factor)
-		# Leave only the lowest half metre below the waterline.
-		if created_model:
-			model.position.y = -bounds.position.y * factor - 0.5
 		var waterline_fraction: float = maxf(0.0,
 			-(model.position.y + bounds.position.y * factor)
 			/ maxf(bounds.size.y * factor, 0.001))
@@ -278,7 +304,7 @@ func _build_islands() -> void:
 		for mesh in model.find_children("*", "MeshInstance3D", true, false):
 			if mesh.mesh:
 				mesh.create_trimesh_collision()
-		Shore.build(mount,model,OCEAN_RADIUS)
+		Shore.build(mount, model, planet_radius)
 		var harbor := Area3D.new()
 		harbor.name = "HarborArea"
 		harbor.collision_layer = 0
@@ -341,16 +367,12 @@ func _build_ship() -> void:
 	if ship == null:
 		ship = Sloop.new()
 		ship.name = "PlayerShip"
-		var spawn_up := (get_node(island_anchors_path).get_child(0) as Node3D).position.normalized()
-		var spawn_axis := spawn_up.cross(Vector3.UP).normalized()
-		ship.position = spawn_up.rotated(spawn_axis, 44.0 / OCEAN_RADIUS) * OCEAN_RADIUS
 		add_child(ship)
+	var spawn := _spawn_transform()
+	ship.global_transform = spawn
 	ship.ocean = ocean
 	ship.islands = islands
-	ship.wind_direction = wind_direction
-	ship.wind_strength = clampf(wind_speed, 0.0, 1.0)
-	var first_up := (get_node(island_anchors_path).get_child(0) as Node3D).position.normalized()
-	ship.heading = first_up.slide(ship.position.normalized()).normalized()
+	ship.heading = -spawn.basis.z
 	var visual := ship.get_node_or_null("HullVisualContainer") as Node3D
 	if visual == null:
 		visual = Node3D.new()
@@ -433,7 +455,7 @@ func _build_lighting() -> void:
 		add_child(sun)
 	sun.light_energy = 1.0
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 100.0
+	sun.directional_shadow_max_distance = 120.0
 	moon = get_node_or_null("MoonLight") as DirectionalLight3D
 	if moon == null:
 		moon = DirectionalLight3D.new()
@@ -446,8 +468,9 @@ func _build_bow_wave() -> void:
 		var mesh := MeshInstance3D.new()
 		mesh.name = "BowWave_Left" if side < 0.0 else "BowWave_Right"
 		var grid := PlaneMesh.new()
-		grid.subdivide_width = 63
-		grid.subdivide_depth = 15
+		# Grade de 64×24 vértices por lado (estilo Seagazer).
+		grid.subdivide_width = 62
+		grid.subdivide_depth = 22
 		mesh.mesh = grid
 		mesh.custom_aabb = AABB(Vector3(-4,-2,-4), Vector3(8,6,8))
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -455,7 +478,7 @@ func _build_bow_wave() -> void:
 		material.shader = load("res://Shaders/BowWaveSheet.gdshader")
 		material.set_shader_parameter("side", side)
 		material.set_shader_parameter("foam_pattern",load("res://Shaders/wind_waker_foam.png"))
-		material.set_shader_parameter("ocean_radius",OCEAN_RADIUS)
+		material.set_shader_parameter("ocean_radius",planet_radius)
 		mesh.material_override = material
 		ship.float_visual.add_child(mesh)
 		bow_wave_materials.append(material)
@@ -496,7 +519,6 @@ func _build_wind_streaks() -> void:
 		wind_streaks.name = "WindRibbonSystem"
 		add_child(wind_streaks)
 	wind_streaks.boat = ship
-	wind_streaks.wind_direction = wind_direction
 
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
@@ -588,6 +610,11 @@ func _build_log_pose() -> void:
 	log_pose.player_sloop = ship
 	log_pose.islands_parent = get_node(island_anchors_path)
 
+func wind_at(point: Vector3) -> Vector3:
+	if wind_manager != null:
+		return wind_manager.wind_at(point)
+	return Scale.wind_at(point)
+
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
@@ -597,30 +624,29 @@ func _process(delta: float) -> void:
 	var render_position: Vector3 = render_transform.origin
 	var render_forward: Vector3 = -render_transform.basis.z
 	var up := render_position.normalized()
-	var wind_world := wind_direction.slide(up).normalized()
-	var local_wind := sail_model.global_basis.inverse()*wind_world
+	var wind_world := wind_at(render_position)
+	var local_wind := sail_model.global_basis.inverse() * wind_world
+	if local_wind.length_squared() < 0.0001:
+		local_wind = Vector3.FORWARD * 0.01
 	for cloth in sail_materials:
 		cloth.set_shader_parameter("wind_direction",local_wind.normalized())
 		cloth.set_shader_parameter("boat_speed",ship.measured_speed)
-		cloth.set_shader_parameter("wind_strength",0.075+minf(ship.measured_speed,12.0)*0.004)
+		cloth.set_shader_parameter("wind_strength",(0.04+minf(ship.measured_speed,12.0)*0.004)+0.06*wind_world.length())
 	sky_material.set_shader_parameter("local_up", camera.global_position.normalized())
 	_update_day(delta)
 	if water_held:
-		touch_timer -= delta
-		if touch_timer <= 0.0:
-			_touch_water(water_cursor)
-			touch_timer = 0.22
+		_drag_water(water_cursor)
 	for material in ocean.materials:
 		material.set_shader_parameter("boat_position", render_position)
 		material.set_shader_parameter("boat_forward", render_forward)
 		material.set_shader_parameter("boat_right", render_forward.cross(up))
 		material.set_shader_parameter("boat_cutout_enabled", true)
-		material.set_shader_parameter("turn", ship.turn_input)
 	var visual_transform: Transform3D = ship.float_visual.get_global_transform_interpolated()
 	var bow_forward: Vector3 = -visual_transform.basis.z.normalized()
 	var front_height: float = ocean.height_at(visual_transform.origin + bow_forward * 1.75)
 	var back_height: float = ocean.height_at(visual_transform.origin - bow_forward * 1.10)
 	for material in bow_wave_materials:
+		material.set_shader_parameter("ocean_radius",planet_radius)
 		material.set_shader_parameter("boat_position",visual_transform.origin)
 		material.set_shader_parameter("boat_forward",bow_forward)
 		material.set_shader_parameter("boat_right",visual_transform.basis.x.normalized())
@@ -638,7 +664,7 @@ func _process(delta: float) -> void:
 	var nearest := INF
 	var section := ""
 	for island in islands:
-		var distance := acos(clampf(up.dot(island.position.normalized()), -1.0, 1.0)) * OCEAN_RADIUS
+		var distance := acos(clampf(up.dot(island.position.normalized()), -1.0, 1.0)) * planet_radius
 		if distance < nearest:
 			nearest = distance
 			section = island.get_meta("section")
@@ -667,26 +693,48 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		water_held = event.pressed
 		water_cursor = event.position
+		last_touch_point = Vector3.INF
 		if water_held:
-			_touch_water(water_cursor)
-			touch_timer = 0.22
+			var point: Vector3 = _water_point(water_cursor)
+			if point != Vector3.INF:
+				# Clique: um "pingo" mais forte que afunda e rebate.
+				ocean.touch(point, 0.55, 3.0)
+				last_touch_point = point
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		water_held = false
 
-func _touch_water(cursor: Vector2) -> void:
+func _water_point(cursor: Vector2) -> Vector3:
 	var origin := camera.project_ray_origin(cursor)
 	var direction := camera.project_ray_normal(cursor)
 	var b := origin.dot(direction)
-	var discriminant := b*b - origin.length_squared() + OCEAN_RADIUS*OCEAN_RADIUS
+	var discriminant := b*b - origin.length_squared() + planet_radius*planet_radius
 	if discriminant < 0.0:
-		return
+		return Vector3.INF
 	var distance := -b - sqrt(discriminant)
-	if distance > 0.0:
-		var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * distance, 3)
-		if get_world_3d().direct_space_state.intersect_ray(query).is_empty():
-			ocean.touch(origin + direction * distance)
+	if distance <= 0.0:
+		return Vector3.INF
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * distance, 3)
+	if not get_world_3d().direct_space_state.intersect_ray(query).is_empty():
+		return Vector3.INF
+	return origin + direction * distance
+
+## Arrastar deixa um rastro contínuo: novas perturbações a cada ~1,2 m percorrido,
+## com força proporcional à velocidade do gesto (mais orgânico que pulsos fixos).
+func _drag_water(cursor: Vector2) -> void:
+	var point := _water_point(cursor)
+	if point == Vector3.INF:
+		return
+	if last_touch_point == Vector3.INF:
+		last_touch_point = point
+		return
+	var travelled := point.distance_to(last_touch_point)
+	if travelled < 1.2:
+		return
+	var strength := clampf(0.18 + travelled * 0.05, 0.18, 0.5)
+	ocean.touch(point, strength, 2.6 + minf(travelled, 6.0) * 0.25)
+	last_touch_point = point
 
 func _build_audio() -> void:
 	sea_ambience = SeaAmbience.new()
@@ -738,10 +786,11 @@ func _build_titles() -> void:
 		var title_sign := islands[i].get_node_or_null("IslandTitleSign") as Node3D
 		if title_sign == null:
 			title_sign = Sign.instantiate()
-			var model: Node3D = islands[i].get_node("IslandModel")
-			var bounds := _model_bounds(model)
-			title_sign.position.y = maxf(25.0 if i==4 else 12.0,model.position.y+bounds.end.y*model.scale.y+3.0)
+			title_sign.set("island_index", i)
 			islands[i].add_child(title_sign)
+			var anchors := get_node(island_anchors_path)
+			if anchors.has_method("apply_layout"):
+				anchors.apply_layout()
 		title_sign.set("island_index", i)
 		title_sign.set("island", islands[i])
 		title_sign.set("boat", ship)

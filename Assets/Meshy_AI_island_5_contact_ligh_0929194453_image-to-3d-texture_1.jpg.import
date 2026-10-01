@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://drvd8wxsubo18"
 path.s3tc="res://.godot/imported/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture_1.jpg-5454c75fa47661c305fc5faa42af85ef.s3tc.ctex"
+path.etc2="res://.godot/imported/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture_1.jpg-5454c75fa47661c305fc5faa42af85ef.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture_1.jpg"
-dest_files=["res://.godot/imported/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture_1.jpg-5454c75fa47661c305fc5faa42af85ef.s3tc.ctex"]
+dest_files=["res://.godot/imported/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture_1.jpg-5454c75fa47661c305fc5faa42af85ef.s3tc.ctex", "res://.godot/imported/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture_1.jpg-5454c75fa47661c305fc5faa42af85ef.etc2.ctex"]
 
 [params]
 

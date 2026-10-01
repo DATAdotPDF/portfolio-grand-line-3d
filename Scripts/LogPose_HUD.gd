@@ -92,7 +92,7 @@ func _update_nearest_island() -> void:
 	var nearest_distance := INF
 	for index in range(islands.size()):
 		var candidate := islands[index] as Node3D
-		var arc := boat_direction.angle_to(candidate.global_position.normalized()) * Scale.OCEAN_RADIUS
+		var arc := boat_direction.angle_to(candidate.global_position.normalized()) * Scale.radius()
 		if arc < nearest_distance:
 			nearest_distance = arc
 			nearest_island = candidate

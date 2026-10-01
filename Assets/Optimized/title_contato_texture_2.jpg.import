@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d3kcnllk1dk2m"
 path.s3tc="res://.godot/imported/title_contato_texture_2.jpg-b7c8096c5250cbd86f69172522216059.s3tc.ctex"
+path.etc2="res://.godot/imported/title_contato_texture_2.jpg-b7c8096c5250cbd86f69172522216059.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Optimized/title_contato_texture_2.jpg"
-dest_files=["res://.godot/imported/title_contato_texture_2.jpg-b7c8096c5250cbd86f69172522216059.s3tc.ctex"]
+dest_files=["res://.godot/imported/title_contato_texture_2.jpg-b7c8096c5250cbd86f69172522216059.s3tc.ctex", "res://.godot/imported/title_contato_texture_2.jpg-b7c8096c5250cbd86f69172522216059.etc2.ctex"]
 
 [params]
 

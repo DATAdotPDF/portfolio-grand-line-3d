@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://Shaders/ocean_patch.gdshader" id="1_patch"]
+
+[resource]
+shader = ExtResource("1_patch")
+shader_parameter/planet_radius = 800.0
+shader_parameter/boat_cutout_enabled = false
+shader_parameter/use_simulation_time = false

@@ -10,7 +10,7 @@ const EXPLOSION_SFX = preload("res://Assets/Sound/SFX/EXPLOSION SFX.wav")
 const SPLASH_SFX = preload("res://Assets/Sound/SFX/WATER SPLASH CANON BALL SFX.wav")
 const Shore = preload("res://Scripts/Shoreline.gd")
 const Scale = preload("res://Scripts/WorldScale.gd")
-const OCEAN_RADIUS := Scale.OCEAN_RADIUS
+var OCEAN_RADIUS := Scale.radius()
 var world: Node3D
 var targets: Array[Dictionary] = []
 var balls: Array[Dictionary] = []

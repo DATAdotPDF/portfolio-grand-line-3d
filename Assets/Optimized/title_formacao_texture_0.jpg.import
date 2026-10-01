@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bv3m61bnwo11m"
 path.s3tc="res://.godot/imported/title_formacao_texture_0.jpg-0f2a3ecc06088c4d80290863da0ccd3b.s3tc.ctex"
+path.etc2="res://.godot/imported/title_formacao_texture_0.jpg-0f2a3ecc06088c4d80290863da0ccd3b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Optimized/title_formacao_texture_0.jpg"
-dest_files=["res://.godot/imported/title_formacao_texture_0.jpg-0f2a3ecc06088c4d80290863da0ccd3b.s3tc.ctex"]
+dest_files=["res://.godot/imported/title_formacao_texture_0.jpg-0f2a3ecc06088c4d80290863da0ccd3b.s3tc.ctex", "res://.godot/imported/title_formacao_texture_0.jpg-0f2a3ecc06088c4d80290863da0ccd3b.etc2.ctex"]
 
 [params]
 

@@ -6,9 +6,9 @@ signal island_visit_started(index: int)
 const Scale = preload("res://Scripts/WorldScale.gd")
 enum CameraState { BOAT_FOLLOW, FLYING, ISLAND_ORBIT, PLANET_OVERVIEW }
 
-const FOCUS_HEIGHTS := [6.0, 9.0, 7.5, 8.0, 24.0]
-const ORBIT_DISTANCES := [38.0, 44.0, 40.0, 42.0, 68.0]
 const ORBIT_PITCHES := [10.0, 12.0, 10.0, 12.0, 16.0]
+## Fator de enquadramento do brief (distância mínima = altura total × fator).
+const FRAMING_FACTOR := 1.6
 
 @export_group("Navegação")
 @export_range(6.0, 30.0, 0.5) var follow_distance := 12.0
@@ -144,7 +144,7 @@ func _process(delta: float) -> void:
 			)
 			radius += sin(transition_progress * PI) * 12.0
 			global_position = direction * maxf(
-				Scale.OCEAN_RADIUS + 6.0, radius
+				Scale.radius() + Scale.max_wave_height() + 4.0, radius
 			)
 			_face(_destination_focus(), direction)
 		CameraState.ISLAND_ORBIT:
@@ -158,12 +158,15 @@ func _process(delta: float) -> void:
 			overview_direction = overview_direction.rotated(
 				Vector3.UP, delta * 0.055
 			).normalized()
-			global_position = overview_direction * 510.0
+			global_position = overview_direction * _overview_distance()
 			_face(Vector3.ZERO, _fallback_tangent(overview_direction))
 	if active_island_idx >= 0 and state in [
 		CameraState.FLYING, CameraState.ISLAND_ORBIT
 	]:
 		_update_active_title()
+
+func _overview_distance() -> float:
+	return Scale.radius() * 2.6
 
 func _boat_position() -> Vector3:
 	var up := boat.global_position.normalized()
@@ -187,35 +190,28 @@ func _bounds_in_island(island: Node3D, visual: Node3D) -> AABB:
 		found = true
 	return total
 
-func _frame_island_geometry(island: Node3D, index: int) -> void:
-	framed_focus_height = float(FOCUS_HEIGHTS[index])
-	framed_orbit_distance = float(ORBIT_DISTANCES[index])
+## Enquadramento por ilha a partir dos valores MEDIDOS pelo IslandDistributor:
+## chão = base real da ilha (floor_offset), teto = topo da placa de título daquela ilha.
+func frame_island(island_floor_y: float, plate_ceiling_y: float, horizontal_width: float) -> void:
+	var total_height := plate_ceiling_y - island_floor_y
+	framed_focus_height = (island_floor_y + plate_ceiling_y) * 0.5
+	var viewport_size := get_viewport().get_visible_rect().size
+	var aspect := viewport_size.x / maxf(viewport_size.y, 1.0)
+	var half_fov_tangent := tan(deg_to_rad(fov) * 0.5)
+	# FOV vertical fixo: em telas em pé (mobile, aspect < 1) a largura passa a limitar.
+	var vertical_distance := (total_height * 0.5 + 3.0) / half_fov_tangent
+	var horizontal_distance := (horizontal_width * 0.5 + 3.0) / (half_fov_tangent * aspect)
+	framed_orbit_distance = maxf(total_height * FRAMING_FACTOR, maxf(vertical_distance, horizontal_distance) * 1.1)
+
+func _frame_island_geometry(island: Node3D, _index: int) -> void:
 	var model := island.get_node_or_null("IslandModel") as Node3D
 	if model == null:
 		return
 	var island_bounds := _bounds_in_island(island, model)
-	if island_bounds.size.is_zero_approx():
-		return
-	var floor_height := island_bounds.position.y
-	var ceiling_height := island_bounds.end.y
 	var horizontal_width := maxf(island_bounds.size.x, island_bounds.size.z)
-	var title := island.get_node_or_null("IslandTitleSign") as Node3D
-	if title != null:
-		var plate := title.get_node_or_null("NameplateMesh") as Node3D
-		if plate != null:
-			var saved_scale := title.scale
-			title.scale = Vector3.ONE
-			var plate_bounds := _bounds_in_island(island, plate)
-			title.scale = saved_scale
-			ceiling_height = maxf(ceiling_height, plate_bounds.end.y + 0.25)
-			horizontal_width = maxf(horizontal_width, maxf(plate_bounds.size.x, plate_bounds.size.z))
-	framed_focus_height = (floor_height + ceiling_height) * 0.5
-	var viewport_size := get_viewport().get_visible_rect().size
-	var aspect := maxf(viewport_size.x / maxf(viewport_size.y, 1.0), 1.0)
-	var half_fov_tangent := tan(deg_to_rad(fov) * 0.5)
-	var vertical_distance := ((ceiling_height - floor_height) * 0.5 + 3.0) / half_fov_tangent
-	var horizontal_distance := (horizontal_width * 0.5 + 3.0) / (half_fov_tangent * aspect)
-	framed_orbit_distance = maxf(framed_orbit_distance, maxf(vertical_distance, horizontal_distance) * 1.1)
+	var island_floor := float(island.get_meta("island_floor", island_bounds.position.y))
+	var plate_ceiling := float(island.get_meta("plate_ceiling", island_bounds.end.y))
+	frame_island(island_floor, plate_ceiling, maxf(horizontal_width, 8.0))
 
 func _island_focus() -> Vector3:
 	var up := target_island.global_position.normalized()
@@ -247,7 +243,7 @@ func _destination_position() -> Vector3:
 		CameraState.ISLAND_ORBIT:
 			return _island_position()
 		CameraState.PLANET_OVERVIEW:
-			return overview_direction * 510.0
+			return overview_direction * _overview_distance()
 		_:
 			return _boat_position()
 

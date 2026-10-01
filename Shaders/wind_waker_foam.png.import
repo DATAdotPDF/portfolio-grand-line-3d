@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c5comvypi1w8g"
 path.s3tc="res://.godot/imported/wind_waker_foam.png-da172793ca164e70a846091ca4e89b61.s3tc.ctex"
+path.etc2="res://.godot/imported/wind_waker_foam.png-da172793ca164e70a846091ca4e89b61.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Shaders/wind_waker_foam.png"
-dest_files=["res://.godot/imported/wind_waker_foam.png-da172793ca164e70a846091ca4e89b61.s3tc.ctex"]
+dest_files=["res://.godot/imported/wind_waker_foam.png-da172793ca164e70a846091ca4e89b61.s3tc.ctex", "res://.godot/imported/wind_waker_foam.png-da172793ca164e70a846091ca4e89b61.etc2.ctex"]
 
 [params]
 

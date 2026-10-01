@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://du6c1to4i8pvg"
 path.s3tc="res://.godot/imported/Meshy_AI_sloop_deck_cannon_3d_0930155614_image-to-3d-texture_0.jpg-5ef140839c718af77ba03a036ed8970b.s3tc.ctex"
+path.etc2="res://.godot/imported/Meshy_AI_sloop_deck_cannon_3d_0930155614_image-to-3d-texture_0.jpg-5ef140839c718af77ba03a036ed8970b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Meshy_AI_sloop_deck_cannon_3d_0930155614_image-to-3d-texture_0.jpg"
-dest_files=["res://.godot/imported/Meshy_AI_sloop_deck_cannon_3d_0930155614_image-to-3d-texture_0.jpg-5ef140839c718af77ba03a036ed8970b.s3tc.ctex"]
+dest_files=["res://.godot/imported/Meshy_AI_sloop_deck_cannon_3d_0930155614_image-to-3d-texture_0.jpg-5ef140839c718af77ba03a036ed8970b.s3tc.ctex", "res://.godot/imported/Meshy_AI_sloop_deck_cannon_3d_0930155614_image-to-3d-texture_0.jpg-5ef140839c718af77ba03a036ed8970b.etc2.ctex"]
 
 [params]
 

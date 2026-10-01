@@ -1,6 +1,8 @@
 @tool
 extends CharacterBody3D
 
+const Scale = preload("res://Scripts/WorldScale.gd")
+
 var islands: Array[Node3D] = []
 var shore_blocked := false
 var ocean: Node
@@ -21,7 +23,7 @@ var enabled := true
 @export var cruise_acceleration := 2.5
 @export var boost_acceleration := 4.0
 @export var yaw_speed := 0.72
-@export var wind_direction := Vector3(0.9, 0.15, 0.3)
+## Quanto o vento global (WindManager) altera a velocidade: 0 = nada, 1 = 72%–100%.
 @export_range(0.0, 1.0, 0.05) var wind_strength := 1.0
 @export_group("Flutuação")
 @export var buoyancy_spring := 22.0
@@ -86,10 +88,11 @@ func _physics_process(delta: float) -> void:
 	var previous_speed := drive_speed
 	var target_speed := throttle * (boost_speed if boost else cruise_speed)
 	if throttle > 0.0:
-		var wind_tangent := wind_direction.slide(up)
+		var wind_tangent := _wind_at(global_position)
 		if wind_tangent.length_squared() > 0.0001:
 			var wind_alignment := heading.dot(wind_tangent.normalized())
-			var sail_factor := lerpf(1.0, 0.72 + 0.28 * wind_alignment, wind_strength)
+			var local_strength := clampf(wind_tangent.length(), 0.0, 1.0)
+			var sail_factor := lerpf(1.0, 0.72 + 0.28 * wind_alignment, wind_strength * local_strength)
 			target_speed *= sail_factor
 	if throttle < 0.0:
 		target_speed = -reverse_speed
@@ -134,6 +137,12 @@ func _physics_process(delta: float) -> void:
 	if measured_speed > 0.3 and global_position.distance_to(last_wake) > 0.65:
 		ocean.add_wake(global_position - heading * 1.7)
 		last_wake = global_position
+
+func _wind_at(point: Vector3) -> Vector3:
+	var manager := get_node_or_null("/root/WindManager")
+	if manager != null:
+		return manager.wind_at(point)
+	return Scale.wind_at(point)
 
 func update_attitude(delta: float, acceleration: float) -> void:
 	var speed_ratio := clampf(absf(drive_speed)/maxf(boost_speed, 0.1),0.0,1.0)

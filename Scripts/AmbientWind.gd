@@ -68,8 +68,12 @@ func _process(delta: float) -> void:
 
 func _spawn(gust: Dictionary) -> void:
 	var up := boat.global_position.normalized()
-	var wind := wind_direction.slide(up)
-	if wind.length_squared()<0.01: wind = Vector3.FORWARD.slide(up)
+	var manager := get_node_or_null("/root/WindManager")
+	var wind: Vector3 = manager.wind_at(boat.global_position) if manager else wind_direction.slide(up)
+	# Calm Belt: sem vento, sem fitas.
+	if wind.length_squared() < 0.04:
+		gust.delay = 1.5
+		return
 	wind = wind.normalized()
 	var sideways := wind.cross(up).normalized()
 	# Only the birth position follows the sailor. Existing gusts stay in world space.

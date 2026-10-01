@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://nxtlgcwdts6q"
 path.s3tc="res://.godot/imported/Meshy_AI_title_plate_experienc_1001032330_image-to-3d-texture_0.jpg-4dc9e9e97ea0e27c30e49e849431b3dd.s3tc.ctex"
+path.etc2="res://.godot/imported/Meshy_AI_title_plate_experienc_1001032330_image-to-3d-texture_0.jpg-4dc9e9e97ea0e27c30e49e849431b3dd.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://Assets/Meshy_AI_title_plate_experienc_1001032330_image-to-3d-texture_0.jpg"
-dest_files=["res://.godot/imported/Meshy_AI_title_plate_experienc_1001032330_image-to-3d-texture_0.jpg-4dc9e9e97ea0e27c30e49e849431b3dd.s3tc.ctex"]
+dest_files=["res://.godot/imported/Meshy_AI_title_plate_experienc_1001032330_image-to-3d-texture_0.jpg-4dc9e9e97ea0e27c30e49e849431b3dd.s3tc.ctex", "res://.godot/imported/Meshy_AI_title_plate_experienc_1001032330_image-to-3d-texture_0.jpg-4dc9e9e97ea0e27c30e49e849431b3dd.etc2.ctex"]
 
 [params]
 
