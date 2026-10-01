@@ -13,6 +13,7 @@ const LogPose = preload("res://Scenes/LogPose_HUD.tscn")
 const WindRibbon = preload("res://Scenes/WindRibbon.tscn")
 const PortfolioCamera = preload("res://Scripts/PortfolioCameraController.gd")
 const OceanPatchScript = preload("res://Scripts/OceanPatch.gd")
+const TouchControlsScript = preload("res://Scripts/TouchControls.gd")
 const SHIP_LENGTH := 4.8
 const SEABED_DEPTH := 25.0
 const CORE_DEPTH := 30.0
@@ -132,6 +133,12 @@ func _ready() -> void:
 	naval.world = self
 	add_child(naval)
 	camera.island_visit_started.connect(_on_island_visit_started)
+	var touch := TouchControlsScript.new()
+	touch.name = "TouchControls"
+	touch.ship = ship
+	touch.naval = naval
+	touch.camera = camera
+	add_child(touch)
 	print("WORLD_READY radius=", planet_radius, " ship_length=", SHIP_LENGTH, " islands=", islands.size(), " max_wave=", snappedf(Scale.max_wave_height(), 0.01))
 
 # --- Editor: o mundo inteiro acompanha o layout sem precisar do Play ---------------
@@ -520,12 +527,23 @@ func _build_wind_streaks() -> void:
 		add_child(wind_streaks)
 	wind_streaks.boat = ship
 
+## Celular em pé: base de UI em retrato, para a interface não encolher a ~1/3.
+func _fit_ui_to_screen() -> void:
+	var window := get_tree().root
+	var screen := Vector2(window.size)
+	window.content_scale_size = Vector2i(480, 854) if screen.x < screen.y else Vector2i(1152, 648)
+
 func _build_hud() -> void:
+	_fit_ui_to_screen()
+	get_tree().root.size_changed.connect(_fit_ui_to_screen)
 	var layer := CanvasLayer.new()
 	layer.name = "NavigationHUD"
 	add_child(layer)
 	var instructions := Label.new()
-	instructions.text = "NAVIO  W/S acelera e freia · A/D vira · Shift impulso\nBÚSSOLA  ilha mais próxima · 1–5 visita · 0/Esc barco · Tab globo\nÁGUA  arraste esquerdo · CÂMERA  arraste direito\nCANHÃO  Q/E gira · R/F inclina · Espaço atira"
+	if DisplayServer.is_touchscreen_available():
+		instructions.text = "NAVIO  joystick esquerdo · IMPULSO segure\nCANHÃO  joystick direito mira · FOGO atira\nÁGUA  arraste um dedo · CÂMERA  arraste dois dedos"
+	else:
+		instructions.text = "NAVIO  W/S acelera e freia · A/D vira · Shift impulso\nBÚSSOLA  ilha mais próxima · 1–5 visita · 0/Esc barco · Tab globo\nÁGUA  arraste esquerdo · CÂMERA  arraste direito"
 	instructions.position = Vector2(24, 20)
 	instructions.add_theme_font_size_override("font_size", 16)
 	instructions.add_theme_color_override("font_color", Color(0.91,0.96,1.0))
@@ -534,15 +552,19 @@ func _build_hud() -> void:
 	instructions.add_theme_constant_override("shadow_offset_y", 2)
 	layer.add_child(instructions)
 	status = Label.new()
-	status.position = Vector2(24, 116)
+	status.position = Vector2(24, 96)
 	status.add_theme_font_size_override("font_size", 16)
 	status.add_theme_color_override("font_color", Color(0.91,0.96,1.0))
 	status.add_theme_color_override("font_shadow_color", Color(0.0,0.02,0.06,0.95))
 	status.add_theme_constant_override("shadow_offset_y", 2)
 	layer.add_child(status)
-	var mode_bar := HBoxContainer.new()
-	mode_bar.position = Vector2(24, 220)
-	mode_bar.add_theme_constant_override("separation", 8)
+	# Quebra em várias linhas em telas estreitas (mobile em pé).
+	var mode_bar := HFlowContainer.new()
+	mode_bar.position = Vector2(24, 196)
+	mode_bar.size.x = get_viewport().get_visible_rect().size.x - 48.0
+	get_viewport().size_changed.connect(func(): mode_bar.size.x = get_viewport().get_visible_rect().size.x - 48.0)
+	mode_bar.add_theme_constant_override("h_separation", 8)
+	mode_bar.add_theme_constant_override("v_separation", 8)
 	layer.add_child(mode_bar)
 	var free_button := Button.new()
 	free_button.text = "Navegar livre"
@@ -741,6 +763,7 @@ func _build_audio() -> void:
 	sea_ambience.name = "SeaAmbience"
 	sea_ambience.ship = ship
 	sea_ambience.ocean = ocean
+	sea_ambience.islands = islands
 	add_child(sea_ambience)
 	music = AudioStreamPlayer.new()
 	music.name = "BackgroundMusic"

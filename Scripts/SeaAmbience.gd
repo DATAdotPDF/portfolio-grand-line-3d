@@ -8,8 +8,13 @@ const BREAKER = preload("res://Assets/Sound/SFX/OCEAN WAVE CRASH SFX.mp3")
 @export var max_silence_seconds := 45.0
 @export var orbit_radius := 35.0
 @export var flight_height := 22.0
+## Abaixo desta distância (m) da ilha mais próxima, intervalos curtos.
+@export var near_island_distance := 120.0
+## Acima desta distância, intervalos longos de mar aberto.
+@export var open_sea_distance := 450.0
 
 var ship: CharacterBody3D
+var islands: Array[Node3D] = []
 var ocean: Node
 var ocean_bed: AudioStreamPlayer
 var gull_call: AudioStreamPlayer3D
@@ -96,11 +101,22 @@ func _process(delta: float) -> void:
 		else:
 			crash_timer = 0.4
 
+## Perto de terra as gaivotas são frequentes; em mar aberto, raras.
+func _silence_scale() -> float:
+	if not is_instance_valid(ship) or islands.is_empty():
+		return 1.0
+	var up := ship.global_position.normalized()
+	var nearest := INF
+	for island in islands:
+		nearest = minf(nearest, up.angle_to(island.global_position.normalized()) * ship.global_position.length())
+	return lerpf(0.35, 1.7, smoothstep(near_island_distance, open_sea_distance, nearest))
+
 func _schedule_silence() -> void:
 	in_burst = false
 	remaining_followups = 0
+	var factor := _silence_scale()
 	gull_timer.start(
-		rng.randf_range(min_silence_seconds, max_silence_seconds)
+		rng.randf_range(min_silence_seconds, max_silence_seconds) * factor
 	)
 
 func _on_gull_timeout() -> void:

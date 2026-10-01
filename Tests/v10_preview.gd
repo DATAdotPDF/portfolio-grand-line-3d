@@ -60,6 +60,13 @@ func run() -> void:
 			world.camera.focus_island(world.islands[i])
 			await wait(2.8)
 			await shot("island_%d" % (i + 1))
+	if wants("mobile"):
+		world.camera.return_to_boat()
+		root.size = Vector2i(390, 844)
+		world.get_node("TouchControls").enable()
+		await wait(2.8)
+		await shot("mobile")
+		root.size = Vector2i(1280, 720)
 	if wants("overview"):
 		world.camera.show_overview()
 		await wait(2.8)

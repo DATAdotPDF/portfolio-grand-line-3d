@@ -45,6 +45,8 @@ var time_attack_running := false
 var time_attack_remaining := 0.0
 var time_attack_hits: Dictionary = {}
 var time_attack_events: Array[Dictionary] = []
+## Mira vinda dos controles de toque (x = giro, y = inclinação).
+var virtual_aim := Vector2.ZERO
 
 func start_time_attack() -> void:
 	time_attack_mode = true
@@ -89,7 +91,7 @@ func _ready() -> void:
 	_build_targets()
 	_build_particles()
 	hud = Label.new()
-	hud.position = Vector2(24,139)
+	hud.position = Vector2(24,124)
 	hud.add_theme_font_size_override("font_size",16)
 	hud.add_theme_color_override("font_shadow_color",Color.BLACK)
 	hud.add_theme_constant_override("shadow_offset_y",2)
@@ -324,8 +326,8 @@ func _physics_process(delta: float) -> void:
 			fuse_light.visible=false
 			fuse_audio.stop()
 			_launch()
-	var pitch_axis := float(Input.is_physical_key_pressed(KEY_R)) - float(Input.is_physical_key_pressed(KEY_F))
-	var yaw_axis := float(Input.is_physical_key_pressed(KEY_E)) - float(Input.is_physical_key_pressed(KEY_Q))
+	var pitch_axis := clampf(float(Input.is_physical_key_pressed(KEY_R)) - float(Input.is_physical_key_pressed(KEY_F)) + virtual_aim.y, -1.0, 1.0)
+	var yaw_axis := clampf(float(Input.is_physical_key_pressed(KEY_E)) - float(Input.is_physical_key_pressed(KEY_Q)) + virtual_aim.x, -1.0, 1.0)
 	aim_elevation = clampf(aim_elevation + pitch_axis * delta * 0.5, deg_to_rad(float(cannon.get("min_pitch"))), deg_to_rad(float(cannon.get("max_pitch"))))
 	aim_azimuth = clampf(aim_azimuth + yaw_axis * delta * 0.65, deg_to_rad(-float(cannon.get("max_yaw"))), deg_to_rad(float(cannon.get("max_yaw"))))
 	_update_aim()

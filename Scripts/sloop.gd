@@ -16,6 +16,10 @@ var test_controls := Vector3.ZERO
 var float_visual: Node3D
 var last_wake := Vector3.ZERO
 var enabled := true
+## Entradas dos controles de toque (TouchControls.gd), somadas ao teclado.
+var virtual_throttle := 0.0
+var virtual_steering := 0.0
+var virtual_boost := false
 @export_group("Navegação")
 @export var cruise_speed := 4.2
 @export var boost_speed := 12.5
@@ -72,9 +76,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if not enabled:
 		return
-	var throttle := float(Input.is_physical_key_pressed(KEY_W)) - float(Input.is_physical_key_pressed(KEY_S))
-	var steering := float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
-	var boost := Input.is_physical_key_pressed(KEY_SHIFT)
+	var throttle := clampf(float(Input.is_physical_key_pressed(KEY_W)) - float(Input.is_physical_key_pressed(KEY_S)) + virtual_throttle, -1.0, 1.0)
+	var steering := clampf(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)) + virtual_steering, -1.0, 1.0)
+	var boost := Input.is_physical_key_pressed(KEY_SHIFT) or virtual_boost
 	if controls_override:
 		throttle = test_controls.x
 		steering = test_controls.y
