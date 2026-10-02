@@ -761,6 +761,17 @@ func _process(delta: float) -> void:
 			section = island.get_meta("section")
 	_update_hud(section, nearest, nearest_index)
 
+## Tab é consumido pela navegação de foco da GUI; o mapa (M ou Tab) é tratado antes.
+func _input(event: InputEvent) -> void:
+	if Engine.is_editor_hint() or not camera:
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode in [KEY_TAB, KEY_M]:
+		if camera.state == PortfolioCamera.CameraState.PLANET_OVERVIEW:
+			camera.return_to_boat()
+		else:
+			camera.show_overview()
+		get_viewport().set_input_as_handled()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
 		return
@@ -776,7 +787,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera.show_overview()
 		elif event.physical_keycode == KEY_B:
 			camera.return_to_boat()
-	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_M:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_P:
 		toggle_music_pause()
 	if web_music and (event is InputEventMouseButton or event is InputEventScreenTouch or event is InputEventKey) and event.is_pressed():
 		_web_music("if (window.__portfolioMusicBlocked) { window.__portfolioMusicBlocked = false; a.play().catch(function(){}); }")

@@ -113,10 +113,10 @@ func _build_nav() -> void:
 	nav_bar.add_theme_constant_override("h_separation", 6)
 	nav_bar.add_theme_constant_override("v_separation", 6)
 	root.add_child(nav_bar)
-	nav_bar.add_child(_button("⚓ Navegar livre", func(): free_sail_pressed.emit()))
+	nav_bar.add_child(_button("Navegar livre", func(): free_sail_pressed.emit()))
 	for i in range(ISLAND_NAMES.size()):
 		nav_bar.add_child(_button("%d · %s" % [i + 1, ISLAND_NAMES[i]], island_pressed.emit.bind(i)))
-	nav_bar.add_child(_button("⏱ Regata · 3 min", func(): time_attack_pressed.emit()))
+	nav_bar.add_child(_button("Regata · 3 min", func(): time_attack_pressed.emit()))
 
 func _build_side_column() -> void:
 	side_column = VBoxContainer.new()
@@ -131,7 +131,7 @@ func _build_side_column() -> void:
 		button.toggle_mode = true
 		times.add_child(button)
 		time_buttons.append(button)
-	music_button = _button("♪ Próxima música", func(): next_track_pressed.emit())
+	music_button = _button("Próxima música", func(): next_track_pressed.emit())
 	side_column.add_child(music_button)
 	var help := _button("? Comandos", func(): _show_controls(not controls_card.visible))
 	side_column.add_child(help)
@@ -169,9 +169,9 @@ func _build_controls_card() -> void:
 		[["R", "F"], "inclinar o canhão"],
 		[["Espaço"], "disparar"],
 		[["1", "–", "5"], "visitar uma ilha"],
-		[["Tab"], "ver o globo"],
+		[["M"], "mapa do globo"],
 		[["Esc"], "voltar ao barco"],
-		[["◐ arrastar"], "esquerdo: água · direito: câmera"],
+		[["arrastar"], "esquerdo: água · direito: câmera"],
 	]
 	for row in rows:
 		var caps := HBoxContainer.new()
@@ -217,7 +217,7 @@ func _build_island_panel() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
-	top.add_child(_button("✕ Voltar ao barco", func(): hide_island(); panel_closed.emit()))
+	top.add_child(_button("Voltar ao barco", func(): hide_island(); panel_closed.emit()))
 	island_scroll = ScrollContainer.new()
 	island_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	island_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -332,11 +332,11 @@ func _build_intro() -> void:
 	actions.add_theme_constant_override("h_separation", 8)
 	actions.add_theme_constant_override("v_separation", 8)
 	column.add_child(actions)
-	var sail := _button("⚓  Zarpar e navegar", func(): start_sailing.emit())
+	var sail := _button("Zarpar e navegar", func(): start_sailing.emit())
 	sail.theme_type_variation = "Primary"
 	actions.add_child(sail)
-	actions.add_child(_button("📜  Explorar as ilhas", func(): island_pressed.emit(0)))
-	actions.add_child(_button("⏱  Regata · 3 min", func(): time_attack_pressed.emit()))
+	actions.add_child(_button("Explorar as ilhas", func(): island_pressed.emit(0)))
+	actions.add_child(_button("Regata · 3 min", func(): time_attack_pressed.emit()))
 	column.add_child(_contact_row())
 	var hint := "Toque nos controles da tela para navegar." if touch else "W A S D para navegar  ·  1–5 visita uma ilha  ·  Esc volta ao barco"
 	column.add_child(_wrap(hint, "Mono", 12))
