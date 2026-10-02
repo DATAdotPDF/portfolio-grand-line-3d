@@ -1,60 +1,144 @@
-<!doctype html>
-<html lang="pt-BR" data-theme="day">
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-	<title>Pedro D. Ferreira · Carta de Navegação</title>
-	<meta name="description" content="Portfólio de Pedro D. Ferreira — Junior Data Engineer (Data Analytics, BI, Data Operations, Cybersecurity). Leia o portfólio ou navegue pelas cinco ilhas num mundo 3D.">
-	<meta name="theme-color" content="#efe4cc">
-	<link rel="preload" href="/fonts/IMFellEnglish-Italic.ttf" as="font" type="font/ttf" crossorigin>
-	<link rel="stylesheet" href="/styles.css">
-	<script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js"}}</script>
-</head>
-<body>
-	<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<!DOCTYPE html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+		<title>Pedro D. Ferreira · Junior Data Engineer</title>
+		<meta name="description" content="Portfólio navegável de Pedro D. Ferreira — Data Analytics, BI, Data Operations e Cybersecurity. Velejar pelas cinco ilhas do currículo.">
+		<meta property="og:title" content="Pedro D. Ferreira · Junior Data Engineer">
+		<meta property="og:description" content="Transformo dados em decisões, automações e produtos confiáveis. Portfólio em forma de mundo 3D navegável.">
+		<meta property="og:type" content="website">
+		<meta name="theme-color" content="#efe4cc">
+		<link rel="preload" href="/fonts/IMFellEnglish-Italic.ttf" as="font" type="font/ttf" crossorigin>
+		<style>
+@font-face { font-family: "IM Fell English"; src: url("/fonts/IMFellEnglish-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "IM Fell English"; font-style: italic; src: url("/fonts/IMFellEnglish-Italic.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Variable.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("/fonts/Inter-Variable.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+:root { --paper: #efe4cc; --ink: #2b2118; --muted: #7a6a55; --line: rgba(43, 33, 24, 0.3); --accent: #9e1b2b; --live: #2f6f47; }
+@media (prefers-color-scheme: dark) { :root { --paper: #1d2537; --ink: #efe4cc; --muted: #a9b3c7; --line: rgba(239, 228, 204, 0.3); --accent: #e7a44a; --live: #7fd3a1; } }
+html, body, #canvas { margin: 0; padding: 0; border: 0; }
+body { background: var(--paper); color: var(--ink); overflow: hidden; touch-action: none; font: 400 15px/1.55 "Inter", system-ui, sans-serif; }
+#canvas { display: block; }
+#canvas:focus { outline: none; }
+#status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px;
+	background: var(--paper); visibility: hidden; overflow: auto; touch-action: pan-y; }
+.card { width: min(620px, 100%); border: 1px solid var(--line); padding: clamp(20px, 4vw, 34px); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+.kicker { font: 600 11px/1.4 "Inter", system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.status-pill { display: inline-flex; align-items: center; gap: 8px; }
+.status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
+h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, serif; margin: 14px 0 10px; letter-spacing: -.01em; }
+.role { font: 400 24px/1.2 "IM Fell English", Georgia, serif; margin: 0 0 6px; }
+.pitch { margin: 12px 0 18px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.links a, .reader-toggle { border: 1px solid var(--line); color: var(--ink); padding: 7px 12px; font-size: 13px; text-decoration: none; letter-spacing: .02em; background: none; cursor: pointer; font-family: inherit; }
+.links a:hover, .reader-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.loading { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; }
+.loading strong { font: italic 400 22px "IM Fell English", Georgia, serif; white-space: nowrap; }
+.meter { flex: 1; height: 5px; border: 1px solid var(--line); position: relative; overflow: hidden; }
+.meter span { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ink); transition: width .2s; }
+.meter.indeterminate span { width: 30%; animation: sweep 1.4s ease-in-out infinite; }
+@keyframes sweep { 0% { left: -30%; } 100% { left: 100%; } }
+#status-numbers, .hint { font: 500 12px "JetBrains Mono", monospace; color: var(--muted); font-variant-numeric: tabular-nums; margin: 0; }
+#status-notice { display: none; border: 1px solid var(--accent); padding: 12px 14px; margin: 14px 0 0; font-size: 14px; }
+.reader { display: none; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 8px; }
+.reader.open { display: block; }
+.reader section { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.reader h2 { font: italic 400 26px/1.1 "IM Fell English", Georgia, serif; margin: 4px 0 8px; }
+.reader h3 { font: 400 19px/1.2 "IM Fell English", Georgia, serif; margin: 10px 0 2px; }
+.reader p { margin: 0 0 8px; }
+.reader .mono { font: 400 12.5px "JetBrains Mono", monospace; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } }
+		</style>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 
-	<header class="bar">
-		<a class="brand" href="#topo"><span class="kicker">Pedro D. Ferreira</span><span class="kicker faint">· Carta de navegação</span></a>
-		<nav aria-label="Seções">
-			<a href="#sobre">Sobre</a><a href="#experiencia">Experiência</a><a href="#formacao">Formação</a><a href="#projetos">Projetos</a><a href="#contato">Contato</a>
-		</nav>
-		<div class="bar-tools">
-			<button class="hair small" id="theme-toggle" type="button" aria-label="Alternar dia e noite">☾ Noite</button>
-			<a class="hair small" href="/classico/">Versão clássica</a>
+	</head>
+	<body>
+		<canvas id="canvas">Seu navegador não suporta canvas.</canvas>
+
+		<!-- Cartão de visita: aparece na hora, enquanto o mundo 3D carrega. -->
+		<div id="status" role="status" aria-live="polite">
+			<article class="card">
+				<p class="kicker status-pill">Dispon&#237;vel para novos desafios</p>
+				<h1>Pedro D. Ferreira</h1>
+				<p class="role">Junior Data Engineer</p>
+				<p class="kicker">Data Analytics &#183; BI &#183; Data Operations &#183; Cybersecurity</p>
+				<p class="pitch">Transformo dados em decis&#245;es, automa&#231;&#245;es e produtos confi&#225;veis.</p>
+				<nav class="links" aria-label="Contatos"><a href="https://api.whatsapp.com/send/?phone=5521964094297&amp;text&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">WhatsApp ↗</a><a href="https://www.linkedin.com/in/data-pdf/" target="_blank" rel="noopener">LinkedIn ↗</a><a href="https://github.com/DATAdotPDF" target="_blank" rel="noopener">GitHub ↗</a></nav>
+				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
+				<p id="status-numbers">preparando o mar</p>
+				<p class="hint">primeira visita ~75 MB · fica em cache · W A S D ou controles na tela</p>
+				<div id="status-notice"></div>
+				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio aqui mesmo ↓</button></p>
+				<div class="reader" id="reader"><section><p class="kicker">01 / Sobre</p><h2>Dados com contexto de neg&#243;cio.</h2><p>Minha trajet&#243;ria re&#250;ne mais de uma d&#233;cada no mercado de trabalho, com projetos, opera&#231;&#245;es, melhoria de processos e gest&#227;o de stakeholders. Ap&#243;s a forma&#231;&#227;o em Engenharia de Dados na Escola DNC, atuei por 1 ano e 2 meses na CEPA Mobility Brazil.</p><p>Na CEPA, apoiei opera&#231;&#245;es internacionais e qualidade de dados para o programa J&amp;J Safe Fleet em 10 pa&#237;ses. Antes da transi&#231;&#227;o para dados, conduzi projetos audiovisuais para marcas como Disney+, Canal Futura e Expedia.</p><p>Hoje conecto Python, SQL, ETL, dashboards e automa&#231;&#227;o para organizar informa&#231;&#245;es, reduzir trabalho manual e apoiar decis&#245;es.</p><p><span class="kicker">Engenharia de dados</span><br><span class="mono">Python &#183; SQL &#183; ETL &#183; Pipelines</span></p><p><span class="kicker">Analytics e BI</span><br><span class="mono">Power BI &#183; Pandas &#183; Dashboards</span></p><p><span class="kicker">Opera&#231;&#245;es</span><br><span class="mono">Data Quality &#183; Automa&#231;&#227;o &#183; Reporting</span></p><p><span class="kicker">Ciberseguran&#231;a</span><br><span class="mono">Forma&#231;&#227;o em andamento &#183; Senac 2026</span></p></section><section><p class="kicker">02 / Experi&#234;ncia</p><h2>Trajet&#243;ria profissional.</h2><h3>Data Analyst · CEPA Mobility Brazil</h3><p class="mono">2025 — 2026</p><p>Suporte ao J&amp;J Safe Fleet em 10 pa&#237;ses, com rotinas de dados, relat&#243;rios, qualidade e acompanhamento operacional entre APAC, Jap&#227;o e EMEA.</p><h3>CEO e produtor · Varanda Vista Filmes</h3><p class="mono">2012 — 2025</p><p>Gest&#227;o de projetos, prazos, custos, processos e clientes em produ&#231;&#245;es audiovisuais para empresas nacionais e internacionais.</p></section><section><p class="kicker">03 / Forma&#231;&#227;o</p><h2>Forma&#231;&#227;o cont&#237;nua.</h2><h3>Ciberseguran&#231;a · Senac</h3><p class="mono">2026 — atual</p><h3>Engenharia de Dados · Escola DNC</h3><p class="mono">2024 — 2025</p><h3>Mecatr&#244;nica · Electra</h3><p class="mono">2021 — 2023</p><h3>Cinema e Audiovisual · IBMR</h3><p class="mono">2008 — 2021</p></section><section><p class="kicker">04 / Projetos</p><h2>C&#243;digo aplicado a problemas concretos.</h2><h3><a href="https://github.com/DATAdotPDF/Desafio_Final_II_DNC_RID211401" target="_blank" rel="noopener">Detec&#231;&#227;o de fraudes com IA generativa ↗</a></h3><p>API e an&#225;lise de rela&#231;&#245;es para identificar comportamentos suspeitos em transa&#231;&#245;es.</p><p class="mono">Python &#183; FastAPI &#183; NetworkX &#183; Docker</p><h3><a href="https://github.com/DATAdotPDF/Desafio_Final_DNC_RID211401" target="_blank" rel="noopener">Pipeline ETL Bronze, Silver e Gold ↗</a></h3><p>Orquestra&#231;&#227;o de dados em camadas, armazenamento em S3 e visualiza&#231;&#227;o anal&#237;tica.</p><p class="mono">Airflow &#183; Python &#183; AWS S3 &#183; Plotly Dash</p><h3><a href="https://github.com/DATAdotPDF/Desafio_Pratico_DNC_Grupo6" target="_blank" rel="noopener">Dados p&#250;blicos do SIDRA e IBGE ↗</a></h3><p>Modelagem dimensional e painel para explorar indicadores p&#250;blicos com clareza.</p><p class="mono">Power BI &#183; Power Query &#183; SIDRA &#183; Star Schema</p><h3><a href="https://github.com/DATAdotPDF/BOT_Financeiro_WPP" target="_blank" rel="noopener">Bot financeiro para WhatsApp ↗</a></h3><p>Automa&#231;&#227;o para registrar movimenta&#231;&#245;es financeiras por mensagens no WhatsApp.</p><p class="mono">Node.js &#183; JavaScript &#183; WhatsApp &#183; Automa&#231;&#227;o</p></section><section><p class="kicker">05 / Contato</p><h2>Vamos conversar sobre dados, opera&#231;&#245;es ou seguran&#231;a?</h2></section></div>
+			</article>
 		</div>
-	</header>
+		<noscript><style>#status { visibility: visible !important; } .reader { display: block !important; }</style></noscript>
 
-	<main id="conteudo">
-		<section class="hero" id="topo">
-			<div class="hero-copy">
-				<p class="status mono"><span class="dot" aria-hidden="true"></span><span data-content="status"></span></p>
-				<h1 class="masthead" data-content="name">Pedro D. Ferreira</h1>
-				<p class="role"><span data-content="role"></span></p>
-				<p class="kicker" data-content="tagline"></p>
-				<p class="pitch" data-content="pitch"></p>
-				<div class="cta">
-					<a class="hair primary" id="sail" href="/world/">⚓ Zarpar no mundo 3D</a>
-					<a class="hair" href="#sobre">Ler o portfólio ↓</a>
-					<a class="hair" data-link="whatsapp" target="_blank" rel="noopener">WhatsApp ↗</a>
-				</div>
-				<p class="world-status mono" id="world-status" aria-live="polite">Mundo 3D · velejar pela Grand Line com as cinco ilhas do currículo</p>
-				<dl class="stats" id="stats"></dl>
-			</div>
-			<figure class="globe">
-				<canvas id="globe" aria-label="Globo navegável com as cinco ilhas do portfólio"></canvas>
-				<div class="pins" id="pins"></div>
-				<figcaption class="mono faint">Arraste para girar · toque numa ilha</figcaption>
-			</figure>
-		</section>
+		<script src="index.js"></script>
+		<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":70412400,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_THREADS_ENABLED = false;
+const engine = new Engine(GODOT_CONFIG);
 
-		<div id="sections"></div>
-	</main>
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const meter = document.getElementById('meter');
+	const meterBar = document.getElementById('meter-bar');
+	const numbers = document.getElementById('status-numbers');
+	const statusNotice = document.getElementById('status-notice');
+	const reader = document.getElementById('reader');
+	let initializing = true;
+	let reading = false;
 
-	<footer class="foot">
-		<p class="kicker">Pedro D. Ferreira · <span data-content="role"></span></p>
-		<p class="faint">Mundo 3D feito em Godot · modelos, código e textos próprios · fontes IM Fell English, Inter e JetBrains Mono (OFL).</p>
-	</footer>
+	document.getElementById('reader-toggle').addEventListener('click', () => {
+		reading = !reader.classList.contains('open');
+		reader.classList.toggle('open', reading);
+	});
 
-	<script type="module" src="/landing.js"></script>
-</body>
+	function hideStatus() {
+		initializing = false;
+		// Se a pessoa estiver lendo o texto, não arranca o cartão da frente dela.
+		if (reading) {
+			numbers.textContent = 'mundo 3D pronto';
+			const enter = document.createElement('button');
+			enter.className = 'reader-toggle';
+			enter.textContent = '⚓ Entrar no mundo 3D';
+			enter.onclick = () => statusOverlay.remove();
+			numbers.after(enter);
+			return;
+		}
+		statusOverlay.remove();
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'erro desconhecido');
+		statusNotice.textContent = 'O mundo 3D não abriu neste navegador (' + message + '). O portfólio completo está logo abaixo.';
+		statusNotice.style.display = 'block';
+		reader.classList.add('open');
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	statusOverlay.style.visibility = 'visible';
+	if (missing.length !== 0) {
+		displayFailureNotice('recursos ausentes: ' + missing.join(', '));
+		return;
+	}
+	engine.startGame({
+		'onProgress': function (current, total) {
+			if (!initializing) return;
+			if (current > 0 && total > 0) {
+				meter.classList.remove('indeterminate');
+				meterBar.style.width = Math.min(100, current / total * 100).toFixed(1) + '%';
+				numbers.textContent = (current / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB';
+			}
+		},
+	}).then(hideStatus, displayFailureNotice);
+}());
+		</script>
+	</body>
 </html>
+

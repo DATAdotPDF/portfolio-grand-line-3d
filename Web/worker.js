@@ -1,20 +1,20 @@
-// Worker do portfólio: serve os assets estáticos e contorna o limite de 25 MiB
-// por arquivo do Workers Static Assets para o export do Godot em /world/.
+// Worker do portfólio: o mundo 3D (Godot) é a página inicial. Serve os assets
+// estáticos e contorna o limite de 25 MiB por arquivo do Workers Static Assets:
 //
-//  /world/index.pck  -> concatena /world/pck/part-XX (manifesto index.pck.parts.json)
-//  /world/index.wasm -> entrega /world/index.wasm.br com Content-Encoding: br
-//                        (o navegador descomprime; ~38 MB viram ~9 MB na rede)
+//  /index.pck  -> concatena /pck/part-XX (manifesto /index.pck.parts.json)
+//  /index.wasm -> entrega /index.wasm.br com Content-Encoding: br
+//                 (o navegador descomprime; ~38 MB viram ~7 MB na rede)
+//  /world/*    -> redireciona para / (links antigos), mantendo ?ilha=
 
 const LONG_CACHE = "public, max-age=31536000, immutable";
 
 async function assetOrNull(env, request, path) {
-	const url = new URL(path, request.url);
-	const response = await env.ASSETS.fetch(new Request(url, { method: "GET" }));
+	const response = await env.ASSETS.fetch(new Request(new URL(path, request.url), { method: "GET" }));
 	return response.ok ? response : null;
 }
 
 async function servePck(env, request) {
-	const manifest = await assetOrNull(env, request, "/world/index.pck.parts.json");
+	const manifest = await assetOrNull(env, request, "/index.pck.parts.json");
 	if (!manifest) {
 		return new Response("pck manifest missing", { status: 500 });
 	}
@@ -23,7 +23,7 @@ async function servePck(env, request) {
 	(async () => {
 		try {
 			for (const part of parts) {
-				const response = await assetOrNull(env, request, `/world/pck/${part}`);
+				const response = await assetOrNull(env, request, `/pck/${part}`);
 				if (!response) throw new Error(`missing part ${part}`);
 				await response.body.pipeTo(writable, { preventClose: true });
 			}
@@ -43,7 +43,7 @@ async function servePck(env, request) {
 }
 
 async function serveWasm(env, request) {
-	const compressed = await assetOrNull(env, request, "/world/index.wasm.br");
+	const compressed = await assetOrNull(env, request, "/index.wasm.br");
 	if (!compressed) {
 		return env.ASSETS.fetch(request);
 	}
@@ -59,15 +59,15 @@ async function serveWasm(env, request) {
 
 export default {
 	async fetch(request, env) {
-		const { pathname } = new URL(request.url);
-		if (pathname === "/world/index.pck") {
+		const url = new URL(request.url);
+		if (url.pathname === "/index.pck") {
 			return servePck(env, request);
 		}
-		if (pathname === "/world/index.wasm") {
+		if (url.pathname === "/index.wasm") {
 			return serveWasm(env, request);
 		}
-		if (pathname === "/world") {
-			return Response.redirect(new URL("/world/", request.url).toString() + new URL(request.url).search, 301);
+		if (url.pathname === "/world" || url.pathname.startsWith("/world/")) {
+			return Response.redirect(new URL("/" + url.search, request.url).toString(), 301);
 		}
 		return env.ASSETS.fetch(request);
 	},

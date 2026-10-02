@@ -11,6 +11,7 @@ signal time_attack_pressed
 signal time_mode_pressed(mode: String)
 signal next_track_pressed
 signal panel_closed
+signal start_sailing
 
 const HudTheme = preload("res://Scripts/UI/HudTheme.gd")
 const CONTENT_PATH := "res://Config/portfolio_content.json"
@@ -41,6 +42,10 @@ var approach_card: PanelContainer
 var approach_button: Button
 var approach_index := -1
 var touch := false
+var intro_panel: PanelContainer
+var intro_column: VBoxContainer
+var intro_visible := false
+var current_island := -1
 
 func _ready() -> void:
 	layer = 4
@@ -61,9 +66,11 @@ func _ready() -> void:
 	_build_race_board()
 	_build_island_panel()
 	_build_approach_card()
+	_build_intro()
 	set_daylight(1.0)
-	get_viewport().size_changed.connect(_layout)
+	get_viewport().size_changed.connect(func(): _layout(); _relayout_next_frames())
 	_layout()
+	_relayout_next_frames()
 
 # --- Construção ---------------------------------------------------------------
 
@@ -95,6 +102,7 @@ func _build_masthead() -> void:
 	column.add_child(section_title)
 	status_label = _label("—", "Mono")
 	column.add_child(status_label)
+	column.add_child(_contact_row())
 
 func _build_nav() -> void:
 	nav_bar = HFlowContainer.new()
@@ -198,7 +206,10 @@ func _build_island_panel() -> void:
 	column.add_theme_constant_override("separation", 8)
 	island_panel.add_child(column)
 	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
 	column.add_child(top)
+	top.add_child(_button("← Anterior", func(): island_pressed.emit(posmod(current_island - 1, ISLAND_NAMES.size()))))
+	top.add_child(_button("Próxima →", func(): island_pressed.emit(posmod(current_island + 1, ISLAND_NAMES.size()))))
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
@@ -218,6 +229,75 @@ func _build_approach_card() -> void:
 	root.add_child(approach_card)
 	approach_button = _button("", func(): if approach_index >= 0: island_pressed.emit(approach_index))
 	approach_card.add_child(approach_button)
+
+## Textos com quebra automática só sabem a altura real um frame depois de ganhar largura.
+func _relayout_next_frames() -> void:
+	for i in range(2):
+		await get_tree().process_frame
+		_layout()
+
+## Contatos sempre à mão (recrutador não precisa achar a ilha Contato).
+func _contact_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	var links: Dictionary = content.get("links", {})
+	for item in [["LinkedIn", "linkedin"], ["GitHub", "github"], ["WhatsApp", "whatsapp"]]:
+		if links.has(item[1]):
+			var button := _link(item[0], str(links[item[1]]))
+			button.add_theme_font_size_override("font_size", 12)
+			row.add_child(button)
+	return row
+
+## Abertura (referência nazarejose): o mundo já aparece atrás, com o globo girando.
+func _build_intro() -> void:
+	intro_panel = PanelContainer.new()
+	intro_panel.theme_type_variation = "Sheet"
+	intro_panel.visible = false
+	root.add_child(intro_panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	intro_panel.add_child(column)
+	intro_column = column
+	column.add_child(_label(str(content.get("status", "Portfólio")).to_upper(), "Kicker"))
+	var name_label := _label(str(content.get("name", "Pedro D. Ferreira")), "Title", 60)
+	column.add_child(name_label)
+	column.add_child(_label(str(content.get("role", "")), "Heading"))
+	column.add_child(_label(str(content.get("tagline", "")).to_upper(), "Kicker"))
+	column.add_child(_wrap(str(content.get("pitch", "")), "Body"))
+	var stats := HBoxContainer.new()
+	stats.add_theme_constant_override("separation", 28)
+	for stat in content.get("stats", []):
+		var block := VBoxContainer.new()
+		block.add_child(_label(str(stat.value), "Mono", 26))
+		block.add_child(_label(str(stat.label), "Muted", 13))
+		stats.add_child(block)
+	column.add_child(stats)
+	column.add_child(_rule())
+	var actions := HFlowContainer.new()
+	actions.add_theme_constant_override("h_separation", 8)
+	actions.add_theme_constant_override("v_separation", 8)
+	column.add_child(actions)
+	var sail := _button("⚓  Zarpar e navegar", func(): start_sailing.emit())
+	sail.theme_type_variation = "Primary"
+	actions.add_child(sail)
+	actions.add_child(_button("📜  Explorar as ilhas", func(): island_pressed.emit(0)))
+	actions.add_child(_button("⏱  Regata · 3 min", func(): time_attack_pressed.emit()))
+	column.add_child(_contact_row())
+	var hint := "Toque nos controles da tela para navegar." if touch else "W A S D para navegar  ·  1–5 visita uma ilha  ·  Esc volta ao barco"
+	column.add_child(_wrap(hint, "Mono", 12))
+
+func show_intro(show: bool) -> void:
+	intro_visible = show
+	intro_panel.visible = show
+	for node in [masthead, nav_bar, side_column, cannon_panel]:
+		node.visible = not show
+	if show:
+		controls_card.visible = false
+		approach_card.visible = false
+	elif not touch:
+		_show_controls(true)
+	_layout()
+	_relayout_next_frames()
 
 # --- Conteúdo das ilhas -------------------------------------------------------------
 
@@ -242,6 +322,9 @@ func show_island(index: int) -> void:
 	if index < 0 or index >= islands.size():
 		return
 	var data: Dictionary = islands[index]
+	current_island = index
+	if intro_visible:
+		show_intro(false)
 	island_body.add_child(_label(str(data.get("kicker", "")).to_upper(), "Kicker"))
 	island_body.add_child(_wrap(str(data.get("title", "")), "Title", 30))
 	island_body.add_child(_rule())
@@ -301,7 +384,7 @@ func set_race(active: bool, remaining: float, hits: int, total: int, finished_te
 
 ## Convite para ler a seção ao navegar perto de uma ilha (como as boias do nazarejose).
 func set_approach(index: int) -> void:
-	if island_panel.visible:
+	if island_panel.visible or intro_visible:
 		index = -1
 	approach_index = index
 	approach_card.visible = index >= 0
@@ -377,6 +460,20 @@ func set_daylight(value: float) -> void:
 	sheet.set_content_margin_all(22)
 	sheet.border_color = Color(colors.accent, 0.55)
 	theme.set_stylebox("panel", "Sheet", sheet)
+	theme.set_type_variation("Primary", "Button")
+	var primary := HudTheme.button_box(colors, "normal")
+	primary.bg_color = colors.ink
+	primary.border_color = colors.ink
+	var primary_hover := primary.duplicate()
+	primary_hover.bg_color = colors.accent
+	primary_hover.border_color = colors.accent
+	theme.set_stylebox("normal", "Primary", primary)
+	theme.set_stylebox("hover", "Primary", primary_hover)
+	theme.set_stylebox("pressed", "Primary", primary_hover)
+	theme.set_color("font_color", "Primary", colors.paper)
+	theme.set_color("font_hover_color", "Primary", colors.paper)
+	theme.set_color("font_pressed_color", "Primary", colors.paper)
+	theme.set_font_size("font_size", "Primary", 15)
 	theme.set_type_variation("Rule", "HSeparator")
 	var rule := StyleBoxLine.new()
 	rule.color = colors.line
@@ -421,6 +518,19 @@ func _layout() -> void:
 	if controls_card.visible:
 		approach_y = minf(approach_y, controls_card.position.y - approach.y - 10.0)
 	approach_card.position = Vector2((screen.x - approach.x) * 0.5, approach_y)
+	if intro_panel != null:
+		# Textos com quebra automática precisam de largura definida antes do cálculo de altura.
+		var intro_width := (screen.x - margin * 2.0) if portrait else minf(620.0, screen.x - margin * 2.0)
+		intro_column.custom_minimum_size.x = intro_width - 44.0
+		intro_panel.size = Vector2.ZERO
+		if portrait:
+			intro_panel.size = Vector2(screen.x - margin * 2.0, 0.0)
+			var intro_height := intro_panel.get_combined_minimum_size().y
+			intro_panel.position = Vector2(margin, screen.y - intro_height - margin)
+		else:
+			intro_panel.size = Vector2(minf(620.0, screen.x - margin * 2.0), 0.0)
+			var intro_min := intro_panel.get_combined_minimum_size()
+			intro_panel.position = Vector2(margin * 3.0, (screen.y - intro_min.y) * 0.5)
 	if portrait:
 		island_panel.position = Vector2(0.0, screen.y * 0.42)
 		island_panel.size = Vector2(screen.x, screen.y * 0.58)

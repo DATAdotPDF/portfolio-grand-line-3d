@@ -28,9 +28,21 @@ func shot(name: String) -> void:
 func run() -> void:
 	root.size = Vector2i(1280, 720)
 	world = (load("res://MainWorld.tscn") as PackedScene).instantiate()
+	world.show_intro_on_start = wants("intro") and only != ""
 	root.add_child(world)
 	world.clock.set_time(0.42, true)
 	await wait(1.5)
+	if world.show_intro_on_start:
+		await wait(2.5)
+		await shot("intro")
+		for child in world.hud.intro_column.get_children():
+			print("INTRO_CHILD ", child.get_class(), " ", child.get_combined_minimum_size(), " pos=", child.position)
+		print("INTRO_PANEL ", world.hud.intro_panel.position, " ", world.hud.intro_panel.size)
+		world.hud.island_pressed.emit(0)
+		await wait(3.0)
+		await shot("tour_sobre")
+		quit()
+		return
 	if wants("boat"):
 		await shot("boat_rest")
 		world.ship.controls_override = true

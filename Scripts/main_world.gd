@@ -73,6 +73,7 @@ var wind_streaks: Node3D
 var bow_wave_meshes: Array[MeshInstance3D] = []
 var islands: Array[Node3D] = []
 var hud: CanvasLayer
+var intro_orbit := false
 var log_pose: Node3D
 @export_group("Editor Planet")
 @export_node_path("MeshInstance3D") var ocean_mesh_path: NodePath = ^"OceanMesh"
@@ -83,6 +84,8 @@ var log_pose: Node3D
 @export_node_path("Camera3D") var camera_path: NodePath = ^"CameraPivot/FollowCamera"
 ## Reposiciona a chalupa no spawn do layout ao editar (desligue para mover à mão).
 @export var editor_snap_ship_to_spawn := true
+## Mostra o cartão de apresentação com o globo ao abrir (desligue para testes).
+@export var show_intro_on_start := true
 var planet_radius := 800.0
 
 func _connect_layout() -> void:
@@ -142,8 +145,18 @@ func _ready() -> void:
 	touch.naval = naval
 	touch.camera = camera
 	add_child(touch)
-	if OS.has_feature("web"):
+	# Abertura (como no nazarejose): o globo gira atrás do cartão de apresentação.
+	# Um link direto (?ilha= / ?modo=) pula a abertura.
+	var deeplink := OS.has_feature("web") and str(JavaScriptBridge.eval("window.location.search", true)).length() > 1
+	if deeplink:
 		_apply_web_deeplink.call_deferred()
+	elif show_intro_on_start:
+		ship.enabled = false
+		hud.show_intro(true)
+		# Órbita cinematográfica em volta da ilha de spawn, deslocada para o lado do cartão.
+		intro_orbit = true
+		camera.focus_island(islands[clampi(Scale.layout().spawn_island, 0, islands.size() - 1)])
+		camera.h_offset = -15.0 if get_viewport().get_visible_rect().size.x > get_viewport().get_visible_rect().size.y else 0.0
 	print("WORLD_READY radius=", planet_radius, " ship_length=", SHIP_LENGTH, " islands=", islands.size(), " max_wave=", snappedf(Scale.max_wave_height(), 0.01))
 
 # --- Editor: o mundo inteiro acompanha o layout sem precisar do Play ---------------
@@ -562,6 +575,7 @@ func _build_hud() -> void:
 	hud.time_mode_pressed.connect(select_time)
 	hud.next_track_pressed.connect(next_track)
 	hud.panel_closed.connect(_return_to_navigation)
+	hud.start_sailing.connect(_start_sailing)
 	hud.set_time_mode(time_mode)
 ## Links da landing: /world/?ilha=projetos abre direto na ilha; ?modo=regata inicia a regata.
 func _apply_web_deeplink() -> void:
@@ -578,11 +592,25 @@ func _apply_web_deeplink() -> void:
 	elif params.get("modo", "") == "regata":
 		_start_time_attack()
 
+func _leave_intro() -> void:
+	intro_orbit = false
+	camera.h_offset = 0.0
+	if hud and hud.intro_visible:
+		hud.show_intro(false)
+	ship.enabled = true
+
+func _start_sailing() -> void:
+	_leave_intro()
+	camera.return_to_boat()
+
 func _select_island(index: int) -> void:
+	_leave_intro()
 	if is_instance_valid(camera) and index >= 0 and index < islands.size():
 		camera.focus_island(islands[index])
 
 func _on_island_visit_started(index: int) -> void:
+	if intro_orbit:
+		return
 	if hud: hud.show_island(index)
 	if is_instance_valid(naval) and bool(naval.get("time_attack_mode")):
 		naval.call("leave_time_attack")
@@ -595,6 +623,7 @@ func _return_to_navigation() -> void:
 		camera.return_to_boat()
 
 func _start_time_attack() -> void:
+	_leave_intro()
 	if is_instance_valid(camera):
 		if camera.state != PortfolioCamera.CameraState.BOAT_FOLLOW:
 			camera.return_to_boat()
@@ -699,6 +728,9 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
 		return
+	# Na abertura, começar a navegar pelo teclado já zarpa.
+	if hud and hud.intro_visible and event is InputEventKey and event.pressed and event.physical_keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+		_start_sailing()
 	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		camera.drag_orbit(event.relative)
 	if event is InputEventKey and event.pressed and not event.echo:

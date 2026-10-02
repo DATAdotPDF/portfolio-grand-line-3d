@@ -3,46 +3,76 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
-		<title>Pedro D. Ferreira · Mundo 3D</title>
+		<title>Pedro D. Ferreira · Junior Data Engineer</title>
+		<meta name="description" content="Portfólio navegável de Pedro D. Ferreira — Data Analytics, BI, Data Operations e Cybersecurity. Velejar pelas cinco ilhas do currículo.">
+		<meta property="og:title" content="Pedro D. Ferreira · Junior Data Engineer">
+		<meta property="og:description" content="Transformo dados em decisões, automações e produtos confiáveis. Portfólio em forma de mundo 3D navegável.">
+		<meta property="og:type" content="website">
 		<meta name="theme-color" content="#efe4cc">
+		<link rel="preload" href="/fonts/IMFellEnglish-Italic.ttf" as="font" type="font/ttf" crossorigin>
 		<style>
+@font-face { font-family: "IM Fell English"; src: url("/fonts/IMFellEnglish-Regular.ttf") format("truetype"); font-display: swap; }
 @font-face { font-family: "IM Fell English"; font-style: italic; src: url("/fonts/IMFellEnglish-Italic.ttf") format("truetype"); font-display: swap; }
 @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Variable.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
 @font-face { font-family: "Inter"; src: url("/fonts/Inter-Variable.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
-:root { --paper: #efe4cc; --ink: #2b2118; --muted: #7a6a55; --line: rgba(43, 33, 24, 0.3); --accent: #9e1b2b; }
-@media (prefers-color-scheme: dark) { :root { --paper: #1d2537; --ink: #efe4cc; --muted: #a9b3c7; --line: rgba(239, 228, 204, 0.3); --accent: #e7a44a; } }
+:root { --paper: #efe4cc; --ink: #2b2118; --muted: #7a6a55; --line: rgba(43, 33, 24, 0.3); --accent: #9e1b2b; --live: #2f6f47; }
+@media (prefers-color-scheme: dark) { :root { --paper: #1d2537; --ink: #efe4cc; --muted: #a9b3c7; --line: rgba(239, 228, 204, 0.3); --accent: #e7a44a; --live: #7fd3a1; } }
 html, body, #canvas { margin: 0; padding: 0; border: 0; }
-body { background: var(--paper); color: var(--ink); overflow: hidden; touch-action: none; }
+body { background: var(--paper); color: var(--ink); overflow: hidden; touch-action: none; font: 400 15px/1.55 "Inter", system-ui, sans-serif; }
 #canvas { display: block; }
 #canvas:focus { outline: none; }
-#status { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center;
-	gap: 14px; padding: 24px; background: var(--paper); visibility: hidden; text-align: center; font-family: "Inter", system-ui, sans-serif; }
+#status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px;
+	background: var(--paper); visibility: hidden; overflow: auto; touch-action: pan-y; }
+.card { width: min(620px, 100%); border: 1px solid var(--line); padding: clamp(20px, 4vw, 34px); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
 .kicker { font: 600 11px/1.4 "Inter", system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0; }
-.title { font: italic 400 clamp(40px, 8vw, 76px)/.9 "IM Fell English", Georgia, serif; margin: 0; }
-.hint { color: var(--muted); max-width: 46ch; font-size: 14px; margin: 0; }
-.meter { width: min(420px, 80vw); height: 6px; border: 1px solid var(--line); position: relative; overflow: hidden; }
+.status-pill { display: inline-flex; align-items: center; gap: 8px; }
+.status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
+h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, serif; margin: 14px 0 10px; letter-spacing: -.01em; }
+.role { font: 400 24px/1.2 "IM Fell English", Georgia, serif; margin: 0 0 6px; }
+.pitch { margin: 12px 0 18px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.links a, .reader-toggle { border: 1px solid var(--line); color: var(--ink); padding: 7px 12px; font-size: 13px; text-decoration: none; letter-spacing: .02em; background: none; cursor: pointer; font-family: inherit; }
+.links a:hover, .reader-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.loading { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; }
+.loading strong { font: italic 400 22px "IM Fell English", Georgia, serif; white-space: nowrap; }
+.meter { flex: 1; height: 5px; border: 1px solid var(--line); position: relative; overflow: hidden; }
 .meter span { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ink); transition: width .2s; }
 .meter.indeterminate span { width: 30%; animation: sweep 1.4s ease-in-out infinite; }
 @keyframes sweep { 0% { left: -30%; } 100% { left: 100%; } }
-#status-numbers { font: 500 12px "JetBrains Mono", monospace; color: var(--muted); font-variant-numeric: tabular-nums; }
-#status-notice { display: none; border: 1px solid var(--accent); padding: 14px 18px; max-width: 520px; font-size: 14px; }
-.back { color: var(--ink); font-size: 13px; }
+#status-numbers, .hint { font: 500 12px "JetBrains Mono", monospace; color: var(--muted); font-variant-numeric: tabular-nums; margin: 0; }
+#status-notice { display: none; border: 1px solid var(--accent); padding: 12px 14px; margin: 14px 0 0; font-size: 14px; }
+.reader { display: none; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 8px; }
+.reader.open { display: block; }
+.reader section { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.reader h2 { font: italic 400 26px/1.1 "IM Fell English", Georgia, serif; margin: 4px 0 8px; }
+.reader h3 { font: 400 19px/1.2 "IM Fell English", Georgia, serif; margin: 10px 0 2px; }
+.reader p { margin: 0 0 8px; }
+.reader .mono { font: 400 12.5px "JetBrains Mono", monospace; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } }
 		</style>
 		$GODOT_HEAD_INCLUDE
 	</head>
 	<body>
 		<canvas id="canvas">Seu navegador não suporta canvas.</canvas>
-		<noscript>O mundo 3D precisa de JavaScript. O portfólio completo está em <a href="/">/</a>.</noscript>
 
+		<!-- Cartão de visita: aparece na hora, enquanto o mundo 3D carrega. -->
 		<div id="status" role="status" aria-live="polite">
-			<p class="kicker">Pedro D. Ferreira · Carta de navegação</p>
-			<p class="title">Içando as velas…</p>
-			<div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div>
-			<p id="status-numbers">preparando o mar</p>
-			<p class="hint">Primeira visita: o mundo tem cerca de 80 MB e fica em cache para as próximas. W A S D para navegar, ou use os controles na tela.</p>
-			<div id="status-notice"></div>
-			<a class="back" href="/">← Ler o portfólio sem o 3D</a>
+			<article class="card">
+				<p class="kicker status-pill"><!--STATUS--></p>
+				<h1><!--NAME--></h1>
+				<p class="role"><!--ROLE--></p>
+				<p class="kicker"><!--TAGLINE--></p>
+				<p class="pitch"><!--PITCH--></p>
+				<nav class="links" aria-label="Contatos"><!--LINKS--></nav>
+				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
+				<p id="status-numbers">preparando o mar</p>
+				<p class="hint">primeira visita ~75 MB · fica em cache · W A S D ou controles na tela</p>
+				<div id="status-notice"></div>
+				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio aqui mesmo ↓</button></p>
+				<div class="reader" id="reader"><!--READER--></div>
+			</article>
 		</div>
+		<noscript><style>#status { visibility: visible !important; } .reader { display: block !important; }</style></noscript>
 
 		<script src="$GODOT_URL"></script>
 		<script>
@@ -56,18 +86,36 @@ const engine = new Engine(GODOT_CONFIG);
 	const meterBar = document.getElementById('meter-bar');
 	const numbers = document.getElementById('status-numbers');
 	const statusNotice = document.getElementById('status-notice');
+	const reader = document.getElementById('reader');
 	let initializing = true;
+	let reading = false;
+
+	document.getElementById('reader-toggle').addEventListener('click', () => {
+		reading = !reader.classList.contains('open');
+		reader.classList.toggle('open', reading);
+	});
 
 	function hideStatus() {
-		statusOverlay.remove();
 		initializing = false;
+		// Se a pessoa estiver lendo o texto, não arranca o cartão da frente dela.
+		if (reading) {
+			numbers.textContent = 'mundo 3D pronto';
+			const enter = document.createElement('button');
+			enter.className = 'reader-toggle';
+			enter.textContent = '⚓ Entrar no mundo 3D';
+			enter.onclick = () => statusOverlay.remove();
+			numbers.after(enter);
+			return;
+		}
+		statusOverlay.remove();
 	}
 
 	function displayFailureNotice(err) {
 		console.error(err);
-		const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Erro desconhecido.');
-		statusNotice.textContent = 'Não foi possível abrir o mundo 3D neste navegador (' + message + '). Todo o portfólio continua disponível na página inicial.';
+		const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'erro desconhecido');
+		statusNotice.textContent = 'O mundo 3D não abriu neste navegador (' + message + '). O portfólio completo está logo abaixo.';
 		statusNotice.style.display = 'block';
+		reader.classList.add('open');
 		initializing = false;
 	}
 

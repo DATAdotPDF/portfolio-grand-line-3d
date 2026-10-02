@@ -30,11 +30,8 @@
 
 
 # Saída do Web/build.ps1 (regenerável)
-/Web/public/world/
-/Web/public/fonts/
-/Web/public/classico/
-/Web/public/portfolio_content.json
-/Web/public/world_config.json
+/Web/public/*
+!/Web/public/404.html
 /Web/.wrangler/
 /.wrangler/
 
