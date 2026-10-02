@@ -55,8 +55,23 @@ var rng := RandomNumberGenerator.new()
 class Chart extends Control:
 	var drift := 0.0
 	var tint := Color("38f2ff")
+	## Energia da música (0.4 calmo … 1.8 pico): velocidade da deriva e da poeira dourada.
+	var energy := 1.0
+	var dust: Array[Vector3] = []
+	func _ready() -> void:
+		var r := RandomNumberGenerator.new()
+		r.seed = 11
+		for i in range(70):
+			dust.append(Vector3(r.randf() * 1920.0, r.randf() * 1080.0, r.randf_range(0.4, 1.4)))
 	func _process(delta: float) -> void:
-		drift += delta * 12.0
+		drift += delta * 12.0 * energy
+		for i in range(dust.size()):
+			var d := dust[i]
+			d.y -= d.z * 26.0 * energy * delta
+			d.x += sin(drift * 0.02 + i) * 0.3
+			if d.y < -10.0:
+				d.y = 1090.0
+			dust[i] = d
 		queue_redraw()
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("0a1120"))
@@ -77,6 +92,8 @@ class Chart extends Control:
 				var px := size.x * k / 40.0
 				pts.append(Vector2(px, base + sin(px * 0.006 + drift * 0.02 + i) * 14.0))
 			draw_polyline(pts, Color("e8c172", 0.05), 2.0, true)
+		for d in dust:
+			draw_circle(Vector2(d.x, d.y), 1.2 + d.z * 1.4, Color("e8c172", 0.10 + 0.12 * minf(energy, 1.5) * d.z))
 
 ## Mapa do tesouro: rota pontilhada entre os capítulos, X nas paradas, ping de sonar.
 class Route extends Control:
@@ -367,9 +384,9 @@ func chapter(index: int, number: String, title: String, subtitle: String) -> voi
 	var head := label(title, "black", 150, INK, Vector2(-1, 400))
 	slam(head, "cannon_small", -6.0, 10.0)
 	await wait(BEAT * 1.5)
-	var sub := label(subtitle, "mono", 32, GOLD, Vector2(-1, 600))
-	await typewrite(sub, 40.0)
-	await wait(BEAT * 1.2)
+	var sub := label(subtitle, "mono", 34, GOLD, Vector2(-1, 600))
+	await typewrite(sub, 42.0)
+	await wait(1.5)
 	stage.create_tween().tween_property(route, "modulate:a", 0.0, 0.25)
 	await fade_out_all(0.25)
 	route.visible = false
@@ -548,282 +565,305 @@ func show_grid(on: bool, seconds := 0.3) -> void:
 # Roteiro (em compassos)
 # ===================================================================================
 
+## Tempo de leitura: ~3 palavras/s + margem (nada some antes de dar para ler).
+func read_time(text: String) -> float:
+	return maxf(1.6, text.split(" ", false).size() / 3.0 + 0.9)
+
+## Deriva lenta para cima enquanto o texto está na tela (nada fica parado).
+func float_up(node: Control, seconds := 3.0, px := 16.0) -> void:
+	stage.create_tween().tween_property(node, "position:y", node.position.y - px, seconds).set_trans(Tween.TRANS_SINE)
+
+func say(text: String, font: String, size: int, color: Color, y: float, width := 1600.0) -> Label:
+	var l := label(text, font, size, color, Vector2(-1, y), width)
+	pop(l, 0.88)
+	float_up(l, read_time(text) + 1.0)
+	return l
+
+func outlined(l: Label, px := 14) -> Label:
+	l.add_theme_color_override("font_outline_color", Color(DEEP, 0.85))
+	l.add_theme_constant_override("outline_size", px)
+	return l
+
+func set_energy(value: float) -> void:
+	stage.create_tween().tween_property(grid, "energy", value, 2.0)
+
 func run() -> void:
 	await setup()
 	await process_frame
 	start_frame = Engine.get_process_frames()
+	grid.energy = 0.4
 
-	# A · ABERTURA FRIA (0–6) ------------------------------------------------------------
-	sfx("gulls", -18.0)
-	var t1 := label("> ./portfolio --versao-antiga", "mono", 40, CYAN, Vector2(260, 380), 1400, HORIZONTAL_ALIGNMENT_LEFT)
-	await typewrite(t1)
+	# A · "OIE!" — calmo, a música ainda acordando (0–27 s) --------------------------------------
+	sfx("gulls", -14.0)
+	var hi := label("Oie!", "serif", 190, INK, Vector2(-1, 360))
+	pop(hi, 0.8)
+	float_up(hi, 3.0)
 	await at_bar(1.75)
-	var t2 := label("tipo: site estático · rolagem: vertical", "mono", 40, MIST, Vector2(260, 450), 1400, HORIZONTAL_ALIGNMENT_LEFT)
-	await typewrite(t2)
-	await at_bar(2.75)
-	var t3 := label("você rolava pra baixo... e acabava.", "mono", 40, INK, Vector2(260, 520), 1400, HORIZONTAL_ALIGNMENT_LEFT)
-	await typewrite(t3)
-	await at_bar(3.75)
-	var t4 := label("ERRO: TÉDIO_DETECTADO", "black", 96, RED, Vector2(260, 620), 1500, HORIZONTAL_ALIGNMENT_LEFT)
-	slam(t4, "", 0.0, 22.0)
-	glitch(1.0, 0.7)
-	await at_bar(4.75)
-	sfx("riser", -8.0)
+	await fade_out_all(0.4)
+	var p1 := label("> fazer um site padrão e estático...", "mono", 46, CYAN, Vector2(220, 400), 1600, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(p1, 24.0)
+	await wait(0.4)
+	var p2 := label("> não tinha nada a ver comigo.", "mono", 46, INK, Vector2(220, 480), 1600, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(p2, 24.0)
+	await at_bar(5.5)
+	await fade_out_all(0.4)
+	say("então meu currículo virou", "serif", 84, INK, 360)
+	await wait(1.0)
+	say("um planetinha à la One Piece.", "serif", 104, GOLD, 480)
+	sfx("ping", -14.0)
+	await at_bar(8.75)
 	await fade_out_all(0.3)
-	await at_bar(5.0)
-	wave_wipe(CYAN, 0.42, 0.05, 0.5)
-	await wait(0.44)
-	var q := label("E se o currículo fosse um mar?", "serif", 120, INK, Vector2(-1, 400))
-	pop(q, 0.85)
-	await at_bar(6.75)
-	await fade_out_all(0.2)
-
-	# B · TÍTULO (7–11) ---------------------------------------------------------------------
-	await at_bar(7.0)
-	do_flash(PARCH, 0.5)
-	sfx("cannon", -2.0)
-	shake(26.0, 0.45)
-	var compass := Compass.new()
-	compass.size = Vector2(800, 800)
-	compass.position = Vector2(560, 140)
-	compass.pivot_offset = compass.size * 0.5
-	stage.add_child(compass)
-	pop(compass, 0.3)
-	var title := label("GRAND LINE", "black", 210, INK, Vector2(-1, 400))
-	slam(title, "", 0.0, 0.0)
-	await wait(BEAT)
-	var tag := label("PORTFÓLIO 3D NAVEGÁVEL  //  WEB + CELULAR", "mono", 34, CYAN, Vector2(-1, 650))
-	await typewrite(tag, 50.0)
-	var by := label("por Pedro D. Ferreira", "serif", 54, GOLD, Vector2(-1, 720))
-	pop(by)
-	await at_bar(9.0)
-	await fade_out_all(0.2)
-	wave_wipe(NAVY, 0.35, 0.0, 0.5)
-	await wait(0.36)
+	set_energy(0.7)
+	wave_wipe(CYAN, 0.6, 0.05, 0.7)
+	await wait(0.62)
+	# Só a cena: o cartão de abertura do jogo competiria com as legendas.
+	world.hud.visible = false
 	grid.modulate.a = 0.0
-	var live := label("● REC   CENA AO VIVO — GODOT 4", "mono", 28, RED, Vector2(70, 60), 900, HORIZONTAL_ALIGNMENT_LEFT)
-	live.add_theme_color_override("font_outline_color", DEEP)
-	live.add_theme_constant_override("outline_size", 8)
 	var frame := Brackets.new()
 	frame.position = Vector2(40, 40)
 	frame.size = SCREEN - Vector2(80, 80)
 	stage.add_child(frame)
-	await at_bar(11.0)
-	await fade_out_all(0.15)
-	await show_grid(true, 0.25)
-
-	# C · REFERÊNCIAS (11–14) -------------------------------------------------------------------
-	var refs := [["ONE PIECE", INK], ["WIND WAKER", GOLD], ["SEA OF THIEVES", CYAN], ["MONKEY ISLAND", INK], ["PIRATAS DO CARIBE", GOLD]]
-	var kick := label("// REFERÊNCIAS", "mono", 30, CYAN, Vector2(-1, 150))
-	pop(kick)
-	for i in range(refs.size()):
-		await at_bar(11.25 + i * 0.5)
-		var r := label(refs[i][0], "black", 104, refs[i][1], Vector2(-1, 250 + i * 128))
-		slam(r, "wood", -10.0, 8.0)
-	await at_bar(13.75)
-	var naz := label("+ um portfólio que já abria direto no mar  (valeu, José Nazaré)", "mono", 26, MIST, Vector2(-1, 920))
-	typewrite(naz, 60.0, false)
-	await at_bar(14.5)
+	var live := outlined(label("● AO VIVO  ·  GODOT 4.7", "mono", 26, RED, Vector2(80, 64), 900, HORIZONTAL_ALIGNMENT_LEFT), 8)
+	pop(live)
+	await wait(0.8)
+	var pilot := outlined(label("você pilota uma chalupa pirata", "black", 64, INK, Vector2(110, 700), 1700, HORIZONTAL_ALIGNMENT_LEFT))
+	pop(pilot, 0.9)
+	await wait(1.2)
+	var pilot2 := outlined(label("e navega até cinco ilhas:", "black", 64, INK, Vector2(110, 785), 1700, HORIZONTAL_ALIGNMENT_LEFT))
+	pop(pilot2, 0.9)
+	await wait(0.6)
+	var names := ["SOBRE", "EXPERIÊNCIA", "FORMAÇÃO", "PROJETOS", "CONTATO"]
+	var x := 116.0
+	for n in names:
+		var tag := outlined(label(n, "mono", 34, GOLD, Vector2(x, 890), 400, HORIZONTAL_ALIGNMENT_LEFT), 8)
+		pop(tag)
+		sfx("blip", -14.0)
+		x += n.length() * 21.0 + 60.0
+		await wait(BEAT)
+	await at_bar(12.75)
 	await fade_out_all(0.2)
+	world.hud.visible = true
+	grid.modulate.a = 1.0
+	await at_bar(13.0)
+	do_flash(PARCH, 0.5)
+	sfx("cannon", -3.0)
+	shake(20.0, 0.4)
+	var compass := Compass.new()
+	compass.size = Vector2(800, 800)
+	compass.position = Vector2(560, 140)
+	stage.add_child(compass)
+	pop(compass, 0.3)
+	var title := label("GRAND LINE", "black", 210, INK, Vector2(-1, 400))
+	slam(title, "", 0.0, 0.0)
+	await wait(BEAT * 2.0)
+	var tag2 := label("MEU PORTFÓLIO  //  VERSÃO PIRATA", "mono", 36, CYAN, Vector2(-1, 650))
+	await typewrite(tag2, 34.0)
+	await at_bar(16.0)
+	await fade_out_all(0.25)
 
-	# D · CAP. 1 CONCEITO (14.5–24) --------------------------------------------------------------
-	await chapter(0, "01", "CONCEITO", "tudo começou em 2D — Meshy.ai")
-	await at_bar(17.0)
+	# B · POR QUE PIRATA? (27–40 s) -------------------------------------------------------------------
+	set_energy(0.9)
+	var why := label("// POR QUE PIRATA?", "mono", 32, CYAN, Vector2(-1, 140))
+	pop(why)
+	var career := [
+		["> +10 anos de audiovisual", "(cruzes, véio)"],
+		["> migrei pra Dados", ""],
+		["> hoje estudo Cibersegurança", ""],
+		["> e cresci jogando videogame e vendo anime", ""],
+	]
+	for i in range(career.size()):
+		await at_bar(16.5 + i * 1.0)
+		var line := label(career[i][0], "mono", 46, INK, Vector2(220, 270 + i * 100), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+		typewrite(line, 34.0)
+		if career[i][1] != "":
+			await wait(1.0)
+			var aside := label(career[i][1], "serif", 46, GOLD, Vector2(1000, 266 + i * 100), 600, HORIZONTAL_ALIGNMENT_LEFT)
+			pop(aside)
+	await at_bar(20.75)
+	await fade_out_all(0.25)
+	say("One Piece numa interface profissional?", "serif", 78, INK, 380)
+	await wait(1.8)
+	var lindo := label("PERFEITAMENTE LINDO, RISOS.", "black", 92, GOLD, Vector2(-1, 520))
+	slam(lindo, "wood", -8.0, 8.0)
+	await at_bar(23.75)
+	await fade_out_all(0.25)
+
+	# C · A TRIPULAÇÃO (40–48 s) ----------------------------------------------------------------------
+	var crew := label("// A TRIPULAÇÃO", "mono", 32, CYAN, Vector2(-1, 140))
+	pop(crew)
+	say("criamos juntos:", "serif", 76, INK, 220)
+	var members := [["MESHY.AI", "modelos 3D", GOLD], ["CODEX", "agente de código · MCP", INK], ["CLAUDE", "agente de código · MCP", CYAN]]
+	for i in range(members.size()):
+		await at_bar(24.75 + i * 0.75)
+		var cx := 160.0 + i * 560.0
+		var box := Brackets.new()
+		box.color = members[i][2]
+		box.position = Vector2(cx, 380)
+		box.size = Vector2(500, 260)
+		box.pivot_offset = box.size * 0.5
+		stage.add_child(box)
+		pop(box, 0.6)
+		var who := label(members[i][0], "black", 80, members[i][2], Vector2(cx, 440), 500)
+		slam(who, "cannon_small", -12.0, 6.0)
+		var role := label(members[i][1], "mono", 28, MIST, Vector2(cx, 560), 500)
+		pop(role)
+	await wait(1.0)
+	var stack := label("+ Godot 4.7  ·  Cloudflare Workers  ·  API do GitHub", "mono", 32, INK, Vector2(-1, 740))
+	await typewrite(stack, 40.0)
+	await at_bar(28.25)
+	await fade_out_all(0.25)
+
+	# D · CONCEITO + ITERAÇÕES (48–63 s) ---------------------------------------------------------------
+	set_energy(1.1)
+	await chapter(0, "01", "CONCEITO", "tudo começou em 2D, no Meshy.ai")
 	var concepts := []
 	for file in DirAccess.get_files_at("res://References/2D"):
 		if file.ends_with(".png"):
 			concepts.append(file)
 	concepts.sort()
-	var head := label("17 CONCEITOS", "black", 90, INK, Vector2(-1, 90))
-	slam(head, "boom", -8.0, 6.0)
+	var head := label("OS CONCEITOS", "black", 84, INK, Vector2(-1, 90))
+	slam(head, "boom", -10.0, 6.0)
 	for i in range(concepts.size()):
-		var col := i % 6
-		var row := i / 6
-		var card := picture("res://References/2D/" + concepts[i], Rect2(200 + col * 260, 260 + row * 250, 236, 228), GOLD, true)
+		var card := picture("res://References/2D/" + concepts[i], Rect2(200 + (i % 6) * 260, 260 + (i / 6) * 250, 236, 228), GOLD, true)
 		fly_in(card, Vector2(rng.randf_range(-500, 500), 700), rng.randf_range(-25, 25))
-		sfx("blip", -14.0, 0.8 + i * 0.04)
+		sfx("blip", -15.0, 0.8 + i * 0.04)
 		await wait(BEAT * 0.5)
-	await at_bar(19.5)
-	await fade_out_all(0.2)
-	# o canhão em duas peças: o cano só sobe e desce
-	var carriage := picture("res://References/2D/Meshy_AI_cannon_carriage_corrected_concept.png", Rect2(1020, 250, 620, 520), GOLD)
-	var barrel := picture("res://References/2D/Meshy_AI_cannon_barrel_isolated_concept.png", Rect2(280, 250, 620, 520), GOLD)
-	fly_in(barrel, Vector2(-600, 0), -20)
-	fly_in(carriage, Vector2(600, 0), 20)
-	sfx("wood", -8.0)
-	await wait(BEAT * 1.5)
-	barrel.pivot_offset = Vector2(560, 330)
-	var tilt := stage.create_tween()
-	for k in range(2):
-		tilt.tween_property(barrel, "rotation_degrees", -14.0, BEAT).set_trans(Tween.TRANS_SINE)
-		tilt.tween_property(barrel, "rotation_degrees", 6.0, BEAT).set_trans(Tween.TRANS_SINE)
-	tilt.tween_property(barrel, "rotation_degrees", 0.0, BEAT * 0.5)
-	var rule := label("REGRA SAGRADA:", "black", 64, RED, Vector2(-1, 820))
-	slam(rule, "cannon_small", -8.0, 8.0)
-	var rule2 := label("o cano só sobe e desce. duas peças, sempre.", "mono", 34, INK, Vector2(-1, 905))
-	await typewrite(rule2, 48.0)
-	sfx("bell", -6.0)
-	await at_bar(22.5)
-	await fade_out_all(0.2)
-	var islands := [["island_2_experience_fortress", "FORTE", "Experiência"], ["island_3_formation_poneglyph", "PONEGLYPH", "Formação"], ["island_4_projects_shipwreck", "NAUFRÁGIO", "Projetos"], ["island_5_contact_lighthouse_snail", "FAROL", "Contato"]]
-	for i in range(islands.size()):
-		var tile := picture("res://References/2D/Meshy_AI_%s.png" % islands[i][0], Rect2(110 + i * 430, 240, 400, 420), CYAN)
-		fly_in(tile, Vector2(0, -600), rng.randf_range(-12, 12))
-		sfx("wood", -12.0, 0.9 + i * 0.08)
-		var tag_name := label(islands[i][1], "black", 44, GOLD, Vector2(110 + i * 430, 690), 400)
-		pop(tag_name)
-		var part := label("= " + islands[i][2], "mono", 28, INK, Vector2(110 + i * 430, 750), 400)
-		pop(part)
-		await wait(BEAT)
-	var each := label("uma ilha para cada seção do currículo", "serif", 58, INK, Vector2(-1, 860))
-	pop(each, 0.9)
-	await at_bar(25.0)
-	await fade_out_all(0.2)
+	await wait(1.2)
+	await fade_out_all(0.25)
+	# as versões reais no Meshy (refiz várias até ficar do meu jeito)
+	var tall := picture("res://Builds/MakingOf/assets/meshy_iterations.png", Rect2(250, 70, 540, 940), GOLD, true)
+	fly_in(tall, Vector2(-500, 0), -8)
+	sfx("whoosh", -10.0)
+	stage.create_tween().tween_property(tall, "scale", Vector2.ONE * 1.04, 6.0)
+	await wait(0.6)
+	var no1 := label("e não,", "serif", 84, INK, Vector2(900, 300), 900, HORIZONTAL_ALIGNMENT_LEFT)
+	pop(no1, 0.9)
+	await wait(0.9)
+	var no2 := label("não acertei de primeira.", "serif", 84, GOLD, Vector2(900, 400), 960, HORIZONTAL_ALIGNMENT_LEFT)
+	pop(no2, 0.9)
+	await wait(1.6)
+	var no3 := label("> refiz um monte de versão até ficar do meu jeito.", "mono", 34, CYAN, Vector2(904, 560), 900, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(no3, 38.0)
+	await at_bar(37.5)
+	await fade_out_all(0.25)
 
-	# E · CAP. 2 PROTÓTIPO (25–32) ------------------------------------------------------------------
-	await chapter(1, "02", "PROTÓTIPO", "Codex + Godot, conectados por MCP")
-	var term := terminal(Rect2(160, 160, 760, 300), "codex@godot ~")
-	var l1 := term_line(term, "$ gerar planeta --raio 200m", CYAN)
-	await typewrite(l1, 30.0)
-	var l2 := term_line(term, "ok. planeta gerado.", MIST)
-	await typewrite(l2, 60.0, false)
-	var jelly := picture("res://Documentation/Previews/overview.png", Rect2(980, 160, 780, 520), MAGENTA)
+	# E · PROTÓTIPO (63–70 s) ------------------------------------------------------------------------
+	await chapter(1, "02", "PROTÓTIPO", "primeira versão: Codex + Godot, via MCP")
+	var jelly := picture("res://Documentation/Previews/overview.png", Rect2(560, 120, 800, 470), MAGENTA)
 	pop(jelly, 0.7)
 	sfx("splash", -6.0)
 	var wob := stage.create_tween()
-	for k in range(4):
+	for k in range(5):
 		wob.tween_property(jelly, "scale", Vector2(1.07, 0.93), BEAT * 0.5).set_trans(Tween.TRANS_SINE)
 		wob.tween_property(jelly, "scale", Vector2(0.94, 1.06), BEAT * 0.5).set_trans(Tween.TRANS_SINE)
 	wob.tween_property(jelly, "scale", Vector2.ONE, BEAT * 0.5)
-	var gel := label("...parecia gelatina.", "serif", 92, MAGENTA, Vector2(-1, 760))
-	slam(gel, "", 0.0, 0.0)
+	var gel := label("o oceano em algum momento parecia uma gelatina.", "serif", 64, MAGENTA, Vector2(-1, 650), 1700)
+	pop(gel, 0.9)
 	glitch(0.6, 0.4)
-	await at_bar(30.0)
+	await wait(2.4)
+	var shh := label("(essa parte a gente finge que nunca aconteceu, rs)", "mono", 32, MIST, Vector2(-1, 760))
+	await typewrite(shh, 40.0, false)
+	await at_bar(43.0)
+	await fade_out_all(0.2)
+
+	# F · "EU ATÉ QUERIA FAZER ALGO SIMPLES..." — energia subindo (72–84 s) --------------------------------
+	set_energy(1.6)
+	say("eu até queria fazer algo simples...", "serif", 86, INK, 400)
+	await wait(2.2)
+	var but := label("MAS DAÍ, QUANDO VI:", "black", 90, GOLD, Vector2(-1, 540))
+	slam(but, "boom", -6.0, 12.0)
+	await at_bar(44.75)
 	await fade_out_all(0.15)
-	var storms := ["revision_sailing.png", "v2_island_2_day.png", "v3_island_3_night.png"]
-	for i in range(storms.size()):
-		var s := picture("res://Documentation/Previews/" + storms[i], Rect2(90 + i * 590, 200, 560, 360), MIST)
-		fly_in(s, Vector2(0, 500), rng.randf_range(-10, 10))
-		sfx("wave", -16.0, 1.2)
-		await wait(BEAT * 0.5)
-	shake(18.0, 0.8)
-	var storm := label("mar de tempestade... num portfólio?", "serif", 76, INK, Vector2(-1, 650))
-	pop(storm, 0.9)
-	await at_bar(31.5)
-	var calm := label("CALMA.", "black", 150, GOLD, Vector2(-1, 790))
-	slam(calm, "boom", -4.0, 20.0)
-	await at_bar(32.75)
-	await fade_out_all(0.2)
-
-	# F · CAP. 3 O PLANO (33–38) ------------------------------------------------------------------
-	await chapter(2, "03", "O PLANO", "um brief com tudo que tinha dado errado")
-	await at_bar(35.5)
-	var steps := ["ENTENDER", "PLANEJAR", "PERGUNTAR", "EXECUTAR"]
-	for i in range(steps.size()):
-		var x := 110.0 + i * 445.0
-		var s := label(steps[i], "black", 54, INK if i < 3 else GOLD, Vector2(x, 400), 400)
-		slam(s, "", 0.0, 4.0)
-		sfx("ping", -14.0, 1.0 + i * 0.15)
-		if i < 3:
-			var arrow := label("→", "mono", 64, CYAN, Vector2(x + 385, 395), 80)
-			pop(arrow)
-		await wait(BEAT)
-	var badge := label("CLAUDE + CODEX  ·  MCP  ·  GODOT 4.7", "mono", 38, CYAN, Vector2(-1, 620))
-	await typewrite(badge, 50.0)
-	var measured := label("antes de mexer em qualquer coisa, cada ilha foi medida dentro do Godot.", "sans", 34, MIST, Vector2(-1, 720))
-	pop(measured, 0.95)
-	await at_bar(38.5)
-	await fade_out_all(0.2)
-
-	# G · CAP. 4 CONSTRUÇÃO (38.5–53) — montagem + git log real ------------------------------------
-	await chapter(3, "04", "CONSTRUÇÃO", "oceano, vento, luzes, interface, web")
-	await at_bar(41.0)
-	var log_panel := terminal(Rect2(1300, 120, 560, 840), "git log --oneline")
-	var montage := [
-		["v10_ripple.png", "// ondas trocoidais: a mesma conta no shader e na física"],
-		["v6_bow_wave_port.png", "// folha d'água na proa, gotas, canhão que só inclina"],
-		["v7_logpose.png", "// log pose: a agulha aponta a próxima ilha"],
-		["winmask_island_sobre.png", "// isto é uma máscara de janelas. juro."],
-		["markers_0_z+.png", "// cada luz posicionada por raycast nos modelos"],
-		["v10_night_island_1.png", "// ...pra janela acender no lugar certo"],
-		["v10_overview.png", "// mapa 3D: o planeta gira, o universo fica"],
-		["v10_hud_island_panel.png", "// interface redesenhada umas cinco vezes"],
+	var log_panel := terminal(Rect2(1340, 110, 520, 860), "git log --oneline")
+	var features := [
+		["física e flutuação", "v10_waterline_bow.png"],
+		["vento na vela", "v8_sail.png"],
+		["espuma e spray na proa", "v6_bow_wave_port.png"],
+		["ciclo de dia e noite", "v10_night.png"],
+		["farol e fogueira", "v10_night_island_5.png"],
+		["mapa-múndi em 3D", "v10_overview.png"],
+		["Log Pose", "v7_logpose.png"],
+		["controles pro celular", "v10_mobile.png"],
 	]
-	for i in range(montage.size()):
-		await at_bar(41.0 + i * 1.5)
-		var shot := picture("res://Documentation/Previews/" + montage[i][0], Rect2(60, 140, 1180, 660), CYAN)
-		fly_in(shot, Vector2(-300 if i % 2 == 0 else 300, 0), -6.0 if i % 2 == 0 else 6.0)
-		sfx("whoosh", -16.0, 1.3)
-		stage.create_tween().tween_property(shot, "scale", Vector2.ONE * 1.05, BAR * 1.5)
-		var cap := label(montage[i][1], "mono", 30, GOLD, Vector2(64, 830), 1180, HORIZONTAL_ALIGNMENT_LEFT)
-		typewrite(cap, 70.0, false)
+	for i in range(features.size()):
+		var shot := picture("res://Documentation/Previews/" + features[i][1], Rect2(60, 110, 1240, 640), CYAN)
+		shot.modulate.a = 1.0
+		fly_in(shot, Vector2(-260 if i % 2 == 0 else 260, 0), -5.0 if i % 2 == 0 else 5.0)
+		stage.create_tween().tween_property(shot, "scale", Vector2.ONE * 1.06, BEAT * 2.0)
+		var word := outlined(label(features[i][0].to_upper(), "black", 74, INK, Vector2(70, 790), 1260, HORIZONTAL_ALIGNMENT_LEFT))
+		slam(word, "whoosh", -16.0, 5.0)
 		var commit := term_line(log_panel, GIT_LOG[i], CYAN if i % 2 == 0 else INK, 22)
-		typewrite(commit, 80.0, true)
-		await wait(BAR * 1.5 - 0.35)
-		stage.create_tween().tween_property(shot, "modulate:a", 0.0, 0.2)
-		stage.create_tween().tween_property(cap, "modulate:a", 0.0, 0.2)
-	var last := term_line(log_panel, GIT_LOG[8], GOLD, 22)
-	typewrite(last, 80.0, true)
-	await at_bar(53.25)
+		typewrite(commit, 90.0, false)
+		sfx("key", -12.0)
+		await wait(BEAT * 2.0)
+		shot.queue_free()
+		word.queue_free()
+	var target := picture("res://Documentation/Previews/v10_hud_race.png", Rect2(60, 110, 1240, 640), RED)
+	pop(target, 0.8)
+	var race := outlined(label("E UM DESAFIO DE CANHÃO COM 20 ALVOS.", "black", 64, GOLD, Vector2(70, 790), 1260, HORIZONTAL_ALIGNMENT_LEFT))
+	slam(race, "cannon", -4.0, 22.0)
+	do_flash(Color(1, 1, 1, 0.6), 0.3)
+	await wait(BAR * 1.25)
 	await fade_out_all(0.2)
+	var science := label("até artigo científico sobre ondas trocoidais eu li.", "serif", 70, INK, Vector2(-1, 360), 1700)
+	pop(science, 0.9)
+	await wait(2.4)
+	var reddit := label("+ altos vídeos de tutorial + muito Reddit", "mono", 38, CYAN, Vector2(-1, 520))
+	await typewrite(reddit, 36.0)
+	await at_bar(50.5)
+	await fade_out_all(0.25)
 
-	# H · CAP. 5 O QUE DEU ERRADO (53.5–64) ----------------------------------------------------------
+	# G · DEU ERRADO — o vale da música, ritmo de leitura (85–103 s) ---------------------------------------------
+	set_energy(0.6)
 	grid.tint = RED
-	await chapter(4, "05", "DEU ERRADO", "spoiler: muita coisa")
-	await at_bar(56.0)
-	sfx("fuse", -10.0)
+	await chapter(2, "03", "DEU ERRADO", "muita coisa, antes de começar a dar certo")
+	sfx("fuse", -12.0)
 	var fails := [
-		["O NAVIO AFUNDAVA", "medi a linha d'água: -0,38 -> +0,05"],
-		["O CLOUDFLARE CORTAVA O JOGO", "o navegador monta o pacote em partes"],
-		["NO CELULAR, TUDO BRANCO", "o cache do Godot pulava a importação"],
-		["UM CELULAR TRAVOU INTEIRO", "versão leve + gráficos que se ajustam sozinhos"],
+		["O NAVIO AFUNDAVA.", "medi a linha d'água: -0,38 -> +0,05"],
+		["O CLOUDFLARE CORTAVA O JOGO NO MEIO.", "agora o navegador monta o jogo em partes"],
+		["NO CELULAR, TUDO BRANCO.", "o cache do Godot pulava a importação"],
+		["TEVE CELULAR QUE TRAVOU INTEIRO.", "versão leve + gráficos que se ajustam sozinhos"],
 	]
 	for i in range(fails.size()):
-		await at_bar(56.0 + i * 2.0)
 		var y := 170.0 + i * 205.0
-		var stamp := label("ERRO", "mono", 30, DEEP, Vector2(160, y + 16), 120)
 		var stamp_bg := ColorRect.new()
 		stamp_bg.color = RED
 		stamp_bg.position = Vector2(150, y + 12)
 		stamp_bg.size = Vector2(110, 46)
 		stage.add_child(stamp_bg)
-		stage.move_child(stamp_bg, stamp.get_index())
 		pop(stamp_bg, 1.6)
-		var fail := label(fails[i][0], "black", 64, INK, Vector2(300, y), 1500, HORIZONTAL_ALIGNMENT_LEFT)
-		slam(fail, "explosion", -10.0, 18.0)
-		glitch(0.8, 0.35)
+		var stamp := label("ERRO", "mono", 30, DEEP, Vector2(160, y + 16), 120)
+		pop(stamp, 1.0)
+		var fail := label(fails[i][0], "black", 60, INK, Vector2(300, y), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+		slam(fail, "explosion", -12.0, 16.0)
+		glitch(0.7, 0.35)
 		await wait(BAR)
-		var fix := label("✓  " + fails[i][1], "mono", 32, GOLD, Vector2(304, y + 92), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+		var fix := label("✓  " + fails[i][1], "mono", 32, GOLD, Vector2(304, y + 90), 1500, HORIZONTAL_ALIGNMENT_LEFT)
 		sfx("bell", -6.0, 1.0 + i * 0.06)
-		await typewrite(fix, 70.0, false)
-	await at_bar(64.0)
-	await fade_out_all(0.2)
+		await typewrite(fix, 50.0, false)
+		await wait(BAR * 1.0)
+	await at_bar(61.0)
+	await fade_out_all(0.25)
 	grid.tint = CYAN
 
-	# I · NÚMEROS (64–69) ---------------------------------------------------------------------------
-	var numbers := [[4, 4, "DIAS"], [23, 23, "COMMITS"], [98, 98, "CAPTURAS DE TESTE"], [70, 20, "MB NO CELULAR (70 → 20)"], [0, 0, "MODELOS 3D REFEITOS"]]
-	var nk := label("// EM NÚMEROS", "mono", 30, CYAN, Vector2(-1, 110))
-	pop(nk)
-	for i in range(numbers.size()):
-		await at_bar(64.25 + i * 0.75)
-		var y := 200.0 + i * 160.0
-		var value := label("0", "black", 110, GOLD, Vector2(160, y), 560, HORIZONTAL_ALIGNMENT_RIGHT)
-		var what := label(numbers[i][2], "mono", 40, INK, Vector2(780, y + 44), 1100, HORIZONTAL_ALIGNMENT_LEFT)
-		pop(what)
-		var from: int = numbers[i][0] if numbers[i][0] != numbers[i][1] else 0
-		var to: int = numbers[i][1]
-		var setter := func(v: float): value.text = str(int(round(v)))
-		stage.create_tween().tween_method(setter, float(from), float(to), BEAT * 1.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-		slam(value, "blip", -8.0, 4.0)
-	await at_bar(68.5)
+	# H · "MAS AINDA PRECISAVA SER UM PORTFÓLIO" (103–110 s) -------------------------------------------------
+	set_energy(1.0)
+	say("só que isso ainda precisava ser um portfólio.", "serif", 72, INK, 250, 1700)
+	await wait(2.2)
+	var duties := ["> cartão profissional enquanto o 3D carrega", "> visita guiada pra quem não quer pilotar", "> versão só texto pra conexão ruim"]
+	for i in range(duties.size()):
+		var d := label(duties[i], "mono", 38, CYAN if i % 2 == 0 else INK, Vector2(300, 440 + i * 90), 1400, HORIZONTAL_ALIGNMENT_LEFT)
+		typewrite(d, 48.0)
+		await wait(BAR * 0.75)
+	await at_bar(65.5)
 	await fade_out_all(0.2)
 
-	# J · O RESULTADO — gameplay real (69–87) ---------------------------------------------------------
-	await at_bar(69.0)
+	# I · O RESULTADO — gameplay real no pico da música (110–143 s) --------------------------------------------
+	set_energy(1.8)
 	var result := label("O RESULTADO", "black", 190, INK, Vector2(-1, 420))
 	slam(result, "cannon", -2.0, 30.0)
 	do_flash(PARCH, 0.4)
-	await at_bar(70.0)
+	await at_bar(66.5)
 	await fade_out_all(0.1)
 	world._start_sailing()
 	world.ship.controls_override = true
@@ -832,90 +872,90 @@ func run() -> void:
 	wave_wipe(CYAN, 0.3, 0.0, 0.45)
 	await wait(0.31)
 	grid.modulate.a = 0.0
-	var rec := label("● AO VIVO  ·  GAMEPLAY REAL", "mono", 26, RED, Vector2(70, 60), 900, HORIZONTAL_ALIGNMENT_LEFT)
-	rec.add_theme_color_override("font_outline_color", DEEP)
-	rec.add_theme_constant_override("outline_size", 8)
-	live_caption("NAVEGUE.", "> W A S D  ·  joystick no celular")
-	await at_bar(72.5)
+	var rec := outlined(label("● AO VIVO  ·  GAMEPLAY REAL", "mono", 26, RED, Vector2(70, 60), 900, HORIZONTAL_ALIGNMENT_LEFT), 8)
+	live_caption("NAVEGUE.", "> física e flutuação sincronizadas com as ondas")
+	await at_bar(69.0)
 	await _clear_captions(rec)
 	world.ship.test_controls = Vector3(0.6, 0.0, 0)
 	world.naval.call("fire")
-	live_caption("ATIRE.", "> canhão de verdade, física de verdade")
-	await at_bar(75.0)
+	live_caption("ATIRE.", "> canhão de verdade, splash de verdade")
+	await at_bar(71.5)
 	await _clear_captions(rec)
 	world.ship.test_controls = Vector3.ZERO
 	world.toggle_map()
 	await wait(1.6)
-	live_caption("GIRE O MUNDO.", "> mapa 3D do planeta")
+	live_caption("GIRE O MUNDO.", "> mapa-múndi em 3D")
 	var spin_end := now() + BAR * 1.6
 	while now() < spin_end:
 		await process_frame
 		world.camera.drag_orbit(Vector2(-9, 6))
-	await at_bar(78.0)
+	await at_bar(74.5)
 	await _clear_captions(rec)
-	var visits := [[1, "EXPERIÊNCIA.", "> cada ilha, uma seção do currículo"], [3, "PROJETOS.", "> direto da API do GitHub, sempre atualizado"], [4, "CONTATO.", "> e um Den Den Mushi no farol"]]
+	var visits := [[1, "EXPERIÊNCIA.", "> cada ilha, uma parte do currículo"], [3, "PROJETOS.", "> direto da API do GitHub, sempre atualizado"], [4, "CONTATO.", "> com Den Den Mushi no farol, claro"]]
 	for v in visits:
 		world.hud.island_pressed.emit(v[0])
 		sfx("whoosh", -14.0)
-		await wait(1.6)
-		if not world.hud.island_panel.visible:
-			world.hud.show_island(v[0], false)
+		await wait(2.3)
+		# Garante o painel da ilha certa (a visita pode ter aberto outra no caminho).
+		world.hud.show_island(v[0], false)
 		live_caption(v[1], v[2])
-		await wait(BAR * 2.0 - 1.6)
+		await wait(BAR * 2.5 - 2.3)
 		await _clear_captions(rec)
 	world.select_time("night")
 	live_caption("E DE NOITE...", "> o farol acende")
-	await at_bar(87.5)
+	await at_bar(84.5)
 	await _clear_captions(rec)
 	rec.queue_free()
-	await show_grid(true, 0.3)
+	grid.modulate.a = 1.0
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("World"), -16.0)
 
-	# K · EU NO PROCESSO (88–93) -----------------------------------------------------------------------
-	await chapter(5, "06", "EU NO PROCESSO", "a parte que não aparece no código")
-	await at_bar(90.5)
-	var lines := [["escrevi o brief.", INK], ["aprovei cada asset.", INK], ["testei cada versão — no PC e no celular.", INK], ["disse \"não\" muitas vezes.", GOLD]]
-	for i in range(lines.size()):
-		var l := label(lines[i][0], "serif", 76, lines[i][1], Vector2(-1, 210 + i * 130))
-		pop(l, 0.85)
-		sfx("blip", -12.0, 1.0 + i * 0.1)
-		await wait(BEAT * 1.5)
-	await wait(BEAT)
-	var ai := label("A IA PROGRAMOU COMIGO. AS DECISÕES FORAM MINHAS.", "black", 58, CYAN, Vector2(-1, 780), 1800)
-	slam(ai, "boom", -6.0, 10.0)
-	await at_bar(95.0)
-	await fade_out_all(0.2)
+	# J · FECHAMENTO (142–152 s) -------------------------------------------------------------------------
+	set_energy(1.2)
+	say("no fim, acho que isso mostra muito melhor quem eu sou", "serif", 68, INK, 300, 1700)
+	await wait(2.6)
+	say("do que uma página estática.", "serif", 68, GOLD, 400)
+	await at_bar(87.5)
+	await fade_out_all(0.25)
+	say("e, convenhamos, se é pra falar de mim,", "serif", 70, INK, 330, 1700)
+	await wait(2.4)
+	var adventure := label("QUE SEJA CURTINDO ALTAS AVENTURAS!", "black", 84, GOLD, Vector2(-1, 470), 1800)
+	slam(adventure, "cannon", -4.0, 24.0)
+	do_flash(PARCH, 0.4)
+	await at_bar(90.75)
+	await fade_out_all(0.25)
 
-	# L · ASSINATURA (95–100) ---------------------------------------------------------------------------
+	# K · ASSINATURA (152–163 s) -------------------------------------------------------------------------
 	route.visible = true
 	route.modulate.a = 0.35
 	route.progress = 5.0
 	route.reached = 6
 	for i in range(6):
 		route.ping(i)
-	sfx("cannon", -2.0)
-	do_flash(PARCH, 0.5)
-	shake(24.0, 0.5)
-	var who := label("Pedro D. Ferreira", "serif", 150, INK, Vector2(-1, 280))
-	slam(who, "", 0.0, 0.0)
-	await wait(BEAT)
-	var role := label("Data Engineer & Cybersecurity Student", "roman", 54, GOLD, Vector2(-1, 470))
-	pop(role)
-	await wait(BEAT)
-	var go := label("> zarpe:", "mono", 32, MIST, Vector2(-1, 600))
-	pop(go)
-	var url := label("portfolio-data-cybersecurity.data-pedutraferreira.workers.dev", "mono", 40, CYAN, Vector2(-1, 650), 1800)
-	await typewrite(url, 55.0)
-	var credits := label("Godot  ·  Meshy.ai  ·  Claude + Codex (MCP)  ·  Cloudflare", "sans", 28, MIST, Vector2(-1, 820))
-	pop(credits)
-	await at_bar(99.5)
+	sfx("ping", -8.0)
+	var me := label("Pedro D. Ferreira", "serif", 150, INK, Vector2(-1, 200))
+	pop(me, 0.85)
+	var role2 := label("Data Engineer & Cybersecurity Student", "roman", 52, GOLD, Vector2(-1, 390))
+	pop(role2)
+	await wait(1.0)
+	var li := label("in   Pedro D. Ferreira", "mono", 44, INK, Vector2(560, 530), 900, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(li, 34.0)
+	var gh := label("gh   github.com/DATAdotPDF", "mono", 44, CYAN, Vector2(560, 610), 900, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(gh, 34.0)
+	var code := label("código, arquitetura e o processo completo estão lá", "sans", 30, MIST, Vector2(-1, 720))
+	pop(code)
+	var made := label("feito junto com Meshy.ai · Codex · Claude  —  em Godot", "sans", 28, MIST, Vector2(-1, 780))
+	pop(made)
+	await at_bar(94.0)
+	var otaku := label("#otakusnotopo", "black", 96, GOLD, Vector2(-1, 880))
+	slam(otaku, "cannon", -3.0, 20.0)
+	await at_bar(95.75)
 	var out := ColorRect.new()
 	out.color = Color.BLACK
 	out.size = SCREEN
 	out.modulate.a = 0.0
 	stage.add_child(out)
 	stage.create_tween().tween_property(out, "modulate:a", 1.0, BAR)
-	await at_bar(101.0)
+	await at_bar(97.0)
 	quit()
 
 func _clear_captions(keep: Node) -> void:
