@@ -81,6 +81,7 @@ var hud: CanvasLayer
 var intro_orbit := false
 var space_view := 0.0
 var map_beacons: Array[MeshInstance3D] = []
+var space_backdrop: CanvasLayer
 var route_line: MeshInstance3D
 var log_pose: Node3D
 @export_group("Editor Planet")
@@ -127,7 +128,7 @@ func _ready() -> void:
 	_build_wind_streaks()
 	_setup_cloud_shadows()
 	_build_map_beacons()
-	sky_material.set_shader_parameter("space_panorama", load("res://Shaders/Meshy_AI_deep-space-panoramic-skybox.png"))
+	_build_space_backdrop()
 	route_line = RouteLineScript.new()
 	route_line.name = "RouteLine"
 	route_line.ship = ship
@@ -545,6 +546,22 @@ func _build_lighting() -> void:
 	moon.light_color = Color(0.43,0.59,0.86)
 
 ## Colunas de luz sobre as ilhas, só na visão do mapa (as ilhas são pequenas no globo).
+## Imagem de espaço profundo atrás da cena 3D (só no mapa), preenchendo a tela sem esticar.
+func _build_space_backdrop() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "SpaceBackdrop"
+	layer.layer = -100
+	add_child(layer)
+	var image := TextureRect.new()
+	image.texture = load("res://Shaders/Meshy_AI_deep-space-panoramic-skybox.png")
+	image.set_anchors_preset(Control.PRESET_FULL_RECT)
+	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(image)
+	space_backdrop = layer
+	layer.visible = false
+
 func _build_map_beacons() -> void:
 	for island in islands:
 		var beacon := MeshInstance3D.new()
@@ -839,6 +856,10 @@ func _process(delta: float) -> void:
 	# Visão do globo (mapa): sem névoa nem nuvens, para o planeta inteiro aparecer.
 	space_view = smoothstep(planet_radius * 1.15, planet_radius * 1.6, camera.global_position.length())
 	sky_material.set_shader_parameter("space_view", space_view)
+	# Mapa: fundo de espaço fixo em tela cheia; fora dele, o céu normal.
+	var in_space := space_view > 0.5
+	space_backdrop.visible = in_space
+	environment.background_mode = Environment.BG_CANVAS if in_space else Environment.BG_SKY
 	environment.fog_density = 0.0022 * (1.0 - space_view)
 	for beacon in map_beacons:
 		beacon.visible = space_view > 0.3

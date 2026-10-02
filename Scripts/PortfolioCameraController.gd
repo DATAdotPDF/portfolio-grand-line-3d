@@ -101,7 +101,7 @@ func drag_orbit(relative: Vector2) -> void:
 	elif state == CameraState.ISLAND_ORBIT:
 		orbit_angle -= relative.x * 0.005
 	elif state == CameraState.PLANET_OVERVIEW:
-		# Giro livre em 3D (trackball): horizontal gira em volta do 'cima' da tela, vertical em volta da 'direita'.
+		# Giro do globo (trackball). Com o fundo fixo na tela, girar a vista equivale a girar o planeta.
 		overview_dragged = true
 		overview_direction = overview_direction.rotated(global_basis.y.normalized(), -relative.x * 0.004)
 		overview_direction = overview_direction.rotated(global_basis.x.normalized(), -relative.y * 0.004).normalized()

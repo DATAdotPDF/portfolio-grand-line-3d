@@ -10,7 +10,10 @@ uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 // 0 = no mar, 1 = vendo o globo do espaço (mapa): nuvens e névoa somem.
 uniform float space_view : hint_range(0.0, 1.0) = 0.0;
 // Panorama de espaço profundo (equiretangular) usado na visão do mapa.
-uniform sampler2D space_panorama : source_color, filter_linear, repeat_enable;
+uniform sampler2D space_panorama : source_color, filter_linear, repeat_disable;
+// Proporção da tela (largura/altura) e da imagem: o fundo preenche a tela sem esticar ('cover').
+uniform float screen_aspect = 1.7778;
+uniform float image_aspect = 1.7917;
 
 group_uniforms SkyGradients;
 uniform vec3 day_zenith_color : source_color = vec3(0.34, 0.6, 0.95);
@@ -138,9 +141,5 @@ void sky() {
 			float horizon = smoothstep(0.02, 0.2, dir.y);
 			color = mix(color, cloud_col, cover * horizon * cloud_fade);
 		}
-	}	if (space_view > 0.001) {
-		vec2 uv = vec2(atan(EYEDIR.z, EYEDIR.x) / 6.2831853 + 0.5, acos(clamp(EYEDIR.y, -1.0, 1.0)) / 3.14159265);
-		color = mix(color, texture(space_panorama, uv).rgb, space_view);
-	}
-	COLOR = color;
+	}	COLOR = color;
 }
