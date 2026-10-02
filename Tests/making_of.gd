@@ -973,30 +973,143 @@ func run() -> void:
 	quit()
 
 ## OPÇÃO 2 — "Open Sea Quest 2" (≈143,2 BPM; intro quieta até 3,5 s; vale em 75–105 s; pico em 165–175 s).
-## Roteiro original (terminal → título → referências → capítulos → resultado → eu → assinatura),
-## escrito no jeito do Pedro de falar.
+## Espera até o segundo s da música (âncora: só para os momentos que precisam cair no pico).
+func at_time(s: float) -> void:
+	while now() < s:
+		await process_frame
+
+## Janela de erro de sistema (o erro "toma a tela", como um erro de verdade).
+func error_window(title_text: String, message: String, rect: Rect2, big := false) -> PanelContainer:
+	var panel := PanelContainer.new()
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color("12060a")
+	box.border_color = RED
+	box.set_border_width_all(3)
+	box.set_content_margin_all(0)
+	box.shadow_color = Color(0, 0, 0, 0.6)
+	box.shadow_size = 24
+	panel.add_theme_stylebox_override("panel", box)
+	panel.position = rect.position
+	panel.size = rect.size
+	panel.pivot_offset = rect.size * 0.5
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 0)
+	panel.add_child(column)
+	var bar := PanelContainer.new()
+	var bar_box := StyleBoxFlat.new()
+	bar_box.bg_color = RED
+	bar_box.set_content_margin_all(10)
+	bar_box.content_margin_left = 18
+	bar.add_theme_stylebox_override("panel", bar_box)
+	column.add_child(bar)
+	var bar_text := Label.new()
+	bar_text.text = "[!]  " + title_text + "                                                          [x]"
+	bar_text.clip_text = true
+	bar_text.add_theme_font_override("font", fonts.mono)
+	bar_text.add_theme_font_size_override("font_size", 24 if big else 20)
+	bar_text.add_theme_color_override("font_color", DEEP)
+	bar.add_child(bar_text)
+	var body := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		body.add_theme_constant_override("margin_" + side, 28 if big else 20)
+	column.add_child(body)
+	var msg := Label.new()
+	msg.text = message
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.add_theme_font_override("font", fonts.black if big else fonts.mono)
+	msg.add_theme_font_size_override("font_size", 80 if big else 30)
+	msg.add_theme_color_override("font_color", INK)
+	body.add_child(msg)
+	stage.add_child(panel)
+	pop(panel, 0.85)
+	return panel
+
+## Etiqueta (ferramenta/linguagem) com borda.
+func tag(text: String, color: Color, pos: Vector2) -> PanelContainer:
+	var panel := PanelContainer.new()
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(DEEP, 0.85)
+	box.border_color = color
+	box.set_border_width_all(2)
+	box.set_content_margin_all(12)
+	box.content_margin_left = 22
+	box.content_margin_right = 22
+	panel.add_theme_stylebox_override("panel", box)
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", fonts.mono)
+	l.add_theme_font_size_override("font_size", 30)
+	l.add_theme_color_override("font_color", color)
+	panel.add_child(l)
+	panel.position = pos
+	stage.add_child(panel)
+	pop(panel, 0.5)
+	return panel
+
+## Onda trocoidal (Gerstner) desenhada ao vivo: o estudo que virou o oceano do jogo.
+class Trochoid extends Control:
+	var t := 0.0
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+	func _draw() -> void:
+		var layers := [[60.0, 0.010, 1.4, Color("38f2ff"), 0.0], [34.0, 0.017, 2.1, Color("e8c172"), 120.0], [18.0, 0.031, 2.9, Color("eef1f6", 0.5), 210.0]]
+		for layer in layers:
+			var amp: float = layer[0]
+			var k: float = layer[1]
+			var w: float = layer[2]
+			var base: float = size.y * 0.5 + layer[4] - 120.0
+			var pts := PackedVector2Array()
+			var x0 := -40.0
+			while x0 < size.x + 40.0:
+				var phase := k * x0 - w * t
+				pts.append(Vector2(x0 - amp * sin(phase), base - amp * cos(phase)))
+				x0 += 6.0
+			draw_polyline(pts, layer[3], 4.0, true)
+			# partículas de água seguem órbitas circulares (a graça da trocoide)
+			for i in range(6):
+				var px := 160.0 + i * 300.0
+				var ph := k * px - w * t
+				var c := Vector2(px, base)
+				draw_arc(c, amp, 0, TAU, 32, Color(layer[3], 0.25), 1.5, true)
+				draw_circle(c + Vector2(-amp * sin(ph), -amp * cos(ph)), 6.0, layer[3])
+
 func run_option2() -> void:
 	grid.energy = 0.35
+	world.hud.visible = false
 
-	# A · ABERTURA (0–15 s): intro quieta, só terminal --------------------------------------------
+	# A · ABERTURA: terminal → ERRO toma a tela (0–10 s) -------------------------------------------
 	await wait(0.6)
-	var a1 := label("> abrindo portfolio_antigo.html", "mono", 44, CYAN, Vector2(220, 380), 1600, HORIZONTAL_ALIGNMENT_LEFT)
-	await typewrite(a1, 20.0)
-	await at_bar(2.0)
-	var a2 := label("> resultado: mais um site igualzinho aos outros", "mono", 44, MIST, Vector2(220, 455), 1600, HORIZONTAL_ALIGNMENT_LEFT)
-	await typewrite(a2, 28.0)
-	await at_bar(3.75)
-	var a3 := label("> nível de emoção: 2/10 (sendo generoso)", "mono", 44, INK, Vector2(220, 530), 1600, HORIZONTAL_ALIGNMENT_LEFT)
-	await typewrite(a3, 28.0)
-	await at_bar(5.5)
-	var a4 := label("ERRO: PORTFÓLIO SEM GRAÇA", "black", 92, RED, Vector2(220, 630), 1600, HORIZONTAL_ALIGNMENT_LEFT)
-	slam(a4, "", 0.0, 20.0)
-	glitch(1.0, 0.7)
-	await at_bar(7.0)
-	sfx("riser", -10.0)
-	await fade_out_all(0.3)
+	var a1 := label("> abrindo portfolio_antigo.html", "mono", 46, CYAN, Vector2(220, 420), 1600, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(a1, 18.0)
+	await at_time(3.6)
+	var a2 := label("> resultado: mais um site igualzinho aos outros", "mono", 46, INK, Vector2(220, 500), 1600, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(a2, 26.0)
+	await at_time(7.4)
+	# o erro toma a tela inteira
+	await fade_out_all(0.05)
+	grid.tint = RED
+	var takeover := ColorRect.new()
+	takeover.color = Color("2a0508")
+	takeover.size = SCREEN
+	stage.add_child(takeover)
+	do_flash(RED, 0.25)
+	sfx("explosion", -6.0)
+	glitch(1.0, 1.2)
+	shake(26.0, 0.5)
+	var crash := error_window("portfolio_antigo.html — erro fatal", "PORTFÓLIO SEM GRAÇA", Rect2(310, 260, 1300, 420), true)
+	var code := label("código 0x000B0R1NG  ·  o visitante dormiu na rolagem", "mono", 30, Color(INK, 0.8), Vector2(-1, 740))
+	pop(code)
+	await wait(0.9)
+	for i in range(3):
+		var echo := error_window("erro", "PORTFÓLIO SEM GRAÇA", Rect2(360 + i * 60, 300 + i * 50, 1300, 420), true)
+		echo.modulate = Color(1, 1, 1, 0.45)
+		sfx("glitch", -12.0, 1.0 + i * 0.2)
+		await wait(0.18)
+	await at_time(11.2)
+	await fade_out_all(0.1)
+	grid.tint = CYAN
 	set_energy(0.6)
-	await at_bar(7.5)
 	wave_wipe(CYAN, 0.45, 0.05, 0.55)
 	await wait(0.48)
 	say("e se, em vez de rolar a página,", "serif", 84, INK, 360)
@@ -1005,7 +1118,9 @@ func run_option2() -> void:
 	await at_bar(10.0)
 	await fade_out_all(0.25)
 
-	# B · TÍTULO + MUNDO AO VIVO (17–27 s) -----------------------------------------------------------
+	# B · TÍTULO (17–22 s) — por trás, a câmera já vai para o globo ---------------------------------------
+	world._leave_intro()
+	world.camera.show_overview()
 	do_flash(PARCH, 0.5)
 	sfx("cannon", -3.0)
 	shake(22.0, 0.4)
@@ -1022,44 +1137,62 @@ func run_option2() -> void:
 	var by := label("por Pedro D. Ferreira", "serif", 54, GOLD, Vector2(-1, 720))
 	pop(by)
 	await at_bar(13.0)
-	await fade_out_all(0.2)
-	wave_wipe(NAVY, 0.35, 0.0, 0.5)
-	await wait(0.37)
-	world.hud.visible = false
-	grid.modulate.a = 0.0
-	var frame := Brackets.new()
-	frame.position = Vector2(40, 40)
-	frame.size = SCREEN - Vector2(80, 80)
-	stage.add_child(frame)
-	var live := outlined(label("● AO VIVO  ·  GODOT 4.7", "mono", 26, RED, Vector2(80, 64), 900, HORIZONTAL_ALIGNMENT_LEFT), 8)
-	pop(live)
-	await wait(0.6)
-	var world_line := outlined(label("um planeta. uma chalupa. cinco ilhas.", "black", 64, INK, Vector2(110, 760), 1700, HORIZONTAL_ALIGNMENT_LEFT))
-	pop(world_line, 0.9)
-	await wait(2.2)
-	var cv := outlined(label("> e o meu currículo espalhado nelas", "mono", 36, GOLD, Vector2(114, 860), 1700, HORIZONTAL_ALIGNMENT_LEFT), 8)
-	await typewrite(cv, 34.0, false)
-	await at_bar(16.0)
-	await fade_out_all(0.2)
-	world.hud.visible = true
-	grid.modulate.a = 1.0
+	await fade_out_all(0.15)
 
-	# C · REFERÊNCIAS (27–33 s) ------------------------------------------------------------------------
+	# C · UM PLANETA. / UMA CHALUPA. / CINCO ILHAS. (22–33 s) ------------------------------------------
+	wave_wipe(CYAN, 0.3, 0.0, 0.5)
+	await wait(0.32)
+	grid.modulate.a = 0.0
+	var planet := outlined(label("UM PLANETA.", "black", 170, INK, Vector2(-1, 780)), 22)
+	slam(planet, "boom", -4.0, 14.0)
+	var spin_until := now() + BAR * 2.0
+	while now() < spin_until:
+		await process_frame
+		world.camera.drag_orbit(Vector2(-4, 0.6))
+	# corte seco para o navio: a palavra cobre a viagem da câmera
+	grid.modulate.a = 1.0
+	await fade_out_all(0.05)
+	world._start_sailing()
+	world.ship.controls_override = true
+	world.ship.test_controls = Vector3(1, 0.15, 1)
+	do_flash(INK, 0.2)
+	var sloop_card := label("UMA CHALUPA.", "black", 170, GOLD, Vector2(-1, 420))
+	slam(sloop_card, "doppler", -8.0, 10.0)
+	await wait(BAR * 1.25)
+	await fade_out_all(0.08)
+	grid.modulate.a = 0.0
+	var sloop := outlined(label("UMA CHALUPA.", "black", 170, GOLD, Vector2(-1, 780)), 22)
+	pop(sloop, 1.0)
+	await wait(BAR * 1.25)
+	grid.modulate.a = 1.0
+	await fade_out_all(0.05)
+	world.ship.test_controls = Vector3.ZERO
+	do_flash(INK, 0.2)
+	var five := label("CINCO ILHAS.", "black", 150, INK, Vector2(-1, 120))
+	slam(five, "wood", -6.0, 10.0)
+	for i in range(5):
+		var shot := picture("res://Documentation/Previews/v10_island_%d.png" % (i + 1), Rect2(70 + i * 360, 380, 340, 420), GOLD)
+		fly_in(shot, Vector2(0, 520), rng.randf_range(-12, 12))
+		sfx("blip", -12.0, 0.9 + i * 0.08)
+		await wait(BEAT)
+	await wait(BAR * 1.0)
+	await fade_out_all(0.2)
+
+	# D · MINHAS INSPIRAÇÕES (34–41 s) ---------------------------------------------------------------
 	set_energy(0.9)
-	var guilty := label("// A CULPA É DELES:", "mono", 32, CYAN, Vector2(-1, 150))
-	pop(guilty)
+	var inspo := label("// MINHAS INSPIRAÇÕES", "mono", 32, CYAN, Vector2(-1, 150))
+	pop(inspo)
 	var refs := [["ONE PIECE", INK], ["WIND WAKER", GOLD], ["SEA OF THIEVES", CYAN], ["MONKEY ISLAND", INK], ["PIRATAS DO CARIBE", GOLD]]
 	for i in range(refs.size()):
-		await at_bar(16.5 + i * 0.5)
 		var r := label(refs[i][0], "black", 100, refs[i][1], Vector2(-1, 250 + i * 125))
 		slam(r, "wood", -12.0, 6.0)
-	await wait(0.8)
-	var naz := label("+ o portfólio do José Nazaré, que já abria direto no mar", "mono", 28, MIST, Vector2(-1, 905))
-	await typewrite(naz, 46.0, false)
-	await at_bar(20.25)
+		await wait(BEAT * 2.0)
+	var more := label("+ um monte de outras coisas e pessoas", "mono", 34, MIST, Vector2(-1, 900))
+	await typewrite(more, 36.0, false)
+	await wait(2.2)
 	await fade_out_all(0.2)
 
-	# D · 01 CONCEITO (34–50 s) ------------------------------------------------------------------------
+	# E · 01 CONCEITO (41–57 s) --------------------------------------------------------------------------
 	set_energy(1.1)
 	await chapter(0, "01", "CONCEITO", "primeiro em 2D, tudo no Meshy.ai")
 	var concepts := []
@@ -1079,190 +1212,177 @@ func run_option2() -> void:
 	var tall := picture("res://Builds/MakingOf/assets/meshy_iterations.png", Rect2(250, 70, 540, 940), GOLD, true)
 	fly_in(tall, Vector2(-500, 0), -8)
 	sfx("whoosh", -10.0)
-	stage.create_tween().tween_property(tall, "scale", Vector2.ONE * 1.04, 5.0)
+	stage.create_tween().tween_property(tall, "scale", Vector2.ONE * 1.04, 6.0)
 	await wait(0.5)
 	var sp1 := label("spoiler:", "mono", 40, CYAN, Vector2(900, 300), 900, HORIZONTAL_ALIGNMENT_LEFT)
 	pop(sp1)
 	await wait(0.7)
-	var sp2 := label("teve MUITA versão descartada", "serif", 76, INK, Vector2(900, 370), 960, HORIZONTAL_ALIGNMENT_LEFT)
+	var sp2 := label("até ficar satisfeito,", "serif", 80, INK, Vector2(900, 370), 960, HORIZONTAL_ALIGNMENT_LEFT)
 	pop(sp2, 0.9)
-	await wait(1.4)
-	var sp3 := label("até eu ficar feliz.", "serif", 76, GOLD, Vector2(900, 470), 960, HORIZONTAL_ALIGNMENT_LEFT)
+	await wait(1.3)
+	var sp3 := label("teve MUITO retrabalho!", "serif", 80, GOLD, Vector2(900, 475), 960, HORIZONTAL_ALIGNMENT_LEFT)
 	pop(sp3, 0.9)
-	await at_bar(28.75)
-	await fade_out_all(0.2)
-	var carriage := picture("res://References/2D/Meshy_AI_cannon_carriage_corrected_concept.png", Rect2(1020, 220, 620, 500), GOLD)
-	var barrel := picture("res://References/2D/Meshy_AI_cannon_barrel_isolated_concept.png", Rect2(280, 220, 620, 500), GOLD)
-	fly_in(barrel, Vector2(-600, 0), -20)
-	fly_in(carriage, Vector2(600, 0), 20)
-	sfx("wood", -8.0)
-	await wait(BEAT)
-	barrel.pivot_offset = Vector2(560, 320)
-	var tilt := stage.create_tween()
-	for k in range(2):
-		tilt.tween_property(barrel, "rotation_degrees", -14.0, BEAT).set_trans(Tween.TRANS_SINE)
-		tilt.tween_property(barrel, "rotation_degrees", 6.0, BEAT).set_trans(Tween.TRANS_SINE)
-	tilt.tween_property(barrel, "rotation_degrees", 0.0, BEAT * 0.5)
-	var rule := label("REGRA QUE EU NÃO ABRO MÃO:", "black", 58, RED, Vector2(-1, 790))
-	slam(rule, "cannon_small", -8.0, 8.0)
-	var rule2 := label("o cano só sobe e desce. duas peças, sempre.", "mono", 34, INK, Vector2(-1, 875))
-	await typewrite(rule2, 44.0)
-	sfx("bell", -6.0)
-	await at_bar(31.0)
+	await wait(2.8)
 	await fade_out_all(0.2)
 
-	# E · 02 PROTÓTIPO (50–62 s) ------------------------------------------------------------------------
-	await chapter(1, "02", "PROTÓTIPO", "a primeira versão saiu com o Codex")
-	var term := terminal(Rect2(160, 140, 760, 300), "codex@godot ~")
-	var t1 := term_line(term, "$ gerar planeta --raio 200m", CYAN)
-	await typewrite(t1, 30.0)
-	var t2 := term_line(term, "ok. planeta gerado.", MIST)
-	await typewrite(t2, 60.0, false)
-	var jelly := picture("res://Documentation/Previews/overview.png", Rect2(980, 140, 780, 500), MAGENTA)
+	# F · 02 PROTÓTIPO (57–75 s) ------------------------------------------------------------------------
+	await chapter(1, "02", "PROTÓTIPO", "primeiras versões")
+	var jelly := picture("res://Documentation/Previews/overview.png", Rect2(510, 110, 900, 520), MAGENTA)
 	pop(jelly, 0.7)
 	sfx("splash", -6.0)
 	var wob := stage.create_tween()
-	for k in range(5):
+	for k in range(6):
 		wob.tween_property(jelly, "scale", Vector2(1.07, 0.93), BEAT * 0.5).set_trans(Tween.TRANS_SINE)
 		wob.tween_property(jelly, "scale", Vector2(0.94, 1.06), BEAT * 0.5).set_trans(Tween.TRANS_SINE)
 	wob.tween_property(jelly, "scale", Vector2.ONE, BEAT * 0.5)
-	var gel := label("o oceano virou uma gelatina azul.", "serif", 76, MAGENTA, Vector2(-1, 700))
+	var gel := label("o oceano virou uma gelatina azul.", "serif", 76, MAGENTA, Vector2(-1, 690))
 	pop(gel, 0.9)
 	glitch(0.6, 0.4)
-	await wait(2.0)
-	var nope := label("lindo? não.", "black", 70, INK, Vector2(-1, 810))
+	await wait(2.3)
+	var nope := label("lindo? não.", "black", 76, INK, Vector2(-1, 800))
 	slam(nope, "boom", -8.0, 10.0)
-	await at_bar(36.0)
-	await fade_out_all(0.15)
-	var storms := ["revision_sailing.png", "v2_island_2_day.png", "v3_island_3_night.png"]
-	for i in range(storms.size()):
-		var s := picture("res://Documentation/Previews/" + storms[i], Rect2(90 + i * 590, 200, 560, 360), MIST)
-		fly_in(s, Vector2(0, 500), rng.randf_range(-10, 10))
-		sfx("wave", -16.0, 1.2)
-		await wait(BEAT * 0.5)
-	shake(18.0, 0.8)
-	say("mar de tempestade num portfólio...", "serif", 76, INK, 640)
-	await wait(2.0)
-	var breathe := label("RESPIRA, PEDRO.", "black", 120, GOLD, Vector2(-1, 760))
-	slam(breathe, "boom", -4.0, 18.0)
-	await at_bar(39.0)
+	await wait(2.4)
+	await fade_out_all(0.2)
+	# testado várias e várias vezes: o mural das 98 capturas de teste
+	var tested := label("testei, quebrei e testei de novo. várias e várias vezes.", "serif", 64, INK, Vector2(-1, 70), 1800)
+	pop(tested, 0.9)
+	var previews := []
+	for file in DirAccess.get_files_at("res://Documentation/Previews"):
+		if file.ends_with(".png"):
+			previews.append(file)
+	var count := label("0", "black", 120, GOLD, Vector2(-1, 820))
+	var counted := label("CAPTURAS DE TESTE", "mono", 34, CYAN, Vector2(-1, 960))
+	pop(counted)
+	for i in range(previews.size()):
+		var thumb := TextureRect.new()
+		thumb.texture = ImageTexture.create_from_image(Image.load_from_file(ProjectSettings.globalize_path("res://Documentation/Previews/" + previews[i])))
+		thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		thumb.clip_contents = true
+		thumb.position = Vector2(55 + (i % 14) * 130, 190 + (i / 14) * 88)
+		thumb.size = Vector2(124, 82)
+		stage.add_child(thumb)
+		pop(thumb, 0.3)
+		count.text = str(i + 1)
+		if i % 4 == 0:
+			sfx("key", -10.0, 0.9 + (i % 12) * 0.03)
+		if i % 2 == 1:
+			await process_frame
+	slam(count, "bell", -6.0, 6.0)
+	await wait(2.2)
 	await fade_out_all(0.2)
 
-	# F · 03 O PLANO (64–73 s) --------------------------------------------------------------------------
-	await chapter(2, "03", "O PLANO", "parei tudo e escrevi um brief com cada coisa que deu errado")
+	# G · 03 O PLANO (75–84 s) -------------------------------------------------------------------------
+	await chapter(2, "03", "O PLANO", "um brief com tudo que deu errado")
 	var steps := ["ENTENDER", "PLANEJAR", "PERGUNTAR", "EXECUTAR"]
 	for i in range(steps.size()):
 		var x := 110.0 + i * 445.0
-		var s := label(steps[i], "black", 54, INK if i < 3 else GOLD, Vector2(x, 380), 400)
+		var s := label(steps[i], "black", 54, INK if i < 3 else GOLD, Vector2(x, 400), 400)
 		slam(s, "", 0.0, 4.0)
 		sfx("ping", -14.0, 1.0 + i * 0.15)
 		if i < 3:
-			var arrow := label("→", "mono", 64, CYAN, Vector2(x + 385, 375), 80)
+			var arrow := label("→", "mono", 64, CYAN, Vector2(x + 385, 395), 80)
 			pop(arrow)
 		await wait(BEAT)
-	var crew_in := label("aí o Claude entrou na tripulação:", "serif", 64, INK, Vector2(-1, 560))
+	await wait(0.4)
+	var crew_in := label("aí o Claude entrou na tripulação.", "serif", 72, INK, Vector2(-1, 600))
 	pop(crew_in, 0.9)
-	await wait(1.8)
-	var measure := label("> mediu cada ilha antes de encostar em qualquer coisa", "mono", 34, CYAN, Vector2(-1, 670))
-	await typewrite(measure, 40.0)
-	await at_bar(43.5)
+	await wait(2.8)
 	await fade_out_all(0.2)
 
-	# G · 04 CONSTRUÇÃO — montagem + git log (73–88 s) -----------------------------------------------------
-	set_energy(1.4)
+	# H · 04 CONSTRUÇÃO — montagem com respiro + git log (84–106 s) -------------------------------------------
+	set_energy(1.2)
 	await chapter(3, "04", "CONSTRUÇÃO", "oceano, vento, luz, interface, web")
 	var log_panel := terminal(Rect2(1300, 120, 560, 840), "git log --oneline")
 	var montage := [
-		["v10_ripple.png", "// ondas de verdade: a mesma conta no shader e na física"],
-		["v6_bow_wave_port.png", "// spray na proa, porque sim"],
-		["v7_logpose.png", "// Log Pose apontando a próxima ilha (claro)"],
-		["winmask_island_sobre.png", "// isso é uma máscara de janelas. confia."],
-		["markers_0_z+.png", "// cada luz posicionada por raycast"],
-		["v10_night_island_1.png", "// pra janelinha acender no lugar certo"],
-		["v10_overview.png", "// o planeta gira, o universo não"],
-		["v10_hud_island_panel.png", "// interface refeita umas 5 vezes (no mínimo)"],
+		["v10_ripple.png", "ondas trocoidais: a mesma conta no shader e na física do barco"],
+		["v6_bow_wave_port.png", "espuma e spray na proa, com o vento mexendo na vela"],
+		["v10_night_island_1.png", "luzes posicionadas por raycast: cada janela acende no lugar certo"],
+		["v10_overview.png", "o mapa é o próprio planeta, e gira na sua mão"],
+		["v10_hud_island_panel.png", "interface refeita várias e várias vezes, até dar certo"],
 	]
 	for i in range(montage.size()):
-		var shot := picture("res://Documentation/Previews/" + montage[i][0], Rect2(60, 140, 1180, 660), CYAN)
+		var shot := picture("res://Documentation/Previews/" + montage[i][0], Rect2(60, 130, 1180, 640), CYAN)
 		fly_in(shot, Vector2(-300 if i % 2 == 0 else 300, 0), -6.0 if i % 2 == 0 else 6.0)
 		sfx("whoosh", -16.0, 1.3)
-		stage.create_tween().tween_property(shot, "scale", Vector2.ONE * 1.05, BAR)
-		var cap := label(montage[i][1], "mono", 32, GOLD, Vector2(64, 830), 1180, HORIZONTAL_ALIGNMENT_LEFT)
-		typewrite(cap, 70.0, false)
+		stage.create_tween().tween_property(shot, "scale", Vector2.ONE * 1.05, BAR * 2.0)
+		var cap := label("// " + montage[i][1], "mono", 34, GOLD, Vector2(64, 810), 1180, HORIZONTAL_ALIGNMENT_LEFT)
+		typewrite(cap, 60.0, false)
 		var commit := term_line(log_panel, GIT_LOG[i], CYAN if i % 2 == 0 else INK, 22)
 		typewrite(commit, 80.0, true)
-		await wait(BAR * 1.25 - 0.25)
+		await wait(BAR * 2.0 - 0.25)
 		stage.create_tween().tween_property(shot, "modulate:a", 0.0, 0.2)
 		stage.create_tween().tween_property(cap, "modulate:a", 0.0, 0.2)
 		await wait(0.25)
 		shot.queue_free()
 		cap.queue_free()
-	var last := term_line(log_panel, GIT_LOG[8], GOLD, 22)
-	await typewrite(last, 80.0, true)
-	await at_bar(55.5)
 	await fade_out_all(0.2)
 
-	# H · 05 DEU ERRADO — o vale da música (93–110 s) -------------------------------------------------------
-	set_energy(0.6)
+	# I · 05 DEU ERRADO — erros tomando a tela (106–118 s) -----------------------------------------------
+	set_energy(0.7)
 	grid.tint = RED
 	await chapter(4, "05", "DEU ERRADO", "muita coisa. tipo, MUITA.")
 	sfx("fuse", -12.0)
-	var fails := [
-		["O NAVIO AFUNDAVA.", "medi a linha d'água na unha: -0,38 -> +0,05"],
-		["O CLOUDFLARE CORTAVA O JOGO NO MEIO.", "agora o navegador monta o jogo em partes"],
-		["NO CELULAR, TUDO BRANCO.", "o cache do Godot resolveu pular a importação"],
-		["O CELULAR DE UM AMIGO TRAVOU INTEIRO.", "versão leve + gráficos que se ajustam sozinhos (foi mal!)"],
+	var errors := [
+		["física", "O NAVIO AFUNDAVA.", Rect2(120, 120, 900, 220)],
+		["cloudflare", "Couldn't load project data.\nIs the .pck file missing?", Rect2(880, 240, 920, 240)],
+		["celular", "MODELOS 100% BRANCOS.", Rect2(200, 450, 860, 200)],
+		["mapa", "O CÉU DO MAPA ESTICOU.", Rect2(960, 560, 840, 200)],
+		["webgl", "A ROTA SUMIU DO NAVEGADOR.", Rect2(380, 760, 1060, 200)],
 	]
-	for i in range(fails.size()):
-		var y := 170.0 + i * 205.0
-		var stamp_bg := ColorRect.new()
-		stamp_bg.color = RED
-		stamp_bg.position = Vector2(150, y + 12)
-		stamp_bg.size = Vector2(110, 46)
-		stage.add_child(stamp_bg)
-		pop(stamp_bg, 1.6)
-		var stamp := label("ERRO", "mono", 30, DEEP, Vector2(160, y + 16), 120)
-		pop(stamp, 1.0)
-		var fail := label(fails[i][0], "black", 58, INK, Vector2(300, y), 1500, HORIZONTAL_ALIGNMENT_LEFT)
-		slam(fail, "explosion", -12.0, 16.0)
-		glitch(0.7, 0.35)
-		await wait(BAR)
-		var fix := label("✓  " + fails[i][1], "mono", 32, GOLD, Vector2(304, y + 90), 1550, HORIZONTAL_ALIGNMENT_LEFT)
-		sfx("bell", -6.0, 1.0 + i * 0.06)
-		await typewrite(fix, 50.0, false)
-		await wait(BAR * 0.7)
-	await at_bar(66.0)
-	await fade_out_all(0.25)
+	for e in errors:
+		var w := error_window("erro · " + e[0], e[1], e[2])
+		w.get_child(0).get_child(1).get_child(0).add_theme_font_override("font", fonts.black)
+		w.get_child(0).get_child(1).get_child(0).add_theme_font_size_override("font_size", 46)
+		sfx("explosion", -14.0, rng.randf_range(0.9, 1.2))
+		glitch(0.8, 0.3, false)
+		sfx("glitch", -10.0)
+		shake(14.0, 0.25)
+		await wait(BAR * 1.0)
+	await wait(0.6)
+	# tudo fecha: resolvido, um por um
+	for child in stage.get_children():
+		if child is PanelContainer:
+			var t := stage.create_tween().set_parallel(true)
+			t.tween_property(child, "scale", Vector2(1.0, 0.0), 0.18)
+			t.tween_property(child, "modulate:a", 0.0, 0.18)
+			sfx("blip", -12.0, 1.4)
+			await wait(0.12)
 	grid.tint = CYAN
-
-	# I · TRIPULAÇÃO (117–122 s) ---------------------------------------------------------------------
-	set_energy(1.2)
-	say("feito a várias mãos:", "serif", 76, INK, 230)
-	var members := [["MESHY.AI", "modelos 3D", GOLD], ["CODEX", "agente de código · MCP", INK], ["CLAUDE", "agente de código · MCP", CYAN]]
-	for i in range(members.size()):
-		var cx := 160.0 + i * 560.0
-		var box := Brackets.new()
-		box.color = members[i][2]
-		box.position = Vector2(cx, 380)
-		box.size = Vector2(500, 260)
-		stage.add_child(box)
-		pop(box, 0.6)
-		var who := label(members[i][0], "black", 80, members[i][2], Vector2(cx, 440), 500)
-		slam(who, "cannon_small", -12.0, 6.0)
-		var role := label(members[i][1], "mono", 28, MIST, Vector2(cx, 560), 500)
-		pop(role)
-		await wait(BEAT * 2.0)
-	await at_bar(72.5)
+	var fixed := label("resolvido. um por um.", "serif", 92, GOLD, Vector2(-1, 440))
+	slam(fixed, "bell", -4.0, 0.0)
+	await wait(2.2)
 	await fade_out_all(0.2)
 
-	# J · O RESULTADO — gameplay subindo até o pico (122–162 s) ----------------------------------------------
+	# J · A TRIPULAÇÃO DESSA JORNADA (118–126 s) ----------------------------------------------------------
+	set_energy(1.3)
+	var crew := label("A TRIPULAÇÃO DESSA JORNADA", "black", 84, INK, Vector2(-1, 110))
+	slam(crew, "cannon_small", -8.0, 8.0)
+	var tools := [["MESHY.AI", GOLD], ["CODEX", INK], ["CLAUDE", CYAN], ["GODOT 4.7", INK], ["GDSCRIPT", CYAN], ["GLSL · SHADERS", GOLD],
+		["JAVASCRIPT", INK], ["POWERSHELL", CYAN], ["CLOUDFLARE WORKERS", GOLD], ["GITHUB", INK], ["GLTF-TRANSFORM", CYAN], ["FFMPEG", GOLD]]
+	var row_x := [0.0, 0.0, 0.0]
+	for i in range(tools.size()):
+		var row := i / 4
+		var x: float = 130.0 + row_x[row]
+		var t := tag(tools[i][0], tools[i][1], Vector2(x, 290 + row * 110))
+		row_x[row] += tools[i][0].length() * 18.5 + 110.0
+		sfx("blip", -14.0, 0.9 + i * 0.04)
+		await wait(BEAT * 0.5)
+	await wait(0.6)
+	var people := label("+ todas as pessoas que me ajudaram com dicas, conselhos e testes!", "serif", 54, GOLD, Vector2(-1, 690), 1700)
+	pop(people, 0.9)
+	await wait(3.6)
+	await fade_out_all(0.2)
+
+	# K · O RESULTADO — gameplay subindo com a música (127–153 s) -------------------------------------------
 	set_energy(1.8)
 	var result := label("O RESULTADO", "black", 190, INK, Vector2(-1, 420))
 	slam(result, "cannon", -2.0, 30.0)
 	do_flash(PARCH, 0.4)
-	await wait(BAR * 1.0)
+	await wait(BAR * 1.1)
 	await fade_out_all(0.1)
-	world._start_sailing()
+	world.hud.visible = true
+	world.camera.return_to_boat()
 	world.ship.controls_override = true
 	world.ship.test_controls = Vector3(1, 0.1, 1)
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("World"), -6.0)
@@ -1275,8 +1395,8 @@ func run_option2() -> void:
 	await _clear_captions(rec)
 	world.ship.test_controls = Vector3(0.6, 0.0, 0)
 	world.naval.call("fire")
-	live_caption("ATIRE.", "> sim, tem desafio de canhão")
-	await wait(BAR * 1.6)
+	live_caption("ATIRE.", "> canhão em duas peças: o cano mira pra cima e pra baixo")
+	await wait(BAR * 1.8)
 	await _clear_captions(rec)
 	world.ship.test_controls = Vector3.ZERO
 	world.toggle_map()
@@ -1286,39 +1406,53 @@ func run_option2() -> void:
 	while now() < spin_end:
 		await process_frame
 		world.camera.drag_orbit(Vector2(-9, 6))
-	await at_bar(82.0)
 	await _clear_captions(rec)
-	var visits := [[1, "EXPERIÊNCIA.", "> cada ilha guarda uma parte do currículo"], [3, "PROJETOS.", "> puxados direto do meu GitHub"], [4, "CONTATO.", "> com Den Den Mushi no farol, óbvio"]]
+	var visits := [[1, "EM CADA ILHA,", "> um pedaço da minha história"], [3, "UM POUCO SOBRE MIM.", "> experiência, formação, projetos..."], [4, "E COMO ME ACHAR.", "> contato no farol (com Den Den Mushi, claro)"]]
 	for v in visits:
 		world.hud.island_pressed.emit(v[0])
 		sfx("whoosh", -14.0)
 		await wait(2.3)
 		world.hud.show_island(v[0], false)
 		live_caption(v[1], v[2])
-		await wait(BAR * 3.0 - 2.3)
+		await wait(BAR * 2.4 - 2.3 + 0.2)
 		await _clear_captions(rec)
 	world.select_time("night")
 	live_caption("E DE NOITE...", "> o farol acende")
-	await at_bar(94.0)
+	await wait(BAR * 1.6)
 	await _clear_captions(rec)
 	rec.queue_free()
 	grid.modulate.a = 1.0
+	world.hud.visible = false
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("World"), -16.0)
 
-	# K · EU NO PROCESSO (161–168 s) ----------------------------------------------------------------------
+	# L · EU NO PROCESSO + ESTUDO (153–167 s) ---------------------------------------------------------
 	set_energy(1.5)
-	var mine := [["eu escrevi o brief.", INK], ["aprovei (e reprovei) cada asset.", INK], ["testei tudo no PC e no celular.", INK], ["e falei \"não\" MUITAS vezes.", GOLD]]
-	for i in range(mine.size()):
-		var l := label(mine[i][0], "serif", 72, mine[i][1], Vector2(-1, 200 + i * 120))
-		pop(l, 0.85)
-		sfx("blip", -12.0, 1.0 + i * 0.1)
-		await wait(BEAT * 3.0)
-	var ai := label("A IA CODOU JUNTO. AS DECISÕES FORAM MINHAS.", "black", 60, CYAN, Vector2(-1, 760), 1800)
-	slam(ai, "boom", -6.0, 10.0)
-	await at_bar(100.5)
+	say("eu escrevi o brief e aprovei (e reprovei) cada asset.", "serif", 64, INK, 250, 1700)
+	await wait(2.4)
+	say("as ferramentas me ajudaram a codar e a gerar o 3D;", "serif", 64, INK, 380, 1700)
+	await wait(2.4)
+	var art := label("AS DECISÕES ARTÍSTICAS FORAM MINHAS.", "black", 70, GOLD, Vector2(-1, 520), 1800)
+	slam(art, "boom", -6.0, 10.0)
+	await wait(2.4)
 	await fade_out_all(0.2)
+	var waves := Trochoid.new()
+	waves.size = SCREEN
+	waves.modulate.a = 0.0
+	stage.add_child(waves)
+	stage.create_tween().tween_property(waves, "modulate:a", 1.0, 0.4)
+	var study := label("E MUITO ESTUDO.", "black", 120, INK, Vector2(-1, 90))
+	slam(study, "wave", -8.0, 8.0)
+	var formula := label("x = x₀ − A·sin(k·x₀ − ωt)     y = A·cos(k·x₀ − ωt)", "mono", 34, CYAN, Vector2(-1, 250))
+	await typewrite(formula, 60.0)
+	var topics := label("ondas trocoidais · flutuação · shaders · WebGL · otimização", "mono", 34, GOLD, Vector2(-1, 820))
+	pop(topics)
+	await wait(1.4)
+	var sources := label("artigos científicos, tutoriais, fóruns e muito Reddit", "serif", 52, INK, Vector2(-1, 900), 1700)
+	pop(sources, 0.9)
 
-	# L · ASSINATURA no pico (169–180 s) ----------------------------------------------------------------
+	# M · ASSINATURA no pico da música --------------------------------------------------------------------
+	await at_time(maxf(now() + 2.6, 166.0))
+	await fade_out_all(0.2)
 	route.visible = true
 	route.modulate.a = 0.35
 	route.progress = 5.0
@@ -1337,21 +1471,19 @@ func run_option2() -> void:
 	await typewrite(li, 34.0)
 	var gh := label("gh   github.com/DATAdotPDF", "mono", 44, CYAN, Vector2(560, 610), 900, HORIZONTAL_ALIGNMENT_LEFT)
 	await typewrite(gh, 34.0)
-	var code := label("código, arquitetura e o processo inteiro estão lá", "sans", 30, MIST, Vector2(-1, 720))
-	pop(code)
-	var made := label("feito junto com Meshy.ai · Codex · Claude  —  em Godot", "sans", 28, MIST, Vector2(-1, 780))
-	pop(made)
-	await at_bar(104.5)
-	var otaku := label("#otakusnotopo", "black", 96, GOLD, Vector2(-1, 880))
+	var code_note := label("código, arquitetura e o processo inteiro estão lá", "sans", 30, MIST, Vector2(-1, 720))
+	pop(code_note)
+	await wait(2.4)
+	var otaku := label("#otakusnotopo", "black", 96, GOLD, Vector2(-1, 860))
 	slam(otaku, "cannon", -3.0, 20.0)
-	await at_bar(106.25)
+	await wait(2.6)
 	var out := ColorRect.new()
 	out.color = Color.BLACK
 	out.size = SCREEN
 	out.modulate.a = 0.0
 	stage.add_child(out)
 	stage.create_tween().tween_property(out, "modulate:a", 1.0, BAR)
-	await at_bar(107.5)
+	await wait(BAR + 0.4)
 	quit()
 
 func _clear_captions(keep: Node) -> void:
