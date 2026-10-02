@@ -8,11 +8,12 @@ func _initialize() -> void:
 
 func shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_jpg(ProjectSettings.globalize_path("res://Builds/race_%s.jpg" % name), 0.85)
+	root.get_texture().get_image().save_jpg(ProjectSettings.globalize_path("res://Builds/race_%s%s.jpg" % [name, "_mobile" if root.size.x < 600 else ""]), 0.85)
 	print("RACE_PROBE ", name)
 
 func run() -> void:
-	root.size = Vector2i(1600, 900)
+	var portrait := OS.get_cmdline_user_args().has("portrait")
+	root.size = Vector2i(390, 844) if portrait else Vector2i(1600, 900)
 	var world := (load("res://MainWorld.tscn") as PackedScene).instantiate()
 	world.show_intro_on_start = false
 	root.add_child(world)

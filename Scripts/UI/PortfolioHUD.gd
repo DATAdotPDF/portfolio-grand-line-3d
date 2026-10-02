@@ -1295,7 +1295,8 @@ func _layout() -> void:
 	var keys_room := (screen.x - carta_size.x - margin * 2.0) if carta.visible and carta.position.y + carta_size.y > keys_box.position.y else screen.x - margin
 	keys_box.visible = playing and not mobile and not touch and keys_box.position.x + keys.x < keys_room
 	race_board.size = Vector2.ZERO
-	race_board.position = Vector2((screen.x - race_board.get_combined_minimum_size().x) * 0.5, margin)
+	# No celular o placar desce uma linha para não cobrir o destino (canto superior esquerdo).
+	race_board.position = Vector2((screen.x - race_board.get_combined_minimum_size().x) * 0.5, margin + (64.0 if mobile else 0.0))
 	if mobile:
 		var top := screen.y * 0.16
 		panel_height = screen.y - top - (touch_reserve + 8.0 if touch else margin)
