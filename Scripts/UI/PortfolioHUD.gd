@@ -16,6 +16,7 @@ signal prev_track_pressed
 signal toggle_music_pressed
 signal panel_closed
 signal start_sailing
+signal challenge_confirmed
 
 const Icon = preload("res://Scripts/UI/HudIcon.gd")
 const CONTENT_PATH := "res://Config/portfolio_content.json"
@@ -70,6 +71,7 @@ var page_label: Label
 var page_prev: Button
 var page_next: Button
 var island_tabs: Array[Button] = []
+var page_pager: HBoxContainer
 var blocks: Array[Control] = []
 var page_of: Array[int] = []
 var page := 0
@@ -90,6 +92,7 @@ var projects_request: HTTPRequest
 ## Ilhas já lidas (a bússola sugere a próxima).
 var visited := {}
 var controls_card: Control
+var challenge_box: PanelContainer
 
 func _ready() -> void:
 	layer = 10
@@ -112,6 +115,7 @@ func _ready() -> void:
 	_build_island_panel()
 	_build_map_layer()
 	_build_intro()
+	_build_challenge_box()
 	controls_card = Control.new()
 	_fetch_projects()
 	get_viewport().size_changed.connect(func(): _layout(); _relayout_next_frames())
@@ -204,6 +208,7 @@ func _build_theme() -> Theme:
 		["Caps", fonts.caps, 11, MIST], ["Title", fonts.serif_italic, 30, WHITE], ["Gold", fonts.serif, 24, WHITE],
 		["Stat", fonts.mono, 18, WHITE], ["Small", fonts.sans, 12, MIST], ["Body", fonts.sans, 14, WHITE],
 		["Mono", fonts.mono, 12, MIST],
+		["Heading", fonts.serif, 20, WHITE], ["Read", fonts.sans, 14, Color("d9dde6")], ["Accent", fonts.caps, 11, GOLD],
 		["PCaps", fonts.caps, 11, INK_MUTED], ["PTitle", fonts.serif_italic, 30, INK], ["PHeading", fonts.serif, 21, INK],
 		["PBody", fonts.sans, 14, INK], ["PMono", fonts.mono, 12, INK_MUTED],
 	]
@@ -493,7 +498,7 @@ func _build_race_board() -> void:
 
 func _build_island_panel() -> void:
 	island_panel = PanelContainer.new()
-	island_panel.theme_type_variation = "Parchment"
+	island_panel.theme_type_variation = "Glass"
 	island_panel.visible = false
 	island_panel.clip_contents = true
 	root.add_child(island_panel)
@@ -502,36 +507,38 @@ func _build_island_panel() -> void:
 	island_panel.add_child(column)
 	var header := HBoxContainer.new()
 	column.add_child(header)
-	island_kicker = _label("", "PCaps")
+	island_kicker = _label("", "Accent")
 	header.add_child(island_kicker)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(spacer)
-	var close := _button("", func(): _close_island(), "Ink")
+	var close := _button("", func(): _close_island())
 	close.custom_minimum_size = Vector2(30, 28)
-	var x := Icon.new("close", 12.0, INK)
+	var x := Icon.new("close", 12.0, GOLD)
 	x.position = Vector2(9, 8)
 	close.add_child(x)
 	header.add_child(close)
-	island_title = _wrap("", "PTitle")
+	island_title = _wrap("", "Title")
 	column.add_child(island_title)
-	column.add_child(_rule(true))
+	column.add_child(_rule())
 	island_body = VBoxContainer.new()
 	island_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	island_body.add_theme_constant_override("separation", 12)
 	island_body.clip_contents = true
 	column.add_child(island_body)
-	column.add_child(_rule(true))
-	# Páginas da ilha atual.
+	column.add_child(_rule())
+	# Páginas da ilha atual (só aparece se algum dia o conteúdo não couber).
 	var pager := HBoxContainer.new()
+	pager.visible = false
+	page_pager = pager
 	pager.alignment = BoxContainer.ALIGNMENT_CENTER
 	pager.add_theme_constant_override("separation", 8)
 	column.add_child(pager)
-	page_prev = _button("‹", func(): _show_page(page - 1), "Ink")
+	page_prev = _button("‹", func(): _show_page(page - 1))
 	pager.add_child(page_prev)
-	page_label = _label("1 / 1", "PMono")
+	page_label = _label("1 / 1", "Mono")
 	pager.add_child(page_label)
-	page_next = _button("›", func(): _show_page(page + 1), "Ink")
+	page_next = _button("›", func(): _show_page(page + 1))
 	pager.add_child(page_next)
 	# As 5 ilhas pelo nome (a atual destacada): ir direto a qualquer uma.
 	var tabs := HFlowContainer.new()
@@ -540,7 +547,7 @@ func _build_island_panel() -> void:
 	tabs.add_theme_constant_override("v_separation", 4)
 	column.add_child(tabs)
 	for i in range(ISLAND_NAMES.size()):
-		var tab := _button(ISLAND_NAMES[i], island_pressed.emit.bind(i), "Ink")
+		var tab := _button(ISLAND_NAMES[i], island_pressed.emit.bind(i))
 		tab.toggle_mode = true
 		tab.add_theme_font_size_override("font_size", 12)
 		tabs.add_child(tab)
@@ -602,6 +609,36 @@ func _build_intro() -> void:
 			row.add_child(_link(item[0], str(links[item[1]])))
 	column.add_child(_wrap("Toque nos controles da tela para navegar." if touch else "W A S D para navegar  ·  1–5 visita uma ilha  ·  M abre o mapa", "Mono"))
 
+## Caixa do Desafio: explica a regra antes de começar.
+func _build_challenge_box() -> void:
+	challenge_box = PanelContainer.new()
+	challenge_box.theme_type_variation = "Glass"
+	challenge_box.visible = false
+	root.add_child(challenge_box)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	column.custom_minimum_size.x = 380
+	challenge_box.add_child(column)
+	column.add_child(_label("DESAFIO  ·  TIME ATTACK", "Accent"))
+	column.add_child(_label("20 boias em 3 minutos", "Title", 34))
+	column.add_child(_wrap("As boias do desafio estão em volta da ilha Sobre. Acerte todas com o canhão antes que o tempo acabe.", "Read"))
+	var how := "Mire com o joystick direito e toque em FOGO. Navegue com o joystick esquerdo." if touch else "R e F inclinam o canhão  ·  Espaço dispara  ·  W A S D navegam"
+	column.add_child(_wrap(how, "Mono"))
+	column.add_child(_rule())
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	column.add_child(row)
+	row.add_child(_button("Começar", func(): challenge_box.visible = false; challenge_confirmed.emit(), "Primary"))
+	row.add_child(_button("Agora não", func(): challenge_box.visible = false))
+
+func show_challenge_box() -> void:
+	if intro_visible:
+		show_intro(false)
+	hide_island()
+	challenge_box.visible = true
+	_layout()
+	_relayout_next_frames()
+
 # --- Abertura -------------------------------------------------------------------------
 
 func show_intro(show: bool) -> void:
@@ -647,17 +684,28 @@ func show_island(index: int, automatic := false) -> void:
 	island_kicker.text = str(data.get("kicker", "")).to_upper()
 	island_title.text = str(data.get("title", ""))
 	for paragraph in data.get("paragraphs", []):
-		_block([_wrap(str(paragraph), "PBody")])
-	for fact in data.get("facts", []):
-		_block([_label(str(fact.label).to_upper(), "PCaps"), _wrap(str(fact.value), "PMono")])
+		_block([_wrap(str(paragraph), "Read")])
+	var facts: Array = data.get("facts", [])
+	if not facts.is_empty():
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 16)
+		grid.add_theme_constant_override("v_separation", 8)
+		for fact in facts:
+			var cell := VBoxContainer.new()
+			cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			cell.add_child(_label(str(fact.label).to_upper(), "Accent"))
+			cell.add_child(_wrap(str(fact.value), "Mono"))
+			grid.add_child(cell)
+		_block([grid])
 	for entry in data.get("entries", []):
-		var parts: Array = [_label(str(entry.period), "PMono"), _wrap(str(entry.title), "PHeading"), _label(str(entry.org).to_upper(), "PCaps")]
+		var parts: Array = [_label(str(entry.period), "Mono"), _wrap(str(entry.title), "Heading"), _label(str(entry.org).to_upper(), "Accent")]
 		if str(entry.get("text", "")) != "":
-			parts.append(_wrap(str(entry.text), "PBody"))
+			parts.append(_wrap(str(entry.text), "Read"))
 		_block(parts)
 	var is_projects := str(data.get("id", "")) == "projetos"
 	if is_projects and not live_projects.is_empty():
-		_block([_label("ÚLTIMOS NO GITHUB  ·  ATUALIZA SOZINHO", "PCaps")])
+		_block([_label("ÚLTIMOS NO GITHUB  ·  ATUALIZA SOZINHO", "Accent")])
 		for project in live_projects:
 			var meta: PackedStringArray = []
 			if str(project.get("language", "")) != "":
@@ -667,26 +715,66 @@ func show_island(index: int, automatic := false) -> void:
 			var pushed := str(project.get("pushed_at", ""))
 			if pushed.length() >= 10:
 				meta.append("%s/%s/%s" % [pushed.substr(8, 2), pushed.substr(5, 2), pushed.substr(0, 4)])
-			var parts: Array = [_wrap(str(project.name).replace("_", " ").replace("-", " "), "PHeading")]
+			var title := _button(str(project.name).replace("_", " ").replace("-", " ") + "  ↗", OS.shell_open.bind(str(project.url)), "Row")
+			title.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			title.add_theme_font_override("font", fonts.serif)
+			title.add_theme_font_size_override("font_size", 19)
+			var parts: Array = [title]
 			if str(project.get("description", "")) != "":
-				parts.append(_wrap(str(project.description), "PBody"))
-			parts.append(_wrap("  ·  ".join(meta), "PMono"))
-			parts.append(_link("Ver no GitHub", str(project.url), "Ink"))
+				parts.append(_wrap(str(project.description), "Read"))
+			parts.append(_wrap("  ·  ".join(meta), "Mono"))
 			_block(parts)
 	else:
 		for project in data.get("projects", []):
-			_block([_wrap(str(project.title), "PHeading"), _wrap(str(project.text), "PBody"), _wrap("  ·  ".join(PackedStringArray(project.get("stack", []))), "PMono"), _link("Código no GitHub", str(project.url), "Ink")])
+			var title := _button(str(project.title) + "  ↗", OS.shell_open.bind(str(project.url)), "Row")
+			title.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			title.add_theme_font_override("font", fonts.serif)
+			title.add_theme_font_size_override("font_size", 19)
+			_block([title, _wrap(str(project.text), "Read"), _wrap("  ·  ".join(PackedStringArray(project.get("stack", []))), "Mono")])
 	var links: Dictionary = content.get("links", {})
 	var contact_buttons: Array = []
 	for contact in data.get("contacts", []):
-		contact_buttons.append(_link(str(contact.label), str(links.get(contact.key, "")), "Ink"))
+		contact_buttons.append(_link(str(contact.label), str(links.get(contact.key, ""))))
 	if not contact_buttons.is_empty():
 		_block(contact_buttons)
 	if is_projects and links.has("github_repos"):
-		_block([_link("Todos os projetos", str(links.github_repos), "Ink")])
+		_block([_link("Todos os projetos", str(links.github_repos))])
 	island_panel.visible = true
 	_layout()
-	_paginate()
+	_fit_one_page()
+
+## Cada seção numa página só: se não couber, reduz fonte e espaçamento até caber.
+func _fit_one_page() -> void:
+	page_count = 1
+	page = 0
+	for block in blocks:
+		block.visible = true
+	var scale := 1.0
+	for attempt in range(7):
+		_apply_read_scale(scale)
+		for i in range(2):
+			await get_tree().process_frame
+		if not is_instance_valid(island_body):
+			return
+		var used := 0.0
+		for block in blocks:
+			used += block.get_combined_minimum_size().y + float(island_body.get_theme_constant("separation"))
+		var column := island_body.get_parent() as Control
+		var chrome := column.get_combined_minimum_size().y - island_body.get_combined_minimum_size().y
+		var available := panel_height - 40.0 - chrome
+		if used <= available:
+			break
+		scale -= 0.07
+	_layout()
+
+func _apply_read_scale(scale: float) -> void:
+	island_body.add_theme_constant_override("separation", int(12.0 * scale))
+	var sizes := {"Read": 14, "Heading": 20, "Mono": 12, "Accent": 11}
+	for label in island_body.find_children("*", "Label", true, false):
+		var base: int = sizes.get(str(label.theme_type_variation), 14)
+		label.add_theme_font_size_override("font_size", maxi(9, int(round(base * scale))))
+	for button in island_body.find_children("*", "Button", true, false):
+		button.add_theme_font_size_override("font_size", maxi(11, int(round(19 * scale))))
 
 ## Distribui os blocos em páginas que cabem no cartão (leitura sem rolagem).
 func _paginate() -> void:
@@ -759,15 +847,23 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _fetch_projects() -> void:
 	var user := str(content.get("links", {}).get("github_user", "DATAdotPDF"))
-	var url := "https://api.github.com/users/%s/repos?sort=pushed&direction=desc&per_page=30" % user
 	if OS.has_feature("web"):
-		url = str(JavaScriptBridge.eval("window.location.origin", true)) + "/api/projetos"
+		# No navegador, fetch nativo (HTTPRequest com User-Agent falhava e caía na lista fixa).
+		JavaScriptBridge.eval("window.__portfolioProjects = null; fetch('/api/projetos').then(r => r.text()).then(t => { window.__portfolioProjects = t; }).catch(() => { window.__portfolioProjects = ''; });", true)
+		for i in range(40):
+			await get_tree().create_timer(0.25).timeout
+			var result: Variant = JavaScriptBridge.eval("window.__portfolioProjects", true)
+			if result != null:
+				if str(result) != "":
+					_on_projects_loaded(HTTPRequest.RESULT_SUCCESS, 200, PackedStringArray(), str(result).to_utf8_buffer(), user)
+				return
+		return
+	var url := "https://api.github.com/users/%s/repos?sort=pushed&direction=desc&per_page=30" % user
 	projects_request = HTTPRequest.new()
 	projects_request.timeout = 8.0
 	add_child(projects_request)
 	projects_request.request_completed.connect(_on_projects_loaded.bind(user))
 	projects_request.request(url, PackedStringArray(["User-Agent: portfolio-data-cybersecurity", "Accept: application/vnd.github+json"]))
-
 func _on_projects_loaded(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray, user: String) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
 		return
@@ -780,7 +876,7 @@ func _on_projects_loaded(result: int, code: int, _headers: PackedStringArray, bo
 			if repo.get("fork", false) or str(repo.get("name", "")).to_lower() == user.to_lower():
 				continue
 			list.append({"name": repo.name, "description": str(repo.description) if repo.get("description") != null else "", "language": str(repo.language) if repo.get("language") != null else "", "pushed_at": str(repo.get("pushed_at", "")), "url": str(repo.get("html_url", "")), "topics": repo.get("topics", [])})
-			if list.size() >= 6:
+			if list.size() >= 4:
 				break
 	live_projects = list
 	if island_panel.visible and current_island == 3:
@@ -878,7 +974,7 @@ func _layout() -> void:
 	dest_box.size = Vector2.ZERO
 	dest_box.position = Vector2(margin, margin)
 	dest_name.add_theme_font_size_override("font_size", 20 if mobile else 28)
-	wind_box.visible = playing and not mobile
+	wind_box.visible = playing and not mobile and not island_panel.visible
 	wind_box.size = Vector2.ZERO
 	wind_box.position = Vector2(screen.x - wind_box.get_combined_minimum_size().x - margin, margin)
 	carta_button.visible = playing and mobile and not reading
@@ -906,17 +1002,22 @@ func _layout() -> void:
 	race_board.size = Vector2.ZERO
 	race_board.position = Vector2((screen.x - race_board.get_combined_minimum_size().x) * 0.5, margin)
 	if mobile:
-		var top := screen.y * 0.36
+		var top := screen.y * 0.16
 		panel_height = screen.y - top - (touch_reserve + 8.0 if touch else margin)
 		island_panel.position = Vector2(8.0, top)
 		island_panel.size = Vector2(screen.x - 16.0, panel_height)
 		island_title.add_theme_font_size_override("font_size", 24)
 	else:
-		var width := clampf(screen.x * 0.27, 320.0, 400.0)
-		panel_height = minf(screen.y - margin * 2.0 - 40.0, width * 1.7)
+		var width := clampf(screen.x * 0.32, 360.0, 440.0)
+		panel_height = screen.y - margin * 2.0
 		island_panel.position = Vector2(screen.x - width - margin, (screen.y - panel_height) * 0.5)
 		island_panel.size = Vector2(width, panel_height)
 		island_title.add_theme_font_size_override("font_size", 30)
+	if challenge_box:
+		challenge_box.size = Vector2(440, 0)
+		var box := challenge_box.get_combined_minimum_size()
+		challenge_box.size = box
+		challenge_box.position = (screen - box) * 0.5
 	var intro_width := (screen.x - margin * 2.0) if mobile else minf(560.0, screen.x - margin * 2.0)
 	intro_column.custom_minimum_size.x = intro_width - 36.0
 	intro_panel.size = Vector2.ZERO

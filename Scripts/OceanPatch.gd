@@ -7,6 +7,8 @@ extends MeshInstance3D
 
 const Scale = preload("res://Scripts/WorldScale.gd")
 
+## Quando a câmera visita uma ilha, o mar com ondas acompanha a ilha (as boias não "somem").
+var follow_override: Node3D
 @export_node_path("Node3D") var target_path: NodePath = ^"../PlayerShip"
 @export_node_path("MeshInstance3D") var sphere_path: NodePath = ^"../OceanMesh"
 ## Raio do patch em metros. Do barco, o horizonte fica a ~sqrt(2 R h) (≈ 100 m em R = 800).
@@ -40,13 +42,13 @@ func _process(_delta: float) -> void:
 	_follow()
 
 func _follow() -> void:
-	var target := get_node_or_null(target_path) as Node3D
+	var target: Node3D = follow_override if is_instance_valid(follow_override) else get_node_or_null(target_path) as Node3D
 	if target == null:
 		return
 	var planet_radius := Scale.radius()
 	var cell := patch_radius * 2.0 / float(resolution)
 	var source := target.global_position
-	if target.has_method("get_global_transform_interpolated") and not Engine.is_editor_hint():
+	if target == get_node_or_null(target_path) and target.has_method("get_global_transform_interpolated") and not Engine.is_editor_hint():
 		source = target.get_global_transform_interpolated().origin
 	# Ancora a grade em passos de uma célula, para os vértices não "nadarem".
 	var snapped := (source.normalized() * planet_radius).snapped(Vector3.ONE * cell)

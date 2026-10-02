@@ -8,8 +8,8 @@
 
 const LONG_CACHE = "public, max-age=31536000, immutable";
 const GITHUB_USER = "DATAdotPDF";
-const PROJECTS_TTL = 3600; // 1 h: cada push aparece sozinho, sem novo deploy
-const PROJECTS_LIMIT = 6;
+const PROJECTS_TTL = 900; // 15 min: cada push aparece sozinho, sem novo deploy
+const PROJECTS_LIMIT = 4;
 
 // /api/projetos: últimos repositórios públicos (sem forks, sem o repo de perfil),
 // ordenados pelo último push. Cache de 1 h na borda; se o GitHub falhar, usa a

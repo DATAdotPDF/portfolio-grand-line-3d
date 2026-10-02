@@ -123,6 +123,10 @@ func run() -> void:
 		world.clock.set_time(0.42, true)
 		world._return_to_navigation()
 		await wait(2.5)
+		world.hud.show_challenge_box()
+		await wait(1.0)
+		await shot("challenge_box")
+		world.hud.challenge_box.visible = false
 		world._start_time_attack()
 		await wait(3.5)
 		await shot("hud_race")

@@ -702,7 +702,8 @@ func _build_hud() -> void:
 	add_child(hud)
 	hud.free_sail_pressed.connect(_return_to_navigation)
 	hud.island_pressed.connect(_select_island)
-	hud.time_attack_pressed.connect(_start_time_attack)
+	hud.time_attack_pressed.connect(func(): hud.show_challenge_box())
+	hud.challenge_confirmed.connect(_start_time_attack)
 	hud.time_mode_pressed.connect(select_time)
 	hud.next_track_pressed.connect(next_track)
 	hud.prev_track_pressed.connect(prev_track)
@@ -813,6 +814,9 @@ func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
 	hud.set_route(target_name, target_distance)
 	if is_instance_valid(log_pose) and target_index >= 0:
 		log_pose.target_override = islands[target_index]
+	if is_instance_valid(ocean_patch):
+		var visiting := camera.state in [PortfolioCamera.CameraState.ISLAND_ORBIT, PortfolioCamera.CameraState.FLYING] and is_instance_valid(camera.target_island)
+		ocean_patch.follow_override = camera.target_island if visiting else null
 	if is_instance_valid(route_line):
 		route_line.target = islands[target_index] if target_index >= 0 else null
 		route_line.visible = camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW and not hud.intro_visible

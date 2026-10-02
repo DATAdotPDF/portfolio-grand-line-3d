@@ -356,7 +356,12 @@ func _physics_process(delta: float) -> void:
 		if wave_up.dot(up)<0.0: wave_up=-wave_up
 		var impact := elapsed-float(target.hit_time)
 		var kick := sin(impact*20.0)*exp(-impact*3.0) if impact<2.0 else 0.0
-		node.position = world.ocean.surface_at(point)+up*absf(kick)*0.15
+		# Fora do trecho de mar com ondas reais (patch), a água desenhada é lisa: a boia fica nela.
+		var surface: Vector3 = world.ocean.surface_at(point)
+		var patch: Node3D = world.ocean_patch
+		if is_instance_valid(patch) and point.distance_to(patch.global_position) > float(patch.patch_radius) * 0.85:
+			surface = point.normalized() * OCEAN_RADIUS
+		node.position = surface+up*absf(kick)*0.15
 		var front := forward.rotated(up,float(target.spin)+elapsed*0.10+0.20*sin(elapsed*0.6+float(target.spin))).slide(wave_up).normalized()
 		node.basis = Basis(front.cross(wave_up),wave_up,-front).orthonormalized()
 		node.rotate_object_local(Vector3.FORWARD,kick*0.35+sin(elapsed*1.2+float(target.spin))*0.035)
