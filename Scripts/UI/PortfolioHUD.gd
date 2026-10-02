@@ -17,6 +17,8 @@ signal toggle_music_pressed
 signal panel_closed
 signal start_sailing
 signal challenge_confirmed
+signal map_pressed
+signal graphics_pressed(mode: String)
 
 const Icon = preload("res://Scripts/UI/HudIcon.gd")
 const CONTENT_PATH := "res://Config/portfolio_content.json"
@@ -49,6 +51,17 @@ var wind_label: Label
 var carta: PanelContainer
 var carta_open := false
 var carta_button: Button
+## Globo (só no toque): abre/fecha o mapa 3D, como a tecla M.
+var map_button: Button
+## Celular: painel da ilha recolhido mostra só o título e deixa a ilha à vista.
+var panel_collapsed := false
+var peek_button: Button
+var island_extra: Array[Control] = []
+var graphics_buttons := {}
+var graphics_note: Label
+var toast: PanelContainer
+var toast_label: Label
+var toast_tween: Tween
 var island_rows: Array[Button] = []
 var island_distances: Array[Label] = []
 var mode_buttons: Array[Button] = []
@@ -289,7 +302,8 @@ func _button(text: String, action: Callable, variation := "") -> Button:
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	if variation != "":
 		button.theme_type_variation = variation
-	button.pressed.connect(action)
+	if action.is_valid():
+		button.pressed.connect(action)
 	return button
 
 ## Botão com ícone vetorial (+ texto opcional).
@@ -399,6 +413,19 @@ func _build_carta() -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		times.add_child(button)
 		time_buttons.append(button)
+	column.add_child(_label("GRÁFICOS", "Caps"))
+	var quality := HBoxContainer.new()
+	quality.add_theme_constant_override("separation", 4)
+	column.add_child(quality)
+	for entry in [["auto", "Auto"], ["alto", "Alto"], ["medio", "Médio"], ["baixo", "Baixo"]]:
+		var button := _button(entry[1], graphics_pressed.emit.bind(entry[0]))
+		button.toggle_mode = true
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.add_theme_font_size_override("font_size", 12)
+		quality.add_child(button)
+		graphics_buttons[entry[0]] = button
+	graphics_note = _label("", "Mono", 11)
+	column.add_child(graphics_note)
 	column.add_child(_rule())
 	column.add_child(_label("CONTROLES", "Caps"))
 	var guide := _wrap(_controls_text(), "Small", 12)
@@ -441,6 +468,42 @@ func _build_carta() -> void:
 	carta_button.custom_minimum_size = Vector2(46, 46)
 	carta_button.get_child(0).position = Vector2(14, 15)
 	root.add_child(carta_button)
+	map_button = _icon_button("globe", "", func(): map_pressed.emit())
+	map_button.custom_minimum_size = Vector2(46, 46)
+	map_button.get_child(0).custom_minimum_size = Vector2(18, 18)
+	map_button.get_child(0).size = Vector2(18, 18)
+	map_button.get_child(0).position = Vector2(14, 14)
+	map_button.visible = false
+	root.add_child(map_button)
+
+## Estado do menu de gráficos: modo escolhido + nível em uso agora.
+func set_graphics_state(mode: String, tier_name: String) -> void:
+	for key in graphics_buttons:
+		graphics_buttons[key].button_pressed = key == mode
+	if graphics_note:
+		graphics_note.text = ("Automático · agora em %s" % tier_name) if mode == "auto" else ("Fixo em %s" % tier_name)
+
+## Aviso curto no topo da tela (some sozinho).
+func show_toast(text: String) -> void:
+	if toast == null:
+		toast = PanelContainer.new()
+		toast.theme_type_variation = "Pill"
+		toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		toast_label = _label("", "Small", 13)
+		toast.add_child(toast_label)
+		root.add_child(toast)
+	toast_label.text = text
+	toast.visible = true
+	toast.modulate.a = 1.0
+	if toast_tween:
+		toast_tween.kill()
+	toast_tween = create_tween()
+	toast_tween.tween_interval(4.5)
+	toast_tween.tween_property(toast, "modulate:a", 0.0, 0.8)
+	toast_tween.tween_callback(func(): toast.visible = false)
+	toast.size = Vector2.ZERO
+	var screen := get_viewport().get_visible_rect().size
+	toast.position = Vector2((screen.x - toast.get_combined_minimum_size().x) * 0.5, 84.0)
 
 func _controls_text() -> String:
 	if touch:
@@ -450,6 +513,8 @@ func _controls_text() -> String:
 			"IMPULSO — segure para ganhar velocidade",
 			"FOGO — dispara o canhão nas boias",
 			"Dois dedos — giram a câmera",
+			"Globo (canto superior) — mapa 3D; arraste para girar",
+			"Na ilha, 'Ver ilha' recolhe o texto",
 			"Um dedo na água — faz ondas",
 			"Chegue perto de uma ilha para abrir a seção"])
 	return "\n".join([
@@ -543,6 +608,10 @@ func _build_island_panel() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(spacer)
+	peek_button = _button("Ver ilha", func(): _set_panel_collapsed(not panel_collapsed))
+	peek_button.add_theme_font_size_override("font_size", 12)
+	peek_button.visible = false
+	header.add_child(peek_button)
 	var close := _button("", func(): _close_island())
 	close.custom_minimum_size = Vector2(30, 28)
 	var x := Icon.new("close", 12.0, GOLD)
@@ -583,6 +652,24 @@ func _build_island_panel() -> void:
 		tab.add_theme_font_size_override("font_size", 12)
 		tabs.add_child(tab)
 		island_tabs.append(tab)
+	# Recolhido: ficam o cabeçalho, o título e as abas das ilhas (dá para trocar de ilha olhando).
+	for child in column.get_children():
+		if child != header and child != island_title and child != tabs:
+			island_extra.append(child)
+
+func _set_panel_collapsed(collapsed: bool) -> void:
+	if collapsed == panel_collapsed:
+		return
+	panel_collapsed = collapsed
+	for child in island_extra:
+		if collapsed:
+			child.set_meta("was_visible", child.visible)
+			child.visible = false
+		else:
+			child.visible = bool(child.get_meta("was_visible", true))
+	peek_button.text = "Ler" if collapsed else "Ver ilha"
+	_layout()
+
 func _build_map_layer() -> void:
 	map_layer = Control.new()
 	map_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -597,7 +684,7 @@ func _build_map_layer() -> void:
 	you_marker = _label("VOCÊ", "Caps", 11)
 	you_marker.add_theme_color_override("font_color", Color("ff6070"))
 	map_layer.add_child(you_marker)
-	map_hint = _label("MAPA  ·  ARRASTE PARA GIRAR O GLOBO  ·  CLIQUE NUMA ILHA  ·  M VOLTA AO BARCO", "Caps", 12)
+	map_hint = _label("ARRASTE PARA GIRAR  ·  TOQUE NUMA ILHA" if touch else "MAPA  ·  ARRASTE PARA GIRAR O GLOBO  ·  CLIQUE NUMA ILHA  ·  M VOLTA AO BARCO", "Caps", 11 if touch else 12)
 	map_layer.add_child(map_hint)
 
 func _build_intro() -> void:
@@ -770,6 +857,7 @@ func show_island(index: int, automatic := false) -> void:
 		_block(contact_buttons)
 	if is_projects and links.has("github_repos"):
 		_block([_link("Todos os projetos", str(links.github_repos))])
+	_set_panel_collapsed(false)
 	island_panel.visible = true
 	_layout()
 	_fit_one_page()
@@ -1010,6 +1098,9 @@ func _layout() -> void:
 	wind_box.position = Vector2(screen.x - wind_box.get_combined_minimum_size().x - margin, margin)
 	carta_button.visible = playing and mobile and not reading
 	carta_button.position = Vector2(screen.x - 46.0 - margin, margin)
+	map_button.visible = touch and not intro_visible and not reading and (playing or map_layer.visible)
+	map_button.position = Vector2(screen.x - (46.0 * 2.0 + 8.0) - margin, margin) if carta_button.visible else Vector2(screen.x - 46.0 - margin, margin)
+	peek_button.visible = mobile
 	carta.visible = playing and not reading and (not mobile or carta_open)
 	carta.size = Vector2.ZERO
 	carta.custom_minimum_size.x = 300.0 if not mobile else minf(300.0, screen.x - margin * 2.0)
@@ -1038,7 +1129,12 @@ func _layout() -> void:
 		var top := screen.y * 0.16
 		panel_height = screen.y - top - (touch_reserve + 8.0 if touch else margin)
 		island_panel.position = Vector2(8.0, top)
-		island_panel.size = Vector2(screen.x - 16.0, panel_height)
+		if panel_collapsed:
+			# Só o título no topo: a ilha fica visível embaixo.
+			island_panel.size = Vector2(screen.x - 16.0, 0.0)
+			island_panel.position = Vector2(8.0, margin + 56.0)
+		else:
+			island_panel.size = Vector2(screen.x - 16.0, panel_height)
 		island_title.add_theme_font_size_override("font_size", 24)
 	else:
 		var width := clampf(screen.x * 0.32, 360.0, 440.0)

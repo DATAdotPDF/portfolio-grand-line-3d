@@ -6,6 +6,7 @@ const NavalGame = preload("res://Scripts/NavalGame.gd")
 const Sign = preload("res://Scenes/IslandTitleSign.tscn")
 const Waves = preload("res://Scripts/SphericalOceanSimulation.gd")
 const IslandEffects = preload("res://Scripts/IslandEffects.gd")
+const GraphicsQuality = preload("res://Scripts/GraphicsQuality.gd")
 const Sloop = preload("res://Scripts/sloop.gd")
 const SeaAmbience = preload("res://Scripts/SeaAmbience.gd")
 const Scale = preload("res://Scripts/WorldScale.gd")
@@ -96,6 +97,7 @@ var log_pose: Node3D
 ## Mostra o cartão de apresentação com o globo ao abrir (desligue para testes).
 @export var show_intro_on_start := true
 var planet_radius := 800.0
+var graphics: Node
 
 func _connect_layout() -> void:
 	var layout := Scale.layout()
@@ -120,7 +122,8 @@ func _ready() -> void:
 	ocean.name = "OceanSimulation"
 	add_child(ocean)
 	_build_ocean()
-	_apply_mobile_profile()
+	# Depois que céu, luzes, barco e efeitos existem.
+	_setup_graphics.call_deferred()
 	_build_islands()
 	_update_island_coasts()
 	_build_ship()
@@ -287,29 +290,19 @@ func _place_editor_cameras(ship_node: Node3D) -> void:
 
 # --- Construção em runtime ------------------------------------------------------------
 
-## Pacote de celular (feature "mobile_lite"): troca qualidade por fluidez.
-func _apply_mobile_profile() -> void:
-	if not OS.has_feature("mobile_lite"):
-		return
-	var viewport := get_viewport()
-	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
-	viewport.scaling_3d_scale = 0.6
-	viewport.msaa_3d = Viewport.MSAA_DISABLED
-	# LODs gerados no import: limiar maior troca para malhas mais simples bem mais cedo.
-	viewport.mesh_lod_threshold = 6.0
-	# 30 fps estáveis travam menos do que 45 oscilando.
-	Engine.max_fps = 30
-	# Física a 30 Hz (a interpolação de física mantém o movimento suave): metade do custo de CPU.
-	Engine.physics_ticks_per_second = 30
-	Engine.max_physics_steps_per_frame = 3
-	if is_instance_valid(ocean_patch):
-		ocean_patch.patch_radius = 150.0
-		ocean_patch.resolution = 72
-	ocean.wake_limit = 10
-	get_tree().node_added.connect(_lighten_mobile_node)
-	_lighten_mobile_tree.call_deferred()
-	print("MOBILE_PROFILE on")
-
+## Qualidade gráfica automática (ver Scripts/GraphicsQuality.gd) + escolha no menu.
+func _setup_graphics() -> void:
+	graphics = GraphicsQuality.new()
+	graphics.name = "GraphicsQuality"
+	add_child(graphics)
+	graphics.setup(self)
+	if hud:
+		hud.set_graphics_state(graphics.mode, GraphicsQuality.TIER_NAMES[graphics.tier])
+		hud.graphics_pressed.connect(graphics.set_mode)
+		graphics.tier_changed.connect(func(tier: int, automatic: bool):
+			hud.set_graphics_state(graphics.mode, GraphicsQuality.TIER_NAMES[tier])
+			if automatic:
+				hud.show_toast("Gráficos ajustados para %s · mude no menu ☰" % GraphicsQuality.TIER_NAMES[tier]))
 ## Diagnóstico (?perf=1): números do quadro na tela e no console, para medir no aparelho real.
 func _build_perf_overlay() -> void:
 	var layer := CanvasLayer.new()
@@ -327,44 +320,18 @@ func _build_perf_overlay() -> void:
 	timer.autostart = true
 	add_child(timer)
 	timer.timeout.connect(func():
-		var text := "fps %d | cpu %.1f ms | fís %.1f ms\ndraw %d | obj %d | tri %dk | %s" % [
+		var text := "fps %d | cpu %.1f ms | fís %.1f ms\ndraw %d | obj %d | tri %dk | vram %d MB | %s" % [
 			Engine.get_frames_per_second(),
 			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
 			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 			Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000.0),
-			"lite" if OS.has_feature("mobile_lite") else "full"]
+			int(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0),
+			("lite" if OS.has_feature("mobile_lite") else "full") + (" · " + GraphicsQuality.TIER_NAMES[graphics.tier] if graphics else "")]
 		label.text = text
 		print("PERF ", text.replace("\n", " | ")))
 
-## Segunda passada do pacote de celular, depois que céu, luzes e efeitos existem.
-func _lighten_mobile_tree() -> void:
-	if is_instance_valid(sky_material):
-		sky_material.set_shader_parameter("clouds_samples", 4)
-		sky_material.set_shader_parameter("shadow_samples", 1)
-	if environment != null:
-		environment.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
-		if environment.sky != null:
-			environment.sky.radiance_size = Sky.RADIANCE_SIZE_32
-	# O navio fica sempre perto da câmera: compensa o limiar de LOD para as velas finas não sumirem.
-	if is_instance_valid(ship):
-		for mesh in ship.find_children("*", "GeometryInstance3D", true, false):
-			(mesh as GeometryInstance3D).lod_bias = 8.0
-	var stack: Array[Node] = [get_tree().root]
-	while not stack.is_empty():
-		var node: Node = stack.pop_back()
-		_lighten_mobile_node(node)
-		stack.append_array(node.get_children())
-
-## Partículas pela metade e sem a luz decorativa das placas (cada luz é mais uma passada no WebGL).
-func _lighten_mobile_node(node: Node) -> void:
-	if node is GPUParticles3D and not node.has_meta("mobile_lite"):
-		node.set_meta("mobile_lite", true)
-		node.amount = maxi(2, node.amount / 2)
-	elif node is OmniLight3D and node.name == "TitleWarmLight":
-		node.visible = false
-		node.light_energy = 0.0
 
 func _build_ocean() -> void:
 	_apply_planet_geometry()
@@ -619,8 +586,8 @@ func _build_lighting() -> void:
 		sun.name = "Sun"
 		add_child(sun)
 	sun.light_energy = 1.0
-	# Sombras desligadas no pacote de celular.
-	sun.shadow_enabled = not OS.has_feature("mobile_lite")
+	# Sombras: o nível de gráficos (GraphicsQuality) desliga abaixo do Alto.
+	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 120.0
 	moon = get_node_or_null("MoonLight") as DirectionalLight3D
 	if moon == null:
@@ -794,6 +761,7 @@ func _build_hud() -> void:
 	hud.toggle_music_pressed.connect(toggle_music_pause)
 	hud.panel_closed.connect(_return_to_navigation)
 	hud.start_sailing.connect(_start_sailing)
+	hud.map_pressed.connect(toggle_map)
 	hud.set_time_mode(time_mode)
 ## Links da landing: /world/?ilha=projetos abre direto na ilha; ?modo=regata inicia a regata.
 func _apply_web_deeplink() -> void:
@@ -1008,11 +976,15 @@ func _input(event: InputEvent) -> void:
 	if Engine.is_editor_hint() or not camera:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode in [KEY_TAB, KEY_M]:
-		if camera.state == PortfolioCamera.CameraState.PLANET_OVERVIEW:
-			camera.return_to_boat()
-		else:
-			camera.show_overview()
+		toggle_map()
 		get_viewport().set_input_as_handled()
+
+## Mapa 3D: tecla M/Tab ou o botão do globo no celular.
+func toggle_map() -> void:
+	if camera.state == PortfolioCamera.CameraState.PLANET_OVERVIEW:
+		camera.return_to_boat()
+	else:
+		camera.show_overview()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():

@@ -19,6 +19,7 @@ var boost := false
 var touches := {}
 var drive_pad: Control
 var aim_pad: Control
+var controls_root: Control
 
 func _ready() -> void:
 	layer = 5
@@ -38,6 +39,7 @@ func enable() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = HudTheme.build_theme(HudTheme.palette(1.0))
 	add_child(root)
+	controls_root = root
 	drive_pad = _make_pad(root, Control.PRESET_BOTTOM_LEFT, Vector2(36, -36), "drive")
 	aim_pad = _make_pad(root, Control.PRESET_BOTTOM_RIGHT, Vector2(-36, -36), "aim")
 	# Mão esquerda navega; mão direita: mira + IMPULSO e FOGO lado a lado, acima do joystick direito.
@@ -124,12 +126,27 @@ func _input(event: InputEvent) -> void:
 			touches[event.index] = event.position
 		else:
 			touches.erase(event.index)
+	elif event is InputEventScreenDrag and camera and _in_map():
+		# No mapa um dedo basta para girar o globo.
+		camera.call("drag_orbit", event.relative)
+		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag and touches.size() >= 2 and camera:
 		touches[event.index] = event.position
 		camera.call("drag_orbit", event.relative / float(touches.size()))
 		get_viewport().set_input_as_handled()
 
+func _in_map() -> bool:
+	# PortfolioCameraController.CameraState.PLANET_OVERVIEW
+	return camera != null and int(camera.get("state")) == 3
+
 func _process(_delta: float) -> void:
+	# Joysticks e botões somem no mapa (o globo usa a tela toda).
+	if controls_root:
+		controls_root.visible = not _in_map()
+		if _in_map():
+			drive = Vector2.ZERO
+			aim = Vector2.ZERO
+			boost = false
 	if ship:
 		ship.set("virtual_throttle", -drive.y if absf(drive.y) > 0.15 else 0.0)
 		ship.set("virtual_steering", drive.x if absf(drive.x) > 0.15 else 0.0)

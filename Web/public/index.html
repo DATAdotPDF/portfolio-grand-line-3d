@@ -48,7 +48,23 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 .reader h3 { font: 400 19px/1.2 "IM Fell English", Georgia, serif; margin: 10px 0 2px; }
 .reader p { margin: 0 0 8px; }
 .reader .mono { font: 400 12.5px "JetBrains Mono", monospace; color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } }
+/* Slides do carregamento: contam a história enquanto o mundo baixa. */
+.slides { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 0 18px; padding: 12px 0 10px; position: relative; cursor: pointer; }
+.slides .track { display: grid; }
+.slide { grid-area: 1 / 1; opacity: 0; transform: translateX(14px); transition: opacity .5s, transform .5s; pointer-events: none; }
+.slide.on { opacity: 1; transform: none; pointer-events: auto; }
+.slide h2 { font: italic 400 24px/1.1 "IM Fell English", Georgia, serif; margin: 4px 0 6px; }
+.slide p { margin: 0; font-size: 14px; }
+.slide ul { margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.slide li { padding: 2px 0; }
+.slide .mono { font: 400 11.5px "JetBrains Mono", monospace; color: var(--muted); white-space: nowrap; }
+.dots { display: flex; gap: 6px; margin-top: 10px; }
+.dots i { flex: 1; height: 2px; background: var(--line); position: relative; overflow: hidden; }
+.dots i.done { background: var(--ink); }
+.dots i.on::after { content: ""; position: absolute; inset: 0; background: var(--ink); transform-origin: left; animation: fill 7s linear forwards; }
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (max-width: 520px) { .pitch { display: none; } h1 { margin-top: 8px; } .links { margin-bottom: 14px; } }
+@media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } .slide { transition: none; } }
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
@@ -66,9 +82,10 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 				<p class="kicker">Red Team &amp; Offensive Security | Python &#183; SQL &#183; Automation &#183; Data Quality</p>
 				<p class="pitch">Transformo dados em decis&#245;es, automa&#231;&#245;es e produtos confi&#225;veis.</p>
 				<nav class="links" aria-label="Contatos"><a href="https://api.whatsapp.com/send/?phone=5521964094297&amp;text&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">WhatsApp ↗</a><a href="https://www.linkedin.com/in/data-pdf/" target="_blank" rel="noopener">LinkedIn ↗</a><a href="https://github.com/DATAdotPDF" target="_blank" rel="noopener">GitHub ↗</a></nav>
+				<div class="slides" id="slides" aria-label="Sobre mim" title="Toque para avançar"><div class="track"><div class="slide"><p class="kicker">Enquanto o mar carrega</p><h2>Um portfólio para navegar.</h2><p>Você vai pilotar uma chalupa por 5 ilhas — Sobre, Experiência, Formação, Projetos e Contato. Chegue perto de uma ilha para abrir a seção; no celular, joystick esquerdo navega e o direito mira o canhão.</p></div><div class="slide"><p class="kicker">01 / Sobre</p><h2>Dados com contexto de neg&#243;cio.</h2><p>Minha trajet&#243;ria re&#250;ne mais de uma d&#233;cada no mercado de trabalho, com projetos, opera&#231;&#245;es, melhoria de processos e gest&#227;o de stakeholders. Ap&#243;s a forma&#231;&#227;o em Engenharia de Dados na Escola DNC, atuei por 1 ano e 2 meses na CEPA…</p></div><div class="slide"><p class="kicker">02 / Experi&#234;ncia</p><h2>Trajet&#243;ria profissional.</h2><ul><li><strong>Data Analyst</strong> · CEPA Mobility Brazil <span class="mono">2025 — 2026</span></li><li><strong>CEO e produtor</strong> · Varanda Vista Filmes <span class="mono">2012 — 2025</span></li></ul></div><div class="slide"><p class="kicker">03 / Forma&#231;&#227;o</p><h2>Forma&#231;&#227;o cont&#237;nua.</h2><ul><li><strong>Ciberseguran&#231;a</strong> · Senac <span class="mono">2026 — atual</span></li><li><strong>Engenharia de Dados</strong> · Escola DNC <span class="mono">2024 — 2025</span></li><li><strong>Mecatr&#244;nica</strong> · Electra <span class="mono">2021 — 2023</span></li><li><strong>Cinema e Audiovisual</strong> · IBMR <span class="mono">2008 — 2021</span></li></ul></div><div class="slide"><p class="kicker">04 / Projetos</p><h2>C&#243;digo aplicado a problemas concretos.</h2><ul><li><strong>Detec&#231;&#227;o de fraudes com IA generativa</strong></li><li><strong>Pipeline ETL Bronze, Silver e Gold</strong></li><li><strong>Dados p&#250;blicos do SIDRA e IBGE</strong></li><li><strong>Bot financeiro para WhatsApp</strong></li></ul></div><div class="slide"><p class="kicker">05 / Contato</p><h2>Vamos conversar sobre dados, opera&#231;&#245;es ou seguran&#231;a?</h2></div></div><div class="dots" id="dots"></div></div>
 				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
 				<p id="status-numbers">preparando o mar</p>
-				<p class="hint">primeira visita ~75 MB (~25 MB no celular) · fica em cache · W A S D ou controles na tela</p>
+				<p class="hint">primeira visita ~75 MB (~20 MB no celular) · fica em cache</p>
 				<div id="status-notice"></div>
 				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio aqui mesmo ↓</button></p>
 				<div class="reader" id="reader"><section id="reader-sobre"><p class="kicker">01 / Sobre</p><h2>Dados com contexto de neg&#243;cio.</h2><p>Minha trajet&#243;ria re&#250;ne mais de uma d&#233;cada no mercado de trabalho, com projetos, opera&#231;&#245;es, melhoria de processos e gest&#227;o de stakeholders. Ap&#243;s a forma&#231;&#227;o em Engenharia de Dados na Escola DNC, atuei por 1 ano e 2 meses na CEPA Mobility Brazil.</p><p>Na CEPA, apoiei opera&#231;&#245;es internacionais e qualidade de dados para o programa J&amp;J Safe Fleet em 10 pa&#237;ses. Antes da transi&#231;&#227;o para dados, conduzi projetos audiovisuais para marcas como Disney+, Canal Futura e Expedia.</p><p>Hoje conecto Python, SQL, ETL, dashboards e automa&#231;&#227;o para organizar informa&#231;&#245;es, reduzir trabalho manual e apoiar decis&#245;es.</p><p><span class="kicker">Engenharia de dados</span><br><span class="mono">Python &#183; SQL &#183; ETL &#183; Pipelines</span></p><p><span class="kicker">Analytics e BI</span><br><span class="mono">Power BI &#183; Pandas &#183; Dashboards</span></p><p><span class="kicker">Opera&#231;&#245;es</span><br><span class="mono">Data Quality &#183; Automa&#231;&#227;o &#183; Reporting</span></p><p><span class="kicker">Ciberseguran&#231;a</span><br><span class="mono">Forma&#231;&#227;o em andamento &#183; Senac 2026</span></p></section><section id="reader-experiencia"><p class="kicker">02 / Experi&#234;ncia</p><h2>Trajet&#243;ria profissional.</h2><h3>Data Analyst · CEPA Mobility Brazil</h3><p class="mono">2025 — 2026</p><p>Suporte ao J&amp;J Safe Fleet em 10 pa&#237;ses, com rotinas de dados, relat&#243;rios, qualidade e acompanhamento operacional entre APAC, Jap&#227;o e EMEA.</p><h3>CEO e produtor · Varanda Vista Filmes</h3><p class="mono">2012 — 2025</p><p>Gest&#227;o de projetos, prazos, custos, processos e clientes em produ&#231;&#245;es audiovisuais para empresas nacionais e internacionais.</p></section><section id="reader-formacao"><p class="kicker">03 / Forma&#231;&#227;o</p><h2>Forma&#231;&#227;o cont&#237;nua.</h2><h3>Ciberseguran&#231;a · Senac</h3><p class="mono">2026 — atual</p><h3>Engenharia de Dados · Escola DNC</h3><p class="mono">2024 — 2025</p><h3>Mecatr&#244;nica · Electra</h3><p class="mono">2021 — 2023</p><h3>Cinema e Audiovisual · IBMR</h3><p class="mono">2008 — 2021</p></section><section id="reader-projetos"><p class="kicker">04 / Projetos</p><h2>C&#243;digo aplicado a problemas concretos.</h2><h3><a href="https://github.com/DATAdotPDF/Desafio_Final_II_DNC_RID211401" target="_blank" rel="noopener">Detec&#231;&#227;o de fraudes com IA generativa ↗</a></h3><p>API e an&#225;lise de rela&#231;&#245;es para identificar comportamentos suspeitos em transa&#231;&#245;es.</p><p class="mono">Python &#183; FastAPI &#183; NetworkX &#183; Docker</p><h3><a href="https://github.com/DATAdotPDF/Desafio_Final_DNC_RID211401" target="_blank" rel="noopener">Pipeline ETL Bronze, Silver e Gold ↗</a></h3><p>Orquestra&#231;&#227;o de dados em camadas, armazenamento em S3 e visualiza&#231;&#227;o anal&#237;tica.</p><p class="mono">Airflow &#183; Python &#183; AWS S3 &#183; Plotly Dash</p><h3><a href="https://github.com/DATAdotPDF/Desafio_Pratico_DNC_Grupo6" target="_blank" rel="noopener">Dados p&#250;blicos do SIDRA e IBGE ↗</a></h3><p>Modelagem dimensional e painel para explorar indicadores p&#250;blicos com clareza.</p><p class="mono">Power BI &#183; Power Query &#183; SIDRA &#183; Star Schema</p><h3><a href="https://github.com/DATAdotPDF/BOT_Financeiro_WPP" target="_blank" rel="noopener">Bot financeiro para WhatsApp ↗</a></h3><p>Automa&#231;&#227;o para registrar movimenta&#231;&#245;es financeiras por mensagens no WhatsApp.</p><p class="mono">Node.js &#183; JavaScript &#183; WhatsApp &#183; Automa&#231;&#227;o</p></section><section id="reader-contato"><p class="kicker">05 / Contato</p><h2>Vamos conversar sobre dados, opera&#231;&#245;es ou seguran&#231;a?</h2></section></div>
@@ -78,7 +95,7 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":73614836,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":73623024,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -91,6 +108,25 @@ const engine = new Engine(GODOT_CONFIG);
 	const reader = document.getElementById('reader');
 	let initializing = true;
 	let reading = false;
+
+	// Slides: avançam sozinhos a cada 7 s; um toque passa para o próximo.
+	(function () {
+		const slides = Array.from(document.querySelectorAll('#slides .slide'));
+		const dots = document.getElementById('dots');
+		if (!slides.length || !dots) return;
+		const marks = slides.map(() => dots.appendChild(document.createElement('i')));
+		let current = -1;
+		let timer = 0;
+		const show = (index) => {
+			current = index % slides.length;
+			slides.forEach((slide, i) => slide.classList.toggle('on', i === current));
+			marks.forEach((mark, i) => { mark.className = i < current ? 'done' : (i === current ? 'on' : ''); });
+			clearTimeout(timer);
+			timer = setTimeout(() => show(current + 1), 7000);
+		};
+		document.getElementById('slides').addEventListener('click', () => show(current + 1));
+		show(0);
+	}());
 
 	// Projetos ao vivo do GitHub (mesma rota que o jogo usa); sem resposta, fica a lista fixa.
 	fetch('/api/projetos').then((r) => r.ok ? r.json() : null).then((data) => {
@@ -159,7 +195,31 @@ const engine = new Engine(GODOT_CONFIG);
 		// Toque sem mouse (celular/tablet); notebook com tela touch continua no pacote completo.
 		const touchSmall = matchMedia('(pointer: coarse) and (hover: none)').matches;
 		const isMobile = (navigator.userAgentData && navigator.userAgentData.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || touchSmall;
-		const lite = query.has('lite') || (isMobile && !query.has('full'));
+		// Camada 1 do sistema de gráficos: palpite pelo que o navegador revela (o resto é medido no jogo).
+		let saved = 'auto';
+		try { saved = localStorage.getItem('portfolioGraphics') || 'auto'; } catch (e) {}
+		let gpu = '';
+		try {
+			const gl = document.createElement('canvas').getContext('webgl2');
+			const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
+			gpu = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+		} catch (e) {}
+		const memory = navigator.deviceMemory || 8;
+		const cores = navigator.hardwareConcurrency || 8;
+		const weakGpu = /HD Graphics|UHD Graphics 6\d\d|Mali-[GT]?[0-7]\d\b|Adreno \(TM\) [1-5]\d\d|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu);
+		let tier = 'alto';
+		if (isMobile || memory <= 4 || cores <= 2 || weakGpu) tier = 'baixo';
+		else if (cores <= 4 || /Intel/i.test(gpu)) tier = 'medio';
+		if (saved !== 'auto') tier = saved;
+		window.__portfolioGraphics = { mode: saved, tier: tier };
+		// Pacote leve (20 MB): celular, aparelho fraco ou quem escolheu Baixo. ?lite=1 / ?full=1 forçam.
+		const lite = query.has('lite') || (!query.has('full') && (tier === 'baixo' || (isMobile && saved !== 'alto')));
+		if (lite) {
+			// Telas 3x faziam o canvas ter ~3 milhões de pixels: memória de vídeo demais para celulares
+			// modestos (travava o aparelho). 1.5x continua nítido e custa 1/4 da memória.
+			const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+			try { Object.defineProperty(window, 'devicePixelRatio', { get: () => dpr, configurable: true }); } catch (e) {}
+		}
 		const manifestName = lite ? 'index.mobile.pck.parts.json' : 'index.pck.parts.json';
 		let manifest = await fetch(manifestName, { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
 		if (!manifest && lite) {

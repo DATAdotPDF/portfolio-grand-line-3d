@@ -48,7 +48,23 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 .reader h3 { font: 400 19px/1.2 "IM Fell English", Georgia, serif; margin: 10px 0 2px; }
 .reader p { margin: 0 0 8px; }
 .reader .mono { font: 400 12.5px "JetBrains Mono", monospace; color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } }
+/* Slides do carregamento: contam a história enquanto o mundo baixa. */
+.slides { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 0 18px; padding: 12px 0 10px; position: relative; cursor: pointer; }
+.slides .track { display: grid; }
+.slide { grid-area: 1 / 1; opacity: 0; transform: translateX(14px); transition: opacity .5s, transform .5s; pointer-events: none; }
+.slide.on { opacity: 1; transform: none; pointer-events: auto; }
+.slide h2 { font: italic 400 24px/1.1 "IM Fell English", Georgia, serif; margin: 4px 0 6px; }
+.slide p { margin: 0; font-size: 14px; }
+.slide ul { margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.slide li { padding: 2px 0; }
+.slide .mono { font: 400 11.5px "JetBrains Mono", monospace; color: var(--muted); white-space: nowrap; }
+.dots { display: flex; gap: 6px; margin-top: 10px; }
+.dots i { flex: 1; height: 2px; background: var(--line); position: relative; overflow: hidden; }
+.dots i.done { background: var(--ink); }
+.dots i.on::after { content: ""; position: absolute; inset: 0; background: var(--ink); transform-origin: left; animation: fill 7s linear forwards; }
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (max-width: 520px) { .pitch { display: none; } h1 { margin-top: 8px; } .links { margin-bottom: 14px; } }
+@media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } .slide { transition: none; } }
 		</style>
 		$GODOT_HEAD_INCLUDE
 	</head>
@@ -64,9 +80,10 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 				<p class="kicker"><!--TAGLINE--></p>
 				<p class="pitch"><!--PITCH--></p>
 				<nav class="links" aria-label="Contatos"><!--LINKS--></nav>
+				<div class="slides" id="slides" aria-label="Sobre mim" title="Toque para avançar"><div class="track"><!--SLIDES--></div><div class="dots" id="dots"></div></div>
 				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
 				<p id="status-numbers">preparando o mar</p>
-				<p class="hint">primeira visita ~75 MB (~25 MB no celular) · fica em cache · W A S D ou controles na tela</p>
+				<p class="hint">primeira visita ~75 MB (~20 MB no celular) · fica em cache</p>
 				<div id="status-notice"></div>
 				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio aqui mesmo ↓</button></p>
 				<div class="reader" id="reader"><!--READER--></div>
@@ -89,6 +106,25 @@ const engine = new Engine(GODOT_CONFIG);
 	const reader = document.getElementById('reader');
 	let initializing = true;
 	let reading = false;
+
+	// Slides: avançam sozinhos a cada 7 s; um toque passa para o próximo.
+	(function () {
+		const slides = Array.from(document.querySelectorAll('#slides .slide'));
+		const dots = document.getElementById('dots');
+		if (!slides.length || !dots) return;
+		const marks = slides.map(() => dots.appendChild(document.createElement('i')));
+		let current = -1;
+		let timer = 0;
+		const show = (index) => {
+			current = index % slides.length;
+			slides.forEach((slide, i) => slide.classList.toggle('on', i === current));
+			marks.forEach((mark, i) => { mark.className = i < current ? 'done' : (i === current ? 'on' : ''); });
+			clearTimeout(timer);
+			timer = setTimeout(() => show(current + 1), 7000);
+		};
+		document.getElementById('slides').addEventListener('click', () => show(current + 1));
+		show(0);
+	}());
 
 	// Projetos ao vivo do GitHub (mesma rota que o jogo usa); sem resposta, fica a lista fixa.
 	fetch('/api/projetos').then((r) => r.ok ? r.json() : null).then((data) => {
@@ -157,7 +193,31 @@ const engine = new Engine(GODOT_CONFIG);
 		// Toque sem mouse (celular/tablet); notebook com tela touch continua no pacote completo.
 		const touchSmall = matchMedia('(pointer: coarse) and (hover: none)').matches;
 		const isMobile = (navigator.userAgentData && navigator.userAgentData.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || touchSmall;
-		const lite = query.has('lite') || (isMobile && !query.has('full'));
+		// Camada 1 do sistema de gráficos: palpite pelo que o navegador revela (o resto é medido no jogo).
+		let saved = 'auto';
+		try { saved = localStorage.getItem('portfolioGraphics') || 'auto'; } catch (e) {}
+		let gpu = '';
+		try {
+			const gl = document.createElement('canvas').getContext('webgl2');
+			const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
+			gpu = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+		} catch (e) {}
+		const memory = navigator.deviceMemory || 8;
+		const cores = navigator.hardwareConcurrency || 8;
+		const weakGpu = /HD Graphics|UHD Graphics 6\d\d|Mali-[GT]?[0-7]\d\b|Adreno \(TM\) [1-5]\d\d|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu);
+		let tier = 'alto';
+		if (isMobile || memory <= 4 || cores <= 2 || weakGpu) tier = 'baixo';
+		else if (cores <= 4 || /Intel/i.test(gpu)) tier = 'medio';
+		if (saved !== 'auto') tier = saved;
+		window.__portfolioGraphics = { mode: saved, tier: tier };
+		// Pacote leve (20 MB): celular, aparelho fraco ou quem escolheu Baixo. ?lite=1 / ?full=1 forçam.
+		const lite = query.has('lite') || (!query.has('full') && (tier === 'baixo' || (isMobile && saved !== 'alto')));
+		if (lite) {
+			// Telas 3x faziam o canvas ter ~3 milhões de pixels: memória de vídeo demais para celulares
+			// modestos (travava o aparelho). 1.5x continua nítido e custa 1/4 da memória.
+			const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+			try { Object.defineProperty(window, 'devicePixelRatio', { get: () => dpr, configurable: true }); } catch (e) {}
+		}
 		const manifestName = lite ? 'index.mobile.pck.parts.json' : 'index.pck.parts.json';
 		let manifest = await fetch(manifestName, { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
 		if (!manifest && lite) {

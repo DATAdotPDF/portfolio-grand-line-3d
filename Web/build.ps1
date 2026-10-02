@@ -39,9 +39,29 @@ $reader = foreach ($island in $content.islands) {
 	foreach ($pr in @($island.projects)) { if ($pr) { $parts += "<h3><a href=""$(E $pr.url)"" target=""_blank"" rel=""noopener"">$(E $pr.title) ↗</a></h3><p>$(E $pr.text)</p><p class=""mono"">$(E ($pr.stack -join ' · '))</p>" } }
 	"<section id=""reader-$($island.id)"">" + ($parts -join "") + "</section>"
 }
+# Slides do carregamento: um por ilha, com o mesmo conteúdo do jogo (texto curto).
+function Short([string]$text, [int]$max = 230) {
+	if ($text.Length -le $max) { return $text }
+	$cut = $text.Substring(0, $max)
+	return $cut.Substring(0, $cut.LastIndexOf(" ")) + "…"
+}
+$slideItems = @("<div class=""slide""><p class=""kicker"">Enquanto o mar carrega</p><h2>Um portfólio para navegar.</h2><p>Você vai pilotar uma chalupa por 5 ilhas — Sobre, Experiência, Formação, Projetos e Contato. Chegue perto de uma ilha para abrir a seção; no celular, joystick esquerdo navega e o direito mira o canhão.</p></div>")
+foreach ($island in $content.islands) {
+	$body = ""
+	$entries = @($island.entries | Where-Object { $_ -and $_.title })
+	$projects = @($island.projects | Where-Object { $_ -and $_.title })
+	if ($entries.Count) {
+		$body = "<ul>" + (($entries | Select-Object -First 4 | ForEach-Object { "<li><strong>$(E $_.title)</strong> · $(E $_.org) <span class=""mono"">$(E $_.period)</span></li>" }) -join "") + "</ul>"
+	} elseif ($projects.Count) {
+		$body = "<ul>" + (($projects | Select-Object -First 4 | ForEach-Object { "<li><strong>$(E $_.title)</strong></li>" }) -join "") + "</ul>"
+	} elseif (@($island.paragraphs | Where-Object { $_ }).Count) {
+		$body = "<p>$(E (Short (@($island.paragraphs | Where-Object { $_ })[0])))</p>"
+	}
+	$slideItems += "<div class=""slide""><p class=""kicker"">$(E $island.kicker)</p><h2>$(E $island.title)</h2>$body</div>"
+}
 $html = Get-Content Builds\Web\index.html -Raw -Encoding utf8
 $html = $html.Replace("<!--STATUS-->", (E $content.status)).Replace("<!--NAME-->", (E $content.name)).Replace("<!--ROLE-->", (E $content.role))
-$html = $html.Replace("<!--TAGLINE-->", (E $content.tagline)).Replace("<!--PITCH-->", (E $content.pitch)).Replace("<!--LINKS-->", $links).Replace("<!--READER-->", ($reader -join ""))
+$html = $html.Replace("<!--TAGLINE-->", (E $content.tagline)).Replace("<!--PITCH-->", (E $content.pitch)).Replace("<!--LINKS-->", $links).Replace("<!--READER-->", ($reader -join "")).Replace("<!--SLIDES-->", ($slideItems -join ""))
 Set-Content (Join-Path $public "index.html") $html -Encoding utf8 -NoNewline
 Get-ChildItem Builds\Web -File | Where-Object { $_.Name -notin "index.html", "index.pck", "index.wasm" -and $_.Extension -ne ".tmp" } |
 	ForEach-Object { Copy-Item $_.FullName $public }

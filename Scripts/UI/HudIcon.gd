@@ -81,3 +81,11 @@ func _draw() -> void:
 			draw_polyline(PackedVector2Array([c + Vector2(-r * 0.6, 0), c + Vector2(-r * 0.15, r * 0.45), c + Vector2(r * 0.65, -r * 0.5)]), color, line + 0.4, true)
 		"dot":
 			draw_circle(c, r * 0.3, color)
+		"globe":
+			draw_arc(c, r * 0.85, 0.0, TAU, 32, color, line + 0.3, true)
+			draw_line(c + Vector2(-r * 0.85, 0), c + Vector2(r * 0.85, 0), color, line, true)
+			var meridian := PackedVector2Array()
+			for i in range(25):
+				var a := TAU * float(i) / 24.0
+				meridian.append(c + Vector2(cos(a) * r * 0.38, sin(a) * r * 0.85))
+			draw_polyline(meridian, color, line, true)
