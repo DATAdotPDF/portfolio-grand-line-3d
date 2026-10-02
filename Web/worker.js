@@ -54,6 +54,60 @@ async function serveProjects(request, ctx) {
 	}
 }
 
+// /api/leaderboard: ranking permanente do Desafio (20 boias em 3 min), guardado no KV.
+// GET  -> top 10.  POST {name, hits, seconds} -> grava e devolve a posição.
+// Ordem: mais boias primeiro; empate, menos tempo. O jogo roda no navegador, então a
+// validação só barra o absurdo (não é à prova de trapaça).
+const BOARD_KEY = "top";
+const BOARD_KEEP = 50;
+const COURSE_BUOYS = 20;
+const COURSE_SECONDS = 180;
+
+function json(body, status = 200) {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+	});
+}
+
+async function readBoard(env) {
+	const stored = await env.LEADERBOARD.get(BOARD_KEY, "json");
+	return Array.isArray(stored) ? stored : [];
+}
+
+async function serveLeaderboard(request, env) {
+	if (!env.LEADERBOARD) return json({ entries: [], error: "storage indisponível" }, 503);
+	if (request.method === "GET") {
+		return json({ entries: (await readBoard(env)).slice(0, 10) });
+	}
+	if (request.method !== "POST") return json({ error: "método não suportado" }, 405);
+	let data;
+	try {
+		data = await request.json();
+	} catch {
+		return json({ error: "json inválido" }, 400);
+	}
+	const name = String(data.name || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
+	const hits = Number(data.hits);
+	const seconds = Math.round(Number(data.seconds) * 10) / 10;
+	if (name.length < 1) return json({ error: "nome de 1 a 5 letras ou números" }, 400);
+	if (!Number.isInteger(hits) || hits < 0 || hits > COURSE_BUOYS) return json({ error: "boias inválidas" }, 400);
+	if (!Number.isFinite(seconds) || seconds < 20 || seconds > COURSE_SECONDS + 1) return json({ error: "tempo inválido" }, 400);
+	if (hits < COURSE_BUOYS && seconds < COURSE_SECONDS - 1) return json({ error: "tempo inválido" }, 400);
+	// Um envio por minuto por IP (o KV expira a chave sozinho).
+	const ip = request.headers.get("CF-Connecting-IP") || "local";
+	const limitKey = `rl:${ip}`;
+	if (await env.LEADERBOARD.get(limitKey)) return json({ error: "calma, marujo: um registro por minuto" }, 429);
+	await env.LEADERBOARD.put(limitKey, "1", { expirationTtl: 60 });
+	const entry = { name, hits, seconds, at: new Date().toISOString().slice(0, 10) };
+	const board = await readBoard(env);
+	board.push(entry);
+	board.sort((a, b) => b.hits - a.hits || a.seconds - b.seconds || a.at.localeCompare(b.at));
+	const rank = board.indexOf(entry) + 1;
+	await env.LEADERBOARD.put(BOARD_KEY, JSON.stringify(board.slice(0, BOARD_KEEP)));
+	return json({ rank, entries: board.slice(0, 10) });
+}
+
 function withCors(response) {
 	const copy = new Response(response.body, response);
 	copy.headers.set("Access-Control-Allow-Origin", "*");
@@ -116,6 +170,9 @@ export default {
 		const url = new URL(request.url);
 		if (url.pathname === "/api/projetos") {
 			return serveProjects(request, ctx);
+		}
+		if (url.pathname === "/api/leaderboard") {
+			return serveLeaderboard(request, env);
 		}
 		if (url.pathname === "/index.pck") {
 			return servePck(env, request, ctx);

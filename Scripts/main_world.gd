@@ -159,6 +159,8 @@ func _ready() -> void:
 	naval.name = "NavalGame"
 	naval.world = self
 	add_child(naval)
+	naval.time_attack_finished.connect(func(completed: bool, hits: int, total: int, seconds_used: float, _events: Array[Dictionary]):
+		hud.show_race_result(completed, hits, total, seconds_used))
 	camera.island_visit_started.connect(_on_island_visit_started)
 	var touch := TouchControlsScript.new()
 	touch.name = "TouchControls"
@@ -862,15 +864,23 @@ func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
 		target_index = nearest_index
 		target_distance = nearest
 	var target_name := str(islands[target_index].get_meta("section")) if target_index >= 0 else ""
+	var target_node: Node3D = islands[target_index] if target_index >= 0 else null
+	# No Desafio, a rota e o Log Pose levam até a boia mais próxima ainda não acertada.
+	if is_instance_valid(naval) and naval.time_attack_running:
+		var buoy: Node3D = naval.nearest_course_target(ship.global_position)
+		if buoy != null:
+			target_node = buoy
+			target_name = "Boia"
+			target_distance = up.angle_to(buoy.global_position.normalized()) * planet_radius
 	hud.set_status(section, target_distance, ship.measured_speed, Engine.get_frames_per_second())
 	hud.set_route(target_name, target_distance)
-	if is_instance_valid(log_pose) and target_index >= 0:
-		log_pose.target_override = islands[target_index]
+	if is_instance_valid(log_pose) and target_node != null:
+		log_pose.target_override = target_node
 	if is_instance_valid(ocean_patch):
 		var visiting := camera.state in [PortfolioCamera.CameraState.ISLAND_ORBIT, PortfolioCamera.CameraState.FLYING] and is_instance_valid(camera.target_island)
 		ocean_patch.follow_override = camera.target_island if visiting else null
 	if is_instance_valid(route_line):
-		route_line.target = islands[target_index] if target_index >= 0 else null
+		route_line.target = target_node
 		route_line.visible = camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW and not hud.intro_visible
 	var distances: Array = []
 	for island in islands:

@@ -66,6 +66,19 @@ func leave_time_attack() -> void:
 	for target in targets:
 		_set_target_active(target, true)
 
+## Boia do percurso ainda não acertada mais próxima (a rota e o Log Pose apontam para ela no Desafio).
+func nearest_course_target(from: Vector3) -> Node3D:
+	var best: Node3D = null
+	var best_angle := INF
+	for target in targets:
+		if not target.active or not is_course_target(target):
+			continue
+		var angle: float = from.normalized().angle_to((target.normal as Vector3))
+		if angle < best_angle:
+			best_angle = angle
+			best = target.node
+	return best
+
 func _set_target_active(target: Dictionary, active: bool) -> void:
 	target.active = active
 	target.node.visible = active
@@ -175,6 +188,8 @@ func _add_target(normal: Vector3, island_index: int, target_id: String) -> void:
 	normal = normal.normalized()
 	var body := Area3D.new()
 	body.name = "NavalTarget_%02d"%targets.size()
+	# Nome que o Log Pose mostra quando aponta para a boia no Desafio.
+	body.set_meta("section", "Boia")
 	body.collision_layer = 4
 	body.collision_mask = 0
 	body.add_to_group("naval_target")
@@ -417,9 +432,8 @@ func _physics_process(delta: float) -> void:
 func _process(_delta: float) -> void:
 	var state := "PAVIO %.1fs"%fuse_remaining if fuse_remaining>0.0 else ("RECARREGANDO" if cooldown>0.0 else "PRONTO")
 	if time_attack_mode:
-		var seconds := ceili(time_attack_remaining)
-		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == course_count else "TEMPO ESGOTADO")
-		hud.text = ("%.0f° · %s" if DisplayServer.is_touchscreen_available() else "%.0f°  ·  desafio %s") % [rad_to_deg(aim_elevation), result.to_lower()]
+		# Curto: o placar completo (tempo e boias) já fica no topo da tela.
+		hud.text = "%.0f° · %d/%d" % [rad_to_deg(aim_elevation), time_attack_hits.size(), course_count]
 	else:
 		var compact := DisplayServer.is_touchscreen_available()
 		hud.text = ("%.0f° · %d" if compact else "%.0f°  ·  %d acertos")%[rad_to_deg(aim_elevation),score]

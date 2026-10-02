@@ -51,6 +51,8 @@ var wind_label: Label
 var carta: PanelContainer
 var carta_open := false
 var carta_button: Button
+var carta_scroll: ScrollContainer
+var carta_column: VBoxContainer
 ## Globo (só no toque): abre/fecha o mapa 3D, como a tecla M.
 var map_button: Button
 ## Celular: painel da ilha recolhido mostra só o título e deixa a ilha à vista.
@@ -106,6 +108,18 @@ var projects_request: HTTPRequest
 var visited := {}
 var controls_card: Control
 var challenge_box: PanelContainer
+var challenge_board: Label
+var race_result: PanelContainer
+var result_title: Label
+var result_score: Label
+var result_board: Label
+var result_note: Label
+var name_edit: LineEdit
+var save_button: Button
+var last_result := {}
+var race_active := false
+var api_calls := 0
+const API_BASE := "https://portfolio-data-cybersecurity.data-pedutraferreira.workers.dev"
 
 func _ready() -> void:
 	layer = 10
@@ -129,6 +143,7 @@ func _ready() -> void:
 	_build_map_layer()
 	_build_intro()
 	_build_challenge_box()
+	_build_race_result()
 	controls_card = Control.new()
 	_fetch_projects()
 	get_viewport().size_changed.connect(func(): _layout(); _relayout_next_frames())
@@ -368,9 +383,17 @@ func _build_carta() -> void:
 	carta = PanelContainer.new()
 	carta.theme_type_variation = "Glass"
 	root.add_child(carta)
+	# Rolagem: em telas baixas a carta não corta a música nem os links.
+	carta_scroll = ScrollContainer.new()
+	carta_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	carta.add_child(carta_scroll)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
-	carta.add_child(column)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	carta_scroll.add_child(column)
+	carta_column = column
+	# No PC a carta começa aberta; no toque, recolhida (o botão ☰ alterna nos dois).
+	carta_open = not touch
 	var header := HBoxContainer.new()
 	column.add_child(header)
 	header.add_child(_label("A CARTA", "Caps", 13))
@@ -727,6 +750,147 @@ func _build_intro() -> void:
 			row.add_child(_link(item[0], str(links[item[1]])))
 	column.add_child(_wrap("Toque nos controles da tela para navegar." if touch else "W A S D para navegar  ·  1–5 visita uma ilha  ·  M abre o mapa", "Mono"))
 
+## Fim do Desafio: placar, nome (até 5 caracteres) e ranking permanente (/api/leaderboard).
+func _build_race_result() -> void:
+	race_result = PanelContainer.new()
+	race_result.theme_type_variation = "Glass"
+	race_result.visible = false
+	root.add_child(race_result)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	column.custom_minimum_size.x = 380
+	race_result.add_child(column)
+	column.add_child(_label("DESAFIO  ·  RESULTADO", "Accent"))
+	result_title = _label("", "Title", 34)
+	column.add_child(result_title)
+	result_score = _label("", "Stat", 26)
+	column.add_child(result_score)
+	column.add_child(_rule())
+	column.add_child(_label("SEU NOME NO RANKING", "Caps"))
+	var entry := HBoxContainer.new()
+	entry.add_theme_constant_override("separation", 8)
+	column.add_child(entry)
+	name_edit = LineEdit.new()
+	name_edit.max_length = 5
+	name_edit.placeholder_text = "NOME"
+	name_edit.custom_minimum_size = Vector2(150, 40)
+	name_edit.add_theme_font_override("font", fonts.mono)
+	name_edit.add_theme_font_size_override("font_size", 22)
+	name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_edit.text_changed.connect(_clean_name)
+	name_edit.text_submitted.connect(func(_t): _submit_score())
+	# No celular, o prompt do navegador garante o teclado (o LineEdit da web nem sempre abre).
+	name_edit.focus_entered.connect(func():
+		if touch and OS.has_feature("web"):
+			name_edit.release_focus()
+			var typed := str(JavaScriptBridge.eval("prompt('Seu nome no ranking (até 5 letras ou números):', '') || ''", true))
+			name_edit.text = typed
+			_clean_name(typed))
+	entry.add_child(name_edit)
+	save_button = _button("Salvar", _submit_score, "Primary")
+	save_button.disabled = true
+	entry.add_child(save_button)
+	result_note = _label("", "Mono", 12)
+	column.add_child(result_note)
+	column.add_child(_rule())
+	column.add_child(_label("RANKING  ·  TOP 10", "Caps"))
+	result_board = _label("carregando…", "Mono", 13)
+	column.add_child(result_board)
+	column.add_child(_rule())
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	column.add_child(row)
+	row.add_child(_button("Jogar de novo", func(): race_result.visible = false; challenge_confirmed.emit(), "Primary"))
+	row.add_child(_button("Fechar", func(): race_result.visible = false; free_sail_pressed.emit()))
+
+func show_race_result(completed: bool, hits: int, total: int, seconds: float) -> void:
+	last_result = {"hits": hits, "seconds": seconds}
+	result_title.text = "Desafio completo!" if completed else "Tempo esgotado!"
+	result_score.text = "%02d / %02d boias  ·  %s" % [hits, total, _clock(seconds)]
+	name_edit.text = ""
+	name_edit.editable = true
+	save_button.disabled = true
+	save_button.text = "Salvar"
+	result_note.text = "1 a 5 letras ou números"
+	challenge_box.visible = false
+	hide_island()
+	race_result.visible = true
+	_layout()
+	_relayout_next_frames()
+	_refresh_board(result_board, 10)
+
+func _clean_name(text: String) -> void:
+	var clean := ""
+	for c in text.to_upper():
+		if (c >= "A" and c <= "Z") or (c >= "0" and c <= "9"):
+			clean += c
+	clean = clean.substr(0, 5)
+	if name_edit.text != clean:
+		name_edit.text = clean
+		name_edit.caret_column = clean.length()
+	save_button.disabled = clean.is_empty()
+
+func _submit_score() -> void:
+	if name_edit.text.is_empty() or save_button.disabled:
+		return
+	save_button.disabled = true
+	name_edit.editable = false
+	save_button.text = "Salvando…"
+	var body := JSON.stringify({"name": name_edit.text, "hits": last_result.hits, "seconds": snappedf(last_result.seconds, 0.1)})
+	var reply: Variant = await _api("POST", "/api/leaderboard", body)
+	if reply is Dictionary and reply.has("rank"):
+		save_button.text = "Salvo!"
+		result_note.text = "Você ficou em #%d. Boa, marujo!" % int(reply.rank)
+		result_board.text = _board_text(reply.get("entries", []), 10)
+	else:
+		save_button.text = "Salvar"
+		save_button.disabled = false
+		name_edit.editable = true
+		result_note.text = str(reply.get("error", "não deu pra salvar agora. tenta de novo?")) if reply is Dictionary else "não deu pra salvar agora. tenta de novo?"
+	_layout()
+
+func _refresh_board(target: Label, limit: int) -> void:
+	target.text = "carregando…"
+	var reply: Variant = await _api("GET", "/api/leaderboard")
+	target.text = _board_text(reply.get("entries", []), limit) if reply is Dictionary else "ranking indisponível agora"
+	_layout()
+
+func _board_text(entries: Array, limit: int) -> String:
+	if entries.is_empty():
+		return "ninguém ainda. seja o primeiro!"
+	var lines: PackedStringArray = []
+	for i in range(mini(limit, entries.size())):
+		var e: Dictionary = entries[i]
+		lines.append("%02d  %-5s  %02d/20  %s" % [i + 1, str(e.get("name", "?")), int(e.get("hits", 0)), _clock(float(e.get("seconds", 0)))])
+	return "\n".join(lines)
+
+func _clock(seconds: float) -> String:
+	return "%d:%04.1f" % [floori(seconds / 60.0), fmod(seconds, 60.0)]
+
+## Chamada à API do Worker. Na web usa fetch (mesma origem); fora dela, a URL publicada.
+func _api(method: String, path: String, body := "") -> Variant:
+	if OS.has_feature("web"):
+		api_calls += 1
+		var key := "__portfolioApi%d" % api_calls
+		var options := "{method: '%s'%s}" % [method, (", headers: {'Content-Type': 'application/json'}, body: %s" % JSON.stringify(body)) if body != "" else ""]
+		JavaScriptBridge.eval("window.%s = null; fetch('%s', %s).then(r => r.text()).then(t => { window.%s = t; }).catch(() => { window.%s = ''; });" % [key, path, options, key, key], true)
+		for i in range(40):
+			await get_tree().create_timer(0.25).timeout
+			var raw: Variant = JavaScriptBridge.eval("window.%s" % key, true)
+			if raw != null:
+				return JSON.parse_string(str(raw)) if str(raw) != "" else null
+		return null
+	var request := HTTPRequest.new()
+	request.timeout = 8.0
+	add_child(request)
+	var headers := PackedStringArray(["Content-Type: application/json"])
+	request.request(API_BASE + path, headers, HTTPClient.METHOD_POST if method == "POST" else HTTPClient.METHOD_GET, body)
+	var response: Array = await request.request_completed
+	request.queue_free()
+	if response[0] != HTTPRequest.RESULT_SUCCESS:
+		return null
+	return JSON.parse_string((response[3] as PackedByteArray).get_string_from_utf8())
+
 ## Caixa do Desafio: explica a regra antes de começar.
 func _build_challenge_box() -> void:
 	challenge_box = PanelContainer.new()
@@ -743,6 +907,10 @@ func _build_challenge_box() -> void:
 	var how := "Mire com o joystick direito e toque em FOGO. Navegue com o joystick esquerdo." if touch else "R e F inclinam o canhão  ·  Espaço dispara  ·  W A S D navegam"
 	column.add_child(_wrap(how, "Mono"))
 	column.add_child(_rule())
+	column.add_child(_label("RANKING  ·  TOP 5", "Caps"))
+	challenge_board = _label("carregando…", "Mono", 13)
+	column.add_child(challenge_board)
+	column.add_child(_rule())
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	column.add_child(row)
@@ -756,6 +924,7 @@ func show_challenge_box() -> void:
 	challenge_box.visible = true
 	_layout()
 	_relayout_next_frames()
+	_refresh_board(challenge_board, 5)
 
 # --- Abertura -------------------------------------------------------------------------
 
@@ -942,7 +1111,8 @@ func hide_island() -> void:
 
 ## Ilha mais próxima quando o barco está BEM perto (ou -1): abre sozinho e fecha ao se afastar.
 func set_approach(index: int) -> void:
-	if intro_visible:
+	# No Desafio (e no resultado) as ilhas não abrem sozinhas: o percurso passa rente à Sobre.
+	if intro_visible or race_active or (race_result and race_result.visible):
 		return
 	if index < 0:
 		dismissed_island = -1
@@ -1038,6 +1208,7 @@ func set_music_playing(playing: bool) -> void:
 		music_play_icon.kind = "pause" if playing else "play"
 
 func set_race(active: bool, remaining: float, hits: int, total: int, finished_text := "") -> void:
+	race_active = active and finished_text == ""
 	race_board.visible = active and not intro_visible
 	set_mode(active)
 	if not active:
@@ -1095,20 +1266,20 @@ func _layout() -> void:
 	dest_name.add_theme_font_size_override("font_size", 20 if mobile else 28)
 	wind_box.visible = playing and not mobile and not island_panel.visible
 	wind_box.size = Vector2.ZERO
-	wind_box.position = Vector2(screen.x - wind_box.get_combined_minimum_size().x - margin, margin)
-	carta_button.visible = playing and mobile and not reading
+	carta_button.visible = playing and not reading
+	wind_box.position = Vector2(screen.x - wind_box.get_combined_minimum_size().x - margin - (56.0 if carta_button.visible else 0.0), margin)
 	carta_button.position = Vector2(screen.x - 46.0 - margin, margin)
 	map_button.visible = touch and not intro_visible and not reading and (playing or map_layer.visible)
 	map_button.position = Vector2(screen.x - (46.0 * 2.0 + 8.0) - margin, margin) if carta_button.visible else Vector2(screen.x - 46.0 - margin, margin)
 	peek_button.visible = mobile
-	carta.visible = playing and not reading and (not mobile or carta_open)
+	carta.visible = playing and not reading and carta_open and not (race_result and race_result.visible) and not (challenge_box and challenge_box.visible)
 	carta.size = Vector2.ZERO
-	carta.custom_minimum_size.x = 300.0 if not mobile else minf(300.0, screen.x - margin * 2.0)
+	var carta_width := 300.0 if not mobile else minf(300.0, screen.x - margin * 2.0)
+	var chrome := carta.get_theme_stylebox("panel", "Glass").get_minimum_size() if carta.has_theme_stylebox("panel", "Glass") else Vector2(40, 40)
+	var room := screen.y - (margin + 56.0) - margin - chrome.y - (touch_reserve if mobile else 0.0)
+	carta_scroll.custom_minimum_size = Vector2(carta_width - chrome.x, minf(carta_column.get_combined_minimum_size().y, maxf(120.0, room)))
 	var carta_size := carta.get_combined_minimum_size()
-	if mobile:
-		carta.position = Vector2(screen.x - carta_size.x - margin, margin + 56.0)
-	else:
-		carta.position = Vector2(screen.x - carta_size.x - margin, clampf((screen.y - carta_size.y) * 0.5, margin + 56.0, maxf(margin + 56.0, screen.y - carta_size.y - margin)))
+	carta.position = Vector2(screen.x - carta_size.x - margin, margin + 56.0)
 	# No celular a carta aberta cobre a barra de dados: esconde a barra enquanto isso.
 	telemetry.visible = playing and not (mobile and (reading or (carta_open and carta.visible)))
 	telemetry.size = Vector2.ZERO
@@ -1142,6 +1313,11 @@ func _layout() -> void:
 		island_panel.position = Vector2(screen.x - width - margin, (screen.y - panel_height) * 0.5)
 		island_panel.size = Vector2(width, panel_height)
 		island_title.add_theme_font_size_override("font_size", 30)
+	if race_result:
+		race_result.size = Vector2(minf(480.0, screen.x - 24.0), 0)
+		var result_box := race_result.get_combined_minimum_size()
+		race_result.size = result_box
+		race_result.position = (screen - result_box) * 0.5
 	if challenge_box:
 		challenge_box.size = Vector2(440, 0)
 		var box := challenge_box.get_combined_minimum_size()

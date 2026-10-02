@@ -9,3 +9,9 @@ binding = "ASSETS"
 not_found_handling = "404-page"
 # O Worker só roda nestas rotas; o resto é servido direto da borda (mais rápido).
 run_worker_first = ["/index.pck", "/index.wasm", "/world", "/world/*", "/api/*"]
+
+# Ranking permanente do Desafio (/api/leaderboard).
+[[kv_namespaces]]
+binding = "LEADERBOARD"
+id = "905011cb0e354303beb84b8299d54c0e"
+
