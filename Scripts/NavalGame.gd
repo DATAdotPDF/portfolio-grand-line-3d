@@ -413,7 +413,7 @@ func _process(_delta: float) -> void:
 		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == course_count else "TEMPO ESGOTADO")
 		hud.text = "%.0f°  ·  desafio %s" % [rad_to_deg(aim_elevation), result.to_lower()]
 	else:
-		hud.text = "%.0f°  ·  %d acertos%s"%[rad_to_deg(aim_elevation),score,"" if state == "PRONTO" else "  ·  recarregando"]
+		hud.text = "%.0f°  ·  %d acertos"%[rad_to_deg(aim_elevation),score]
 
 func _play_impact(kind: String, point: Vector3) -> void:
 	var sound:=AudioStreamPlayer3D.new()
