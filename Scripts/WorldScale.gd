@@ -10,11 +10,12 @@ const PLATE_HALF_HEIGHT := 2.0
 ## Componentes da ondulação, relativas à principal:
 ## [razão de comprimento, razão de amplitude, eixo de giro (0=u, 1=v), giro em graus, fase]
 const WAVE_COMPONENTS := [
+	# A ondulação principal domina (perfil trocoidal legível: cristas agudas, cavados largos).
 	[1.00, 1.00, 0, 0.0, 0.0],
-	[0.61, 0.50, 0, 21.0, 1.7],
-	[0.37, 0.26, 1, -27.0, 3.8],
-	[0.21, 0.12, 0, -46.0, 5.1],
-	[0.11, 0.05, 1, 58.0, 2.3],
+	[0.62, 0.36, 0, 14.0, 1.7],
+	[0.38, 0.18, 1, -18.0, 3.8],
+	[0.22, 0.09, 0, -32.0, 5.1],
+	[0.11, 0.04, 1, 45.0, 2.3],
 ]
 const MAX_WAVES := 5
 ## Abaixo deste |tangente| a componente some (zonas calmas perto do eixo do vento).

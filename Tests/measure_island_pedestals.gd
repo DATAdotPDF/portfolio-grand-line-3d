@@ -5,14 +5,14 @@ extends SceneTree
 ## Uso: Godot.exe --headless --path . --script res://Tests/measure_island_pedestals.gd
 
 const ISLANDS := [
-	["sobre", "res://Assets/Meshy_AI_island_1_about_harbor_0929193106_image-to-3d-texture.glb", 14.716394],
-	["experiencia", "res://Assets/Meshy_AI_island_2_experience_f_0929193424_image-to-3d-texture.glb", 16.816385],
-	["formacao", "res://Assets/Meshy_AI_island_3_formation_po_0929193844_image-to-3d-texture.glb", 15.769339],
-	["projetos", "res://Assets/Meshy_AI_island_4_projects_shi_0929194206_image-to-3d-texture.glb", 16.810696],
-	["contato", "res://Assets/Meshy_AI_island_5_contact_ligh_0929194453_image-to-3d-texture.glb", 19.970337],
+	["sobre", "res://Assets/Optimized/island_sobre.glb", 14.716394],
+	["experiencia", "res://Assets/Optimized/island_experiencia.glb", 16.816385],
+	["formacao", "res://Assets/Optimized/island_formacao.glb", 15.769339],
+	["projetos", "res://Assets/Optimized/island_projetos.glb", 16.810696],
+	["contato", "res://Assets/Optimized/island_contato.glb", 19.970337],
 ]
-const SLICE := 0.25
-const MAX_HEIGHT := 5.0
+const SLICE := 0.5
+const MAX_HEIGHT := 9.0
 
 func _initialize() -> void:
 	for entry in ISLANDS:

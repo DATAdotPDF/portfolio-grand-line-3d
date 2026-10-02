@@ -31,6 +31,11 @@ uniform vec3 boat_forward;
 uniform vec3 boat_right;
 uniform bool boat_cutout_enabled = false;
 
+// Sombras falsas das nuvens (CloudLayer.gd): xyz = ponto no mar, w = raio.
+uniform vec4 cloud_shadows[12];
+uniform int cloud_shadow_count = 0;
+uniform float cloud_shadow_strength = 0.0;
+
 uniform vec3 patch_center;
 uniform float patch_radius = 0.0;
 
@@ -201,14 +206,24 @@ float toon_band(float value) {
 }
 
 // Cor final. h e crest normalizados pela escala de amplitude do mar atual.
-vec3 ocean_albedo(vec3 p, float h, float crest, float ripple_glow, float shore, out float foam_out) {
+// wake_point: onde a esteira é medida (no patch, a posição deslocada da água).
+vec3 ocean_albedo(vec3 p, vec3 wake_point, float h, float crest, float ripple_glow, float shore, out float foam_out) {
 	float amplitude_ref = max(wave_params[0].z * 1.6, 0.05);
 	float height_tint = toon_band(smoothstep(-amplitude_ref, amplitude_ref, h));
 	vec3 color = mix(deep_ocean_color, shallow_ocean_color, height_tint);
 	float crest_line = smoothstep(0.32, 0.62, crest) * crest_line_amount;
 	color = mix(color, crest_color, crest_line);
 	color = mix(color, foam_color, clamp(ripple_glow, 0.0, 1.0) * 0.55);
-	float wake = wake_foam(p);
+	float shadow = 0.0;
+	for (int i = 0; i < 12; i++) {
+		if (i >= cloud_shadow_count) {
+			break;
+		}
+		float r = cloud_shadows[i].w;
+		shadow = max(shadow, 1.0 - smoothstep(r * 0.45, r, distance(p, cloud_shadows[i].xyz)));
+	}
+	color *= 1.0 - shadow * cloud_shadow_strength;
+	float wake = wake_foam(wake_point);
 	float foam = max(shore, wake * 0.75);
 	foam_out = foam;
 	return mix(color, foam_color, clamp(foam, 0.0, 0.96));
@@ -217,11 +232,12 @@ vec3 ocean_albedo(vec3 p, float h, float crest, float ripple_glow, float shore, 
 // Acabamento comum: reflexo do céu (Fresnel) e brilho noturno da esteira.
 // normal_view/view em espaço de câmera. Escreve parte da cor como emissão.
 void ocean_finish(vec3 p, vec3 normal_view, vec3 view, float foam, inout vec3 albedo, out vec3 emission) {
+	// p aqui também é o ponto da esteira.
 	float facing = clamp(dot(normalize(normal_view), normalize(view)), 0.0, 1.0);
 	float fresnel = pow(1.0 - facing, fresnel_power) * fresnel_amount * (1.0 - foam);
 	float day = 1.0 - night_amount;
 	emission = sky_reflection_color * fresnel * mix(0.1, 0.4, day);
 	albedo = mix(albedo, albedo * 0.6, fresnel);
 	// Só as linhas da esteira brilham à noite (o miolo junto ao casco fica discreto).
-	emission += night_glow_color * smoothstep(0.35, 0.8, wake_foam(p)) * night_amount * 1.3;
+	emission += night_glow_color * smoothstep(0.45, 0.9, wake_foam(p)) * night_amount * 0.55;
 }

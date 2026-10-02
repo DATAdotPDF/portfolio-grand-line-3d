@@ -56,13 +56,9 @@ func _ready() -> void:
 	clock = get_node("/root/DayNightCycle")
 	match index:
 		0:
-			lamp(point(0.38, 0.32, 0.77), Color("ffe48a"), 5.0)
-			lamp(point(0.60, 0.32, 0.77), Color("ffe48a"), 5.0)
-			lamp(point(0.46, 0.49, 0.40), Color("ffe48a"), 6.0)
+			pass # Luzes genéricas removidas: ficavam soltas (até sob o píer), sem lanterna no modelo.
 		1:
 			_build_fort_cannons()
-			lamp(point(0.35, 0.68, 0.76), Color("ff9c38"), 6.0)
-			lamp(point(0.65, 0.68, 0.76), Color("ff9c38"), 6.0)
 		2:
 			_extract_cube()
 			var glow := lamp(point(0.5, 0.60, 0.50), Color("00f0ff"), 7.0)
@@ -94,8 +90,6 @@ func _ready() -> void:
 			add_child(particles)
 		3:
 			_build_treasure()
-			lamp(point(0.28, 0.26, 0.77), Color("ffd05c"), 4.0)
-			lamp(point(0.74, 0.26, 0.76), Color("ffd05c"), 4.0)
 		4:
 			snail = Parts.extract(model, AABB(Vector3(-0.1, 0.64, -0.50), Vector3(0.58, 0.34, 0.65)), "DenDenMushi")
 			lantern_pivot = Node3D.new()

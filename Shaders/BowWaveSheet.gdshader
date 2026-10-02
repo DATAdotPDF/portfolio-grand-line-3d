@@ -17,7 +17,7 @@ uniform float boat_speed = 0.0;
 uniform float turn = 0.0;
 uniform float turn_bias = 0.0;
 uniform float daylight = 1.0;
-uniform float sheet_scale : hint_range(0.3, 2.5) = 1.35;
+uniform float sheet_scale : hint_range(0.3, 2.5) = 0.72;
 uniform sampler2D foam_pattern : repeat_enable, filter_linear_mipmap;
 uniform vec3 water_body_color : source_color = vec3(0.1, 0.52, 0.72);
 uniform vec3 water_deep_color : source_color = vec3(0.03, 0.3, 0.52);

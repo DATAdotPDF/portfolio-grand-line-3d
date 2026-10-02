@@ -15,6 +15,7 @@ const PortfolioCamera = preload("res://Scripts/PortfolioCameraController.gd")
 const OceanPatchScript = preload("res://Scripts/OceanPatch.gd")
 const TouchControlsScript = preload("res://Scripts/TouchControls.gd")
 const PortfolioHUDScript = preload("res://Scripts/UI/PortfolioHUD.gd")
+const CloudLayerScript = preload("res://Scripts/CloudLayer.gd")
 const SHIP_LENGTH := 4.8
 const SEABED_DEPTH := 25.0
 const CORE_DEPTH := 30.0
@@ -117,6 +118,12 @@ func _ready() -> void:
 	_build_lighting()
 	_build_bow_wave()
 	_build_wind_streaks()
+	var clouds := CloudLayerScript.new()
+	clouds.name = "CloudLayer"
+	clouds.ship = ship
+	clouds.clock = clock
+	clouds.ocean_materials = ocean.materials
+	add_child(clouds)
 	_build_hud()
 	_build_log_pose()
 	_build_audio()
@@ -446,8 +453,28 @@ func _build_ship() -> void:
 		lantern.name = "CabinLantern"
 		visual.add_child(lantern)
 	lantern.position = Vector3(0,1.1,0.5)
-	lantern.light_color = Color("ffe48a")
-	lantern.omni_range = 5.0
+	lantern.light_color = Color(1.0, 0.6, 0.26)
+	lantern.omni_range = 2.4
+	lantern.omni_attenuation = 1.6
+	lantern.shadow_enabled = false
+	if lantern.get_node_or_null("Flame") == null:
+		# Chama do lampião: pequena e emissiva, para a luz parecer vir de dentro do barco.
+		var flame := MeshInstance3D.new()
+		flame.name = "Flame"
+		var bulb := SphereMesh.new()
+		bulb.radius = 0.05
+		bulb.height = 0.1
+		bulb.radial_segments = 8
+		bulb.rings = 4
+		flame.mesh = bulb
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color(1.0, 0.72, 0.35)
+		glow.emission_enabled = true
+		glow.emission = Color(1.0, 0.6, 0.25)
+		flame.material_override = glow
+		flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		lantern.add_child(flame)
 
 func _build_lighting() -> void:
 	var node := get_node_or_null("WorldEnvironment") as WorldEnvironment
@@ -468,10 +495,18 @@ func _build_lighting() -> void:
 		sky_material = ShaderMaterial.new()
 		sky_material.shader = load("res://Shaders/radial_sky.gdshader")
 		sky.sky_material = sky_material
+	# Disco solar discreto (o padrão do shader dava ~13° de raio).
+	sky_material.set_shader_parameter("sun_disk_size", 0.0012)
+	sky_material.set_shader_parameter("sun_bloom", 0.08)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.72, 0.84, 0.9)
 	environment.ambient_light_energy = 0.45
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	environment.fog_enabled = true
+	environment.fog_mode = Environment.FOG_MODE_EXPONENTIAL
+	environment.fog_density = 0.0022
+	environment.fog_sky_affect = 0.0
+	environment.fog_aerial_perspective = 0.0
 	node.environment = environment
 	sun = get_node_or_null("Sun") as DirectionalLight3D
 	if sun == null:
@@ -513,7 +548,7 @@ func _build_bow_wave() -> void:
 	# Gotas soltas das cristas das folhas da proa (Seagazer). Quantidade segue a
 	# velocidade; a gravidade é atualizada para a vertical local em _process.
 	water_droplets.position = Vector3(0,0.55,-1.1)
-	water_droplets.amount = 40
+	water_droplets.amount = 14
 	water_droplets.lifetime = 0.75
 	water_droplets.emitting = false
 	water_droplets.visibility_aabb = AABB(Vector3(-4,-3,-4),Vector3(8,6,8))
@@ -708,11 +743,12 @@ func _process(delta: float) -> void:
 	# Mais gotas com velocidade e quando a proa mergulha na onda (slam).
 	var bow_dip := clampf((back_height - front_height) * 0.8, 0.0, 1.0)
 	water_droplets.emitting = ship.measured_speed > 2.5
-	water_droplets.amount_ratio = clampf(ship.measured_speed / 12.0 + bow_dip, 0.15, 1.0)
+	water_droplets.amount_ratio = clampf(ship.measured_speed / 16.0 + bow_dip * 0.5, 0.1, 0.8)
 	(water_droplets.process_material as ParticleProcessMaterial).gravity = -visual_transform.origin.normalized() * 9.8
 	(water_droplets.draw_pass_1.surface_get_material(0) as ShaderMaterial).set_shader_parameter("daylight", 1.0 - clock.night_at(render_position))
 	lantern.visible = lantern_enabled and clock.night_at(render_position)>0.05
-	lantern.light_energy = 2.0*clock.night_at(render_position)
+	var flicker := 0.85 + 0.1 * sin(Time.get_ticks_msec() * 0.011) + 0.05 * sin(Time.get_ticks_msec() * 0.037)
+	lantern.light_energy = 0.9 * clock.night_at(render_position) * flicker
 	var nearest := INF
 	var section := ""
 	var nearest_index := -1
@@ -906,6 +942,8 @@ func _update_day(_delta: float) -> void:
 	if time_mode!="auto":
 		clock.sun_direction = camera.global_position.normalized()*(1.0 if time_mode=="day" else -1.0)
 	var toward_sun: Vector3 = clock.sun_direction
+	# O céu precisa da mesma direção do sol que a luz (antes ficava sempre de dia no polo).
+	sky_material.set_shader_parameter("sun_direction", toward_sun)
 	sun.basis = Basis.looking_at(-toward_sun, Vector3.RIGHT if absf(toward_sun.x)<0.95 else Vector3.UP)
 	var elevation := camera.global_position.normalized().dot(toward_sun)
 	var daylight := smoothstep(-0.16, 0.24, elevation)
@@ -915,6 +953,7 @@ func _update_day(_delta: float) -> void:
 	sun.light_color = Color(1.0,0.57,0.31).lerp(Color(1.0,0.96,0.87), smoothstep(0.0,0.55,elevation))
 	environment.ambient_light_color = Color(0.23,0.34,0.58).lerp(Color(0.69,0.79,0.89), daylight)
 	environment.ambient_light_energy = lerpf(0.3, 0.55, daylight)
+	environment.fog_light_color = Color(0.1, 0.14, 0.28).lerp(Color(0.74, 0.86, 0.95), daylight)
 	# Reflexo do céu na água acompanha o horário (pastel de dia, quente no poente, azul à noite).
 	var dusk := 1.0 - absf(smoothstep(-0.16, 0.4, elevation) * 2.0 - 1.0)
 	var reflection := Color(0.12, 0.17, 0.36).lerp(Color(0.78, 0.85, 0.96), daylight).lerp(Color(1.0, 0.78, 0.68), dusk * 0.6)

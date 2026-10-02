@@ -46,9 +46,9 @@ void fragment() {
 	NORMAL = normalize((VIEW_MATRIX * vec4(normal_world, 0.0)).xyz);
 	float shore = shore_foam_from_depth(texture(depth_texture, SCREEN_UV).r, SCREEN_UV, INV_PROJECTION_MATRIX, VERTEX);
 	float foam;
-	vec3 albedo = ocean_albedo(p, h, crest, ripple_glow, shore, foam);
+	vec3 albedo = ocean_albedo(p, surface_position, h, crest, ripple_glow, shore, foam);
 	vec3 emission;
-	ocean_finish(p, NORMAL, VIEW, foam, albedo, emission);
+	ocean_finish(surface_position, NORMAL, VIEW, foam, albedo, emission);
 	ALBEDO = albedo;
 	EMISSION = emission;
 	ROUGHNESS = mix(0.22, 0.85, foam);
