@@ -36,7 +36,7 @@ var virtual_boost := false
 ## Quão rápido o casco acompanha a inclinação da onda (menor = mais peso/inércia).
 @export var wave_follow_rate := 7.0
 ## Ajuste fino da linha d'água (m): positivo levanta o casco.
-@export var draft_offset := -0.38
+@export var draft_offset := 0.05
 @export var buoyancy_spring := 46.0
 @export var buoyancy_damping := 12.5
 @export var max_bank_angle := deg_to_rad(15.0)
