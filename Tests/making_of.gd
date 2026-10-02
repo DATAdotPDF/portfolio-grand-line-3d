@@ -1,0 +1,928 @@
+extends SceneTree
+
+## Making-of "Grand Line" — reel de motion graphics pirata × cyber, gravado pelo Movie Maker.
+## Tudo em sincronia com "Barnacle Reel 1" (≈143 BPM; 1 compasso = 4 batidas ≈ 1,68 s).
+## Os SFX tocam aqui dentro (vão para o áudio do AVI); a música entra no ffmpeg (Web/make_making_of.ps1).
+##   Godot.exe --path . --write-movie Builds/MakingOf/raw.avi --fixed-fps 30 --script res://Tests/making_of.gd
+
+const FPS := 30.0
+const BEAT := 60.0 / 142.9
+const BAR := BEAT * 4.0
+const SCREEN := Vector2(1920, 1080)
+
+const NAVY := Color("0a1120")
+const DEEP := Color("060b16")
+const GOLD := Color("e8c172")
+const PARCH := Color("efe4cc")
+const INK := Color("eef1f6")
+const MIST := Color("8f9bb3")
+const CYAN := Color("38f2ff")
+const MAGENTA := Color("ff3d7f")
+const RED := Color("ff4a4a")
+
+## Real (git log): o diário de bordo do projeto.
+const GIT_LOG := [
+	"7759455  oceano Gerstner com patch local",
+	"d2ab70d  Seagazer pass: água turquesa",
+	"64014a9  canhão: só eixo vertical",
+	"f3d57d7  jogo como página inicial",
+	"a0f0c31  vela que enche, bandeira, farol aceso",
+	"4eb01cf  linha d'água: -0.38 -> +0.05",
+	"4950d03  navegador monta o .pck em partes",
+	"0add081  mobile lite: 70 MB -> 20 MB",
+	"c82fa63  gráficos adaptativos",
+]
+
+var world: Node3D
+var overlay: CanvasLayer
+var stage: Control
+var grid: Control
+var route: Control
+var flash: ColorRect
+var wipe: ColorRect
+var post: ColorRect
+var fonts := {}
+var sounds := {}
+var players: Array[AudioStreamPlayer] = []
+var start_frame := 0
+var rng := RandomNumberGenerator.new()
+
+# ===================================================================================
+# Componentes desenhados
+# ===================================================================================
+
+## Fundo: carta náutica cyber (grade de lat/long em ciano, linhas de onda, deriva lenta).
+class Chart extends Control:
+	var drift := 0.0
+	var tint := Color("38f2ff")
+	func _process(delta: float) -> void:
+		drift += delta * 12.0
+		queue_redraw()
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color("0a1120"))
+		var step := 96.0
+		var off := fmod(drift, step)
+		var x := -off
+		while x < size.x:
+			draw_line(Vector2(x, 0), Vector2(x, size.y), Color(tint, 0.06), 1.0)
+			x += step
+		var y := fmod(drift * 0.5, step)
+		while y < size.y:
+			draw_line(Vector2(0, y), Vector2(size.x, y), Color(tint, 0.06), 1.0)
+			y += step
+		for i in range(5):
+			var pts := PackedVector2Array()
+			var base := size.y * (0.15 + i * 0.18)
+			for k in range(0, 41):
+				var px := size.x * k / 40.0
+				pts.append(Vector2(px, base + sin(px * 0.006 + drift * 0.02 + i) * 14.0))
+			draw_polyline(pts, Color("e8c172", 0.05), 2.0, true)
+
+## Mapa do tesouro: rota pontilhada entre os capítulos, X nas paradas, ping de sonar.
+class Route extends Control:
+	var stops := PackedVector2Array()
+	var progress := 0.0
+	var reached := 0
+	var pings: Array = []
+	func _process(delta: float) -> void:
+		for p in pings:
+			p.t += delta
+		pings = pings.filter(func(p): return p.t < 1.4)
+		queue_redraw()
+	func ping(index: int) -> void:
+		pings.append({"at": stops[index], "t": 0.0})
+	func _draw() -> void:
+		for i in range(stops.size() - 1):
+			var amount := clampf(progress - i, 0.0, 1.0)
+			if amount <= 0.0:
+				break
+			var a := stops[i]
+			var b := stops[i + 1]
+			var mid := (a + b) * 0.5 + Vector2(0, -90 if i % 2 == 0 else 90)
+			var samples := 46
+			for k in range(int(samples * amount)):
+				var t := float(k) / samples
+				var p := a.lerp(mid, t).lerp(mid.lerp(b, t), t)
+				if k % 2 == 0:
+					draw_circle(p, 4.0, Color("e8c172"))
+		for i in range(stops.size()):
+			var c := stops[i]
+			var lit := i < reached
+			var col := Color("ff4a4a") if lit else Color("e8c172", 0.35)
+			draw_line(c + Vector2(-18, -18), c + Vector2(18, 18), col, 6.0 if lit else 3.0, true)
+			draw_line(c + Vector2(18, -18), c + Vector2(-18, 18), col, 6.0 if lit else 3.0, true)
+		for p in pings:
+			var k: float = p.t / 1.4
+			draw_arc(p.at, 30.0 + k * 220.0, 0, TAU, 64, Color("38f2ff", 1.0 - k), 3.0, true)
+			draw_arc(p.at, 20.0 + k * 120.0, 0, TAU, 64, Color("38f2ff", (1.0 - k) * 0.5), 2.0, true)
+
+## Rosa dos ventos girando (pirata) com anel de radar (cyber).
+class Compass extends Control:
+	var spin := 0.0
+	var radius := 300.0
+	func _process(delta: float) -> void:
+		spin += delta * 0.35
+		queue_redraw()
+	func _draw() -> void:
+		var c := size * 0.5
+		draw_arc(c, radius, 0, TAU, 96, Color("38f2ff", 0.35), 2.0, true)
+		draw_arc(c, radius * 0.82, 0, TAU, 96, Color("e8c172", 0.25), 1.5, true)
+		for i in range(72):
+			var a := TAU * i / 72.0 + spin * 0.3
+			var l := 18.0 if i % 9 == 0 else 7.0
+			draw_line(c + Vector2.from_angle(a) * radius, c + Vector2.from_angle(a) * (radius - l), Color("38f2ff", 0.5), 2.0, true)
+		var pts := PackedVector2Array()
+		for i in range(16):
+			var a := TAU * i / 16.0 + spin
+			var r := radius * (0.72 if i % 4 == 0 else (0.4 if i % 2 == 0 else 0.16))
+			pts.append(c + Vector2.from_angle(a) * r)
+		draw_colored_polygon(pts, Color("e8c172", 0.18))
+		draw_polyline(pts + PackedVector2Array([pts[0]]), Color("e8c172", 0.6), 2.0, true)
+		# varredura do radar
+		var sweep := spin * 2.2
+		for k in range(18):
+			draw_line(c, c + Vector2.from_angle(sweep - k * 0.02) * radius, Color("38f2ff", 0.18 * (1.0 - k / 18.0)), 3.0, true)
+
+## Cantoneiras de HUD em volta de uma imagem.
+class Brackets extends Control:
+	var color := Color("38f2ff")
+	func _draw() -> void:
+		var l := 34.0
+		var r := Rect2(Vector2.ZERO, size)
+		for corner in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
+			var sx := 1.0 if corner.x <= r.position.x else -1.0
+			var sy := 1.0 if corner.y <= r.position.y else -1.0
+			draw_line(corner, corner + Vector2(l * sx, 0), color, 4.0)
+			draw_line(corner, corner + Vector2(0, l * sy), color, 4.0)
+
+# ===================================================================================
+# Utilitários de tempo, som e animação
+# ===================================================================================
+
+func _initialize() -> void:
+	call_deferred("run")
+
+func now() -> float:
+	return float(Engine.get_process_frames() - start_frame) / FPS
+
+## Espera até o compasso n (em compassos desde o início da música).
+func at_bar(n: float) -> void:
+	while now() < n * BAR:
+		await process_frame
+
+func wait(seconds: float) -> void:
+	var end := now() + seconds
+	while now() < end:
+		await process_frame
+
+func sfx(name: String, db := 0.0, pitch := 1.0) -> void:
+	for player in players:
+		if not player.playing:
+			player.stream = sounds[name]
+			player.volume_db = db
+			player.pitch_scale = pitch
+			player.play()
+			return
+
+func tween() -> Tween:
+	return stage.create_tween().set_parallel(true)
+
+func label(text: String, font: String, size: int, color: Color, pos: Vector2, width := 1600.0, align := HORIZONTAL_ALIGNMENT_CENTER) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", fonts[font])
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.horizontal_alignment = align
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size = Vector2(width, size * 1.35)
+	l.position = Vector2((SCREEN.x - width) * 0.5 if pos.x < 0.0 else pos.x, pos.y)
+	l.pivot_offset = Vector2(width * 0.5 if align == HORIZONTAL_ALIGNMENT_CENTER else 0.0, size * 0.68)
+	stage.add_child(l)
+	return l
+
+## Entrada com impacto: cresce de 1.9x para 1x, flash curto e tremida.
+func slam(node: Control, sound := "boom", db := -4.0, shake_px := 14.0) -> void:
+	node.scale = Vector2.ONE * 1.9
+	node.modulate.a = 0.0
+	var t := tween()
+	t.tween_property(node, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_property(node, "modulate:a", 1.0, 0.12)
+	if sound != "":
+		sfx(sound, db)
+	shake(shake_px)
+
+func pop(node: Control, from := 0.4) -> void:
+	node.scale = Vector2.ONE * from
+	node.modulate.a = 0.0
+	var t := tween()
+	t.tween_property(node, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(node, "modulate:a", 1.0, 0.15)
+
+func shake(px: float, seconds := 0.28) -> void:
+	if px <= 0.0:
+		return
+	var t := stage.create_tween()
+	var steps := 7
+	for i in range(steps):
+		var k := 1.0 - float(i) / steps
+		t.tween_property(stage, "position", Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * px * k, seconds / steps)
+	t.tween_property(stage, "position", Vector2.ZERO, 0.04)
+
+func do_flash(color: Color, seconds := 0.35) -> void:
+	flash.color = color
+	flash.modulate.a = 1.0
+	stage.create_tween().tween_property(flash, "modulate:a", 0.0, seconds).set_trans(Tween.TRANS_SINE)
+
+func glitch(amount := 1.0, seconds := 0.4, sound := true) -> void:
+	var material := post.material as ShaderMaterial
+	material.set_shader_parameter("glitch", amount)
+	stage.create_tween().tween_method(func(v): material.set_shader_parameter("glitch", v), amount, 0.0, seconds)
+	if sound:
+		sfx("glitch", -6.0)
+
+## Texto de terminal digitado com cliques de teclado.
+func typewrite(l: Label, cps := 34.0, clicks := true) -> void:
+	l.visible_characters = 0
+	l.modulate.a = 1.0
+	var total := l.text.length()
+	for i in range(total):
+		if not is_instance_valid(l):
+			return
+		l.visible_characters = i + 1
+		if clicks and i % 2 == 0 and l.text[i] != " ":
+			sfx("key", -16.0, rng.randf_range(0.85, 1.25))
+		await wait(1.0 / cps)
+
+func fade_out_all(seconds := 0.25) -> void:
+	for child in stage.get_children():
+		if child is CanvasItem:
+			stage.create_tween().tween_property(child, "modulate:a", 0.0, seconds)
+	await wait(seconds)
+	for child in stage.get_children():
+		child.queue_free()
+
+## Transição em onda: cobre a tela da esquerda para a direita e descobre em seguida.
+func wave_wipe(color: Color, cover := 0.45, hold := 0.05, reveal := 0.45, sound := true) -> void:
+	var material := wipe.material as ShaderMaterial
+	material.set_shader_parameter("tint", color)
+	material.set_shader_parameter("cover", 0.0)
+	material.set_shader_parameter("reveal", 0.0)
+	wipe.visible = true
+	if sound:
+		sfx("wave", -6.0)
+	var t := stage.create_tween()
+	t.tween_method(func(v): material.set_shader_parameter("cover", v), 0.0, 1.0, cover).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await wait(cover + hold)
+	var r := stage.create_tween()
+	r.tween_method(func(v): material.set_shader_parameter("reveal", v), 0.0, 1.0, reveal).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	r.tween_callback(func(): wipe.visible = false)
+
+func picture(path: String, rect: Rect2, bracket_color := CYAN, whole := false) -> Control:
+	var holder := Control.new()
+	holder.position = rect.position
+	holder.size = rect.size
+	holder.pivot_offset = rect.size * 0.5
+	var image := Image.load_from_file(ProjectSettings.globalize_path(path))
+	var tex := TextureRect.new()
+	tex.texture = ImageTexture.create_from_image(image)
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED if whole else TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tex.clip_contents = true
+	tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(tex)
+	holder.clip_contents = true
+	var b := Brackets.new()
+	b.color = bracket_color
+	b.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(b)
+	# linha de varredura (scanner) que passa uma vez
+	var scan := ColorRect.new()
+	scan.color = Color(CYAN, 0.55)
+	scan.size = Vector2(rect.size.x, 3)
+	holder.add_child(scan)
+	stage.create_tween().tween_property(scan, "position:y", rect.size.y, 0.9).set_trans(Tween.TRANS_SINE)
+	stage.add_child(holder)
+	return holder
+
+## Cartão voando para o lugar (rotação + escala), estilo "carta jogada na mesa".
+func fly_in(node: Control, from_offset: Vector2, spin_deg: float) -> void:
+	var target := node.position
+	node.position = target + from_offset
+	node.rotation_degrees = spin_deg
+	node.scale = Vector2.ONE * 0.6
+	node.modulate.a = 0.0
+	var t := tween()
+	t.tween_property(node, "position", target, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(node, "rotation_degrees", 0.0, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(node, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(node, "modulate:a", 1.0, 0.15)
+
+func terminal(rect: Rect2, title: String) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(DEEP, 0.94)
+	box.border_color = Color(CYAN, 0.7)
+	box.set_border_width_all(2)
+	box.set_content_margin_all(26)
+	panel.add_theme_stylebox_override("panel", box)
+	panel.position = rect.position
+	panel.size = rect.size
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	panel.add_child(column)
+	var bar := Label.new()
+	bar.text = "●  ●  ●     " + title
+	bar.add_theme_font_override("font", fonts.mono)
+	bar.add_theme_font_size_override("font_size", 22)
+	bar.add_theme_color_override("font_color", MIST)
+	column.add_child(bar)
+	stage.add_child(panel)
+	pop(panel, 0.85)
+	return column
+
+func term_line(column: VBoxContainer, text: String, color := INK, size := 28) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", fonts.mono)
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(l)
+	return l
+
+## Cartão de capítulo: a rota avança até o X do capítulo, ping de sonar, número + título.
+func chapter(index: int, number: String, title: String, subtitle: String) -> void:
+	route.visible = true
+	route.modulate.a = 1.0
+	sfx("doppler", -8.0)
+	stage.create_tween().tween_property(route, "progress", float(index), BAR * 0.6).set_trans(Tween.TRANS_SINE)
+	await wait(BAR * 0.6)
+	route.reached = index + 1
+	route.ping(index)
+	sfx("ping", -4.0)
+	var at: Vector2 = route.stops[index]
+	var num := label(number, "mono", 30, CYAN, Vector2(at.x - 300, at.y + 46), 600)
+	pop(num)
+	var head := label(title, "black", 150, INK, Vector2(-1, 400))
+	slam(head, "cannon_small", -6.0, 10.0)
+	await wait(BEAT * 1.5)
+	var sub := label(subtitle, "mono", 32, GOLD, Vector2(-1, 600))
+	await typewrite(sub, 40.0)
+	await wait(BEAT * 1.2)
+	stage.create_tween().tween_property(route, "modulate:a", 0.0, 0.25)
+	await fade_out_all(0.25)
+	route.visible = false
+
+## Legenda de gameplay: palavra grande à esquerda, sublinhado ciano que corre.
+func live_caption(big: String, small: String) -> void:
+	var l := label(big, "black", 120, INK, Vector2(120, 760), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+	l.add_theme_color_override("font_outline_color", Color(DEEP, 0.8))
+	l.add_theme_constant_override("outline_size", 18)
+	slam(l, "whoosh", -10.0, 0.0)
+	var underline := ColorRect.new()
+	underline.color = CYAN
+	underline.position = Vector2(126, 930)
+	underline.size = Vector2(0, 8)
+	stage.add_child(underline)
+	stage.create_tween().tween_property(underline, "size:x", 420.0, 0.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	var s := label(small, "mono", 30, CYAN, Vector2(128, 952), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+	s.add_theme_color_override("font_outline_color", Color(DEEP, 0.9))
+	s.add_theme_constant_override("outline_size", 10)
+	typewrite(s, 45.0, false)
+
+# ===================================================================================
+# Montagem da cena
+# ===================================================================================
+
+func setup() -> void:
+	rng.seed = 7
+	var black := FontVariation.new()
+	black.base_font = load("res://Assets/Fonts/Inter-Variable.ttf")
+	black.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 900}
+	fonts = {
+		"serif": load("res://Assets/Fonts/IMFellEnglish-Italic.ttf"),
+		"roman": load("res://Assets/Fonts/IMFellEnglish-Regular.ttf"),
+		"sans": load("res://Assets/Fonts/Inter-Variable.ttf"),
+		"black": black,
+		"mono": load("res://Assets/Fonts/JetBrainsMono-Variable.ttf"),
+	}
+	var sfx_dir := "res://Assets/Sound/SFX/"
+	sounds = {
+		"cannon": load(sfx_dir + "CANNON SHOT SFX.wav"),
+		"cannon_small": load(sfx_dir + "cannon.wav"),
+		"doppler": load(sfx_dir + "CANON BALL DOPPLER SFX.wav"),
+		"whoosh": load(sfx_dir + "CANON BALL DOPPLER SFX.wav"),
+		"explosion": load(sfx_dir + "EXPLOSION SFX.wav"),
+		"fuse": load(sfx_dir + "FUSE SFX.wav"),
+		"bell": load(sfx_dir + "hitmarker_bell.wav"),
+		"wood": load(sfx_dir + "WOOD IMPACT CANON BALL SFX.wav"),
+		"splash": load(sfx_dir + "splash.wav"),
+		"wave": load(sfx_dir + "OCEAN WAVE CRASH SFX.mp3"),
+		"gulls": load(sfx_dir + "SEAGULLS OPEN SEA SFX 1.mp3"),
+	}
+	for synth in ["key", "glitch", "ping", "blip", "boom", "riser"]:
+		sounds[synth] = AudioStreamWAV.load_from_file(ProjectSettings.globalize_path("res://Builds/MakingOf/sfx/%s.wav" % synth))
+	# Áudio do mundo num barramento próprio (baixo); a música do jogo fica muda.
+	var world_bus := AudioServer.bus_count
+	AudioServer.add_bus(world_bus)
+	AudioServer.set_bus_name(world_bus, "World")
+	AudioServer.set_bus_volume_db(world_bus, -16.0)
+	node_added.connect(_route_audio)
+	for i in range(16):
+		var p := AudioStreamPlayer.new()
+		p.set_meta("reel", true)
+		root.add_child(p)
+		players.append(p)
+
+	world = (load("res://MainWorld.tscn") as PackedScene).instantiate()
+	world.show_intro_on_start = true
+	root.add_child(world)
+	world.clock.set_time(0.40, true)
+	world.select_time("day")
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		_route_audio(n)
+		stack.append_array(n.get_children())
+	await process_frame
+	await process_frame
+	if world.graphics:
+		world.graphics.set_mode("alto")
+	if world.get("music"):
+		world.music.stop()
+		world.music.volume_db = -80.0
+
+	overlay = CanvasLayer.new()
+	overlay.layer = 200
+	# O jogo usa tela virtual de 1152×648 (main_world.gd); o reel é desenhado em 1920×1080.
+	overlay.scale = Vector2.ONE * (1152.0 / 1920.0)
+	root.add_child(overlay)
+	grid = Chart.new()
+	grid.size = SCREEN
+	overlay.add_child(grid)
+	route = Route.new()
+	route.size = SCREEN
+	route.stops = PackedVector2Array([Vector2(180, 860), Vector2(520, 560), Vector2(860, 820), Vector2(1180, 520), Vector2(1480, 800), Vector2(1760, 470)])
+	route.visible = false
+	overlay.add_child(route)
+	stage = Control.new()
+	stage.size = SCREEN
+	overlay.add_child(stage)
+	wipe = ColorRect.new()
+	wipe.size = SCREEN
+	wipe.visible = false
+	var wipe_material := ShaderMaterial.new()
+	wipe_material.shader = _wipe_shader()
+	wipe.material = wipe_material
+	overlay.add_child(wipe)
+	flash = ColorRect.new()
+	flash.size = SCREEN
+	flash.modulate.a = 0.0
+	overlay.add_child(flash)
+	var post_layer := CanvasLayer.new()
+	post_layer.layer = 300
+	root.add_child(post_layer)
+	post = ColorRect.new()
+	post.set_anchors_preset(Control.PRESET_FULL_RECT)
+	post.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var post_material := ShaderMaterial.new()
+	post_material.shader = _post_shader()
+	post.material = post_material
+	post_layer.add_child(post)
+
+func _route_audio(node: Node) -> void:
+	if node.has_meta("reel"):
+		return
+	if node is AudioStreamPlayer or node is AudioStreamPlayer2D or node is AudioStreamPlayer3D:
+		node.bus = "World"
+
+func _wipe_shader() -> Shader:
+	var s := Shader.new()
+	s.code = """
+shader_type canvas_item;
+uniform vec4 tint : source_color = vec4(0.22, 0.95, 1.0, 1.0);
+uniform float cover = 0.0;
+uniform float reveal = 0.0;
+void fragment() {
+	float wave = sin(UV.y * 14.0 + TIME * 6.0) * 0.035 + sin(UV.y * 31.0 - TIME * 9.0) * 0.012;
+	float front = cover * 1.25 - 0.1 + wave;
+	float back = reveal * 1.25 - 0.1 + wave;
+	float inside = step(UV.x, front) * step(back, UV.x);
+	float foam = smoothstep(0.03, 0.0, abs(UV.x - front)) + smoothstep(0.03, 0.0, abs(UV.x - back)) * step(0.001, reveal);
+	vec3 col = mix(tint.rgb, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.85);
+	COLOR = vec4(col, max(inside, clamp(foam, 0.0, 1.0)) * step(0.001, cover));
+}
+"""
+	return s
+
+func _post_shader() -> Shader:
+	var s := Shader.new()
+	s.code = """
+shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform float glitch = 0.0;
+void fragment() {
+	vec2 uv = SCREEN_UV;
+	float band = floor(uv.y * 22.0 + floor(TIME * 18.0) * 3.0);
+	float r = fract(sin(band * 91.7 + floor(TIME * 24.0) * 12.3) * 43758.5);
+	uv.x += (r > 0.55 ? (r - 0.55) * 0.22 : 0.0) * glitch;
+	float ca = 0.0012 + 0.009 * glitch;
+	vec3 c;
+	c.r = texture(screen_tex, uv + vec2(ca, 0.0)).r;
+	c.g = texture(screen_tex, uv).g;
+	c.b = texture(screen_tex, uv - vec2(ca, 0.0)).b;
+	c *= 0.95 + 0.05 * sin(SCREEN_UV.y * 1080.0 * 3.14159);
+	float v = smoothstep(1.25, 0.3, length(SCREEN_UV - 0.5) * 1.55);
+	c *= mix(0.72, 1.0, v);
+	COLOR = vec4(c, 1.0);
+}
+"""
+	return s
+
+func show_grid(on: bool, seconds := 0.3) -> void:
+	stage.create_tween().tween_property(grid, "modulate:a", 1.0 if on else 0.0, seconds)
+	await wait(seconds)
+
+# ===================================================================================
+# Roteiro (em compassos)
+# ===================================================================================
+
+func run() -> void:
+	await setup()
+	await process_frame
+	start_frame = Engine.get_process_frames()
+
+	# A · ABERTURA FRIA (0–6) ------------------------------------------------------------
+	sfx("gulls", -18.0)
+	var t1 := label("> ./portfolio --versao-antiga", "mono", 40, CYAN, Vector2(260, 380), 1400, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(t1)
+	await at_bar(1.75)
+	var t2 := label("tipo: site estático · rolagem: vertical", "mono", 40, MIST, Vector2(260, 450), 1400, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(t2)
+	await at_bar(2.75)
+	var t3 := label("você rolava pra baixo... e acabava.", "mono", 40, INK, Vector2(260, 520), 1400, HORIZONTAL_ALIGNMENT_LEFT)
+	await typewrite(t3)
+	await at_bar(3.75)
+	var t4 := label("ERRO: TÉDIO_DETECTADO", "black", 96, RED, Vector2(260, 620), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+	slam(t4, "", 0.0, 22.0)
+	glitch(1.0, 0.7)
+	await at_bar(4.75)
+	sfx("riser", -8.0)
+	await fade_out_all(0.3)
+	await at_bar(5.0)
+	wave_wipe(CYAN, 0.42, 0.05, 0.5)
+	await wait(0.44)
+	var q := label("E se o currículo fosse um mar?", "serif", 120, INK, Vector2(-1, 400))
+	pop(q, 0.85)
+	await at_bar(6.75)
+	await fade_out_all(0.2)
+
+	# B · TÍTULO (7–11) ---------------------------------------------------------------------
+	await at_bar(7.0)
+	do_flash(PARCH, 0.5)
+	sfx("cannon", -2.0)
+	shake(26.0, 0.45)
+	var compass := Compass.new()
+	compass.size = Vector2(800, 800)
+	compass.position = Vector2(560, 140)
+	compass.pivot_offset = compass.size * 0.5
+	stage.add_child(compass)
+	pop(compass, 0.3)
+	var title := label("GRAND LINE", "black", 210, INK, Vector2(-1, 400))
+	slam(title, "", 0.0, 0.0)
+	await wait(BEAT)
+	var tag := label("PORTFÓLIO 3D NAVEGÁVEL  //  WEB + CELULAR", "mono", 34, CYAN, Vector2(-1, 650))
+	await typewrite(tag, 50.0)
+	var by := label("por Pedro D. Ferreira", "serif", 54, GOLD, Vector2(-1, 720))
+	pop(by)
+	await at_bar(9.0)
+	await fade_out_all(0.2)
+	wave_wipe(NAVY, 0.35, 0.0, 0.5)
+	await wait(0.36)
+	grid.modulate.a = 0.0
+	var live := label("● REC   CENA AO VIVO — GODOT 4", "mono", 28, RED, Vector2(70, 60), 900, HORIZONTAL_ALIGNMENT_LEFT)
+	live.add_theme_color_override("font_outline_color", DEEP)
+	live.add_theme_constant_override("outline_size", 8)
+	var frame := Brackets.new()
+	frame.position = Vector2(40, 40)
+	frame.size = SCREEN - Vector2(80, 80)
+	stage.add_child(frame)
+	await at_bar(11.0)
+	await fade_out_all(0.15)
+	await show_grid(true, 0.25)
+
+	# C · REFERÊNCIAS (11–14) -------------------------------------------------------------------
+	var refs := [["ONE PIECE", INK], ["WIND WAKER", GOLD], ["SEA OF THIEVES", CYAN], ["MONKEY ISLAND", INK], ["PIRATAS DO CARIBE", GOLD]]
+	var kick := label("// REFERÊNCIAS", "mono", 30, CYAN, Vector2(-1, 150))
+	pop(kick)
+	for i in range(refs.size()):
+		await at_bar(11.25 + i * 0.5)
+		var r := label(refs[i][0], "black", 104, refs[i][1], Vector2(-1, 250 + i * 128))
+		slam(r, "wood", -10.0, 8.0)
+	await at_bar(13.75)
+	var naz := label("+ um portfólio que já abria direto no mar  (valeu, José Nazaré)", "mono", 26, MIST, Vector2(-1, 920))
+	typewrite(naz, 60.0, false)
+	await at_bar(14.5)
+	await fade_out_all(0.2)
+
+	# D · CAP. 1 CONCEITO (14.5–24) --------------------------------------------------------------
+	await chapter(0, "01", "CONCEITO", "tudo começou em 2D — Meshy.ai")
+	await at_bar(17.0)
+	var concepts := []
+	for file in DirAccess.get_files_at("res://References/2D"):
+		if file.ends_with(".png"):
+			concepts.append(file)
+	concepts.sort()
+	var head := label("17 CONCEITOS", "black", 90, INK, Vector2(-1, 90))
+	slam(head, "boom", -8.0, 6.0)
+	for i in range(concepts.size()):
+		var col := i % 6
+		var row := i / 6
+		var card := picture("res://References/2D/" + concepts[i], Rect2(200 + col * 260, 260 + row * 250, 236, 228), GOLD, true)
+		fly_in(card, Vector2(rng.randf_range(-500, 500), 700), rng.randf_range(-25, 25))
+		sfx("blip", -14.0, 0.8 + i * 0.04)
+		await wait(BEAT * 0.5)
+	await at_bar(19.5)
+	await fade_out_all(0.2)
+	# o canhão em duas peças: o cano só sobe e desce
+	var carriage := picture("res://References/2D/Meshy_AI_cannon_carriage_corrected_concept.png", Rect2(1020, 250, 620, 520), GOLD)
+	var barrel := picture("res://References/2D/Meshy_AI_cannon_barrel_isolated_concept.png", Rect2(280, 250, 620, 520), GOLD)
+	fly_in(barrel, Vector2(-600, 0), -20)
+	fly_in(carriage, Vector2(600, 0), 20)
+	sfx("wood", -8.0)
+	await wait(BEAT * 1.5)
+	barrel.pivot_offset = Vector2(560, 330)
+	var tilt := stage.create_tween()
+	for k in range(2):
+		tilt.tween_property(barrel, "rotation_degrees", -14.0, BEAT).set_trans(Tween.TRANS_SINE)
+		tilt.tween_property(barrel, "rotation_degrees", 6.0, BEAT).set_trans(Tween.TRANS_SINE)
+	tilt.tween_property(barrel, "rotation_degrees", 0.0, BEAT * 0.5)
+	var rule := label("REGRA SAGRADA:", "black", 64, RED, Vector2(-1, 820))
+	slam(rule, "cannon_small", -8.0, 8.0)
+	var rule2 := label("o cano só sobe e desce. duas peças, sempre.", "mono", 34, INK, Vector2(-1, 905))
+	await typewrite(rule2, 48.0)
+	sfx("bell", -6.0)
+	await at_bar(22.5)
+	await fade_out_all(0.2)
+	var islands := [["island_2_experience_fortress", "FORTE", "Experiência"], ["island_3_formation_poneglyph", "PONEGLYPH", "Formação"], ["island_4_projects_shipwreck", "NAUFRÁGIO", "Projetos"], ["island_5_contact_lighthouse_snail", "FAROL", "Contato"]]
+	for i in range(islands.size()):
+		var tile := picture("res://References/2D/Meshy_AI_%s.png" % islands[i][0], Rect2(110 + i * 430, 240, 400, 420), CYAN)
+		fly_in(tile, Vector2(0, -600), rng.randf_range(-12, 12))
+		sfx("wood", -12.0, 0.9 + i * 0.08)
+		var tag_name := label(islands[i][1], "black", 44, GOLD, Vector2(110 + i * 430, 690), 400)
+		pop(tag_name)
+		var part := label("= " + islands[i][2], "mono", 28, INK, Vector2(110 + i * 430, 750), 400)
+		pop(part)
+		await wait(BEAT)
+	var each := label("uma ilha para cada seção do currículo", "serif", 58, INK, Vector2(-1, 860))
+	pop(each, 0.9)
+	await at_bar(25.0)
+	await fade_out_all(0.2)
+
+	# E · CAP. 2 PROTÓTIPO (25–32) ------------------------------------------------------------------
+	await chapter(1, "02", "PROTÓTIPO", "Codex + Godot, conectados por MCP")
+	var term := terminal(Rect2(160, 160, 760, 300), "codex@godot ~")
+	var l1 := term_line(term, "$ gerar planeta --raio 200m", CYAN)
+	await typewrite(l1, 30.0)
+	var l2 := term_line(term, "ok. planeta gerado.", MIST)
+	await typewrite(l2, 60.0, false)
+	var jelly := picture("res://Documentation/Previews/overview.png", Rect2(980, 160, 780, 520), MAGENTA)
+	pop(jelly, 0.7)
+	sfx("splash", -6.0)
+	var wob := stage.create_tween()
+	for k in range(4):
+		wob.tween_property(jelly, "scale", Vector2(1.07, 0.93), BEAT * 0.5).set_trans(Tween.TRANS_SINE)
+		wob.tween_property(jelly, "scale", Vector2(0.94, 1.06), BEAT * 0.5).set_trans(Tween.TRANS_SINE)
+	wob.tween_property(jelly, "scale", Vector2.ONE, BEAT * 0.5)
+	var gel := label("...parecia gelatina.", "serif", 92, MAGENTA, Vector2(-1, 760))
+	slam(gel, "", 0.0, 0.0)
+	glitch(0.6, 0.4)
+	await at_bar(30.0)
+	await fade_out_all(0.15)
+	var storms := ["revision_sailing.png", "v2_island_2_day.png", "v3_island_3_night.png"]
+	for i in range(storms.size()):
+		var s := picture("res://Documentation/Previews/" + storms[i], Rect2(90 + i * 590, 200, 560, 360), MIST)
+		fly_in(s, Vector2(0, 500), rng.randf_range(-10, 10))
+		sfx("wave", -16.0, 1.2)
+		await wait(BEAT * 0.5)
+	shake(18.0, 0.8)
+	var storm := label("mar de tempestade... num portfólio?", "serif", 76, INK, Vector2(-1, 650))
+	pop(storm, 0.9)
+	await at_bar(31.5)
+	var calm := label("CALMA.", "black", 150, GOLD, Vector2(-1, 790))
+	slam(calm, "boom", -4.0, 20.0)
+	await at_bar(32.75)
+	await fade_out_all(0.2)
+
+	# F · CAP. 3 O PLANO (33–38) ------------------------------------------------------------------
+	await chapter(2, "03", "O PLANO", "um brief com tudo que tinha dado errado")
+	await at_bar(35.5)
+	var steps := ["ENTENDER", "PLANEJAR", "PERGUNTAR", "EXECUTAR"]
+	for i in range(steps.size()):
+		var x := 110.0 + i * 445.0
+		var s := label(steps[i], "black", 54, INK if i < 3 else GOLD, Vector2(x, 400), 400)
+		slam(s, "", 0.0, 4.0)
+		sfx("ping", -14.0, 1.0 + i * 0.15)
+		if i < 3:
+			var arrow := label("→", "mono", 64, CYAN, Vector2(x + 385, 395), 80)
+			pop(arrow)
+		await wait(BEAT)
+	var badge := label("CLAUDE + CODEX  ·  MCP  ·  GODOT 4.7", "mono", 38, CYAN, Vector2(-1, 620))
+	await typewrite(badge, 50.0)
+	var measured := label("antes de mexer em qualquer coisa, cada ilha foi medida dentro do Godot.", "sans", 34, MIST, Vector2(-1, 720))
+	pop(measured, 0.95)
+	await at_bar(38.5)
+	await fade_out_all(0.2)
+
+	# G · CAP. 4 CONSTRUÇÃO (38.5–53) — montagem + git log real ------------------------------------
+	await chapter(3, "04", "CONSTRUÇÃO", "oceano, vento, luzes, interface, web")
+	await at_bar(41.0)
+	var log_panel := terminal(Rect2(1300, 120, 560, 840), "git log --oneline")
+	var montage := [
+		["v10_ripple.png", "// ondas trocoidais: a mesma conta no shader e na física"],
+		["v6_bow_wave_port.png", "// folha d'água na proa, gotas, canhão que só inclina"],
+		["v7_logpose.png", "// log pose: a agulha aponta a próxima ilha"],
+		["winmask_island_sobre.png", "// isto é uma máscara de janelas. juro."],
+		["markers_0_z+.png", "// cada luz posicionada por raycast nos modelos"],
+		["v10_night_island_1.png", "// ...pra janela acender no lugar certo"],
+		["v10_overview.png", "// mapa 3D: o planeta gira, o universo fica"],
+		["v10_hud_island_panel.png", "// interface redesenhada umas cinco vezes"],
+	]
+	for i in range(montage.size()):
+		await at_bar(41.0 + i * 1.5)
+		var shot := picture("res://Documentation/Previews/" + montage[i][0], Rect2(60, 140, 1180, 660), CYAN)
+		fly_in(shot, Vector2(-300 if i % 2 == 0 else 300, 0), -6.0 if i % 2 == 0 else 6.0)
+		sfx("whoosh", -16.0, 1.3)
+		stage.create_tween().tween_property(shot, "scale", Vector2.ONE * 1.05, BAR * 1.5)
+		var cap := label(montage[i][1], "mono", 30, GOLD, Vector2(64, 830), 1180, HORIZONTAL_ALIGNMENT_LEFT)
+		typewrite(cap, 70.0, false)
+		var commit := term_line(log_panel, GIT_LOG[i], CYAN if i % 2 == 0 else INK, 22)
+		typewrite(commit, 80.0, true)
+		await wait(BAR * 1.5 - 0.35)
+		stage.create_tween().tween_property(shot, "modulate:a", 0.0, 0.2)
+		stage.create_tween().tween_property(cap, "modulate:a", 0.0, 0.2)
+	var last := term_line(log_panel, GIT_LOG[8], GOLD, 22)
+	typewrite(last, 80.0, true)
+	await at_bar(53.25)
+	await fade_out_all(0.2)
+
+	# H · CAP. 5 O QUE DEU ERRADO (53.5–64) ----------------------------------------------------------
+	grid.tint = RED
+	await chapter(4, "05", "DEU ERRADO", "spoiler: muita coisa")
+	await at_bar(56.0)
+	sfx("fuse", -10.0)
+	var fails := [
+		["O NAVIO AFUNDAVA", "medi a linha d'água: -0,38 -> +0,05"],
+		["O CLOUDFLARE CORTAVA O JOGO", "o navegador monta o pacote em partes"],
+		["NO CELULAR, TUDO BRANCO", "o cache do Godot pulava a importação"],
+		["UM CELULAR TRAVOU INTEIRO", "versão leve + gráficos que se ajustam sozinhos"],
+	]
+	for i in range(fails.size()):
+		await at_bar(56.0 + i * 2.0)
+		var y := 170.0 + i * 205.0
+		var stamp := label("ERRO", "mono", 30, DEEP, Vector2(160, y + 16), 120)
+		var stamp_bg := ColorRect.new()
+		stamp_bg.color = RED
+		stamp_bg.position = Vector2(150, y + 12)
+		stamp_bg.size = Vector2(110, 46)
+		stage.add_child(stamp_bg)
+		stage.move_child(stamp_bg, stamp.get_index())
+		pop(stamp_bg, 1.6)
+		var fail := label(fails[i][0], "black", 64, INK, Vector2(300, y), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+		slam(fail, "explosion", -10.0, 18.0)
+		glitch(0.8, 0.35)
+		await wait(BAR)
+		var fix := label("✓  " + fails[i][1], "mono", 32, GOLD, Vector2(304, y + 92), 1500, HORIZONTAL_ALIGNMENT_LEFT)
+		sfx("bell", -6.0, 1.0 + i * 0.06)
+		await typewrite(fix, 70.0, false)
+	await at_bar(64.0)
+	await fade_out_all(0.2)
+	grid.tint = CYAN
+
+	# I · NÚMEROS (64–69) ---------------------------------------------------------------------------
+	var numbers := [[4, 4, "DIAS"], [23, 23, "COMMITS"], [98, 98, "CAPTURAS DE TESTE"], [70, 20, "MB NO CELULAR (70 → 20)"], [0, 0, "MODELOS 3D REFEITOS"]]
+	var nk := label("// EM NÚMEROS", "mono", 30, CYAN, Vector2(-1, 110))
+	pop(nk)
+	for i in range(numbers.size()):
+		await at_bar(64.25 + i * 0.75)
+		var y := 200.0 + i * 160.0
+		var value := label("0", "black", 110, GOLD, Vector2(160, y), 560, HORIZONTAL_ALIGNMENT_RIGHT)
+		var what := label(numbers[i][2], "mono", 40, INK, Vector2(780, y + 44), 1100, HORIZONTAL_ALIGNMENT_LEFT)
+		pop(what)
+		var from: int = numbers[i][0] if numbers[i][0] != numbers[i][1] else 0
+		var to: int = numbers[i][1]
+		var setter := func(v: float): value.text = str(int(round(v)))
+		stage.create_tween().tween_method(setter, float(from), float(to), BEAT * 1.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		slam(value, "blip", -8.0, 4.0)
+	await at_bar(68.5)
+	await fade_out_all(0.2)
+
+	# J · O RESULTADO — gameplay real (69–87) ---------------------------------------------------------
+	await at_bar(69.0)
+	var result := label("O RESULTADO", "black", 190, INK, Vector2(-1, 420))
+	slam(result, "cannon", -2.0, 30.0)
+	do_flash(PARCH, 0.4)
+	await at_bar(70.0)
+	await fade_out_all(0.1)
+	world._start_sailing()
+	world.ship.controls_override = true
+	world.ship.test_controls = Vector3(1, 0.1, 1)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("World"), -6.0)
+	wave_wipe(CYAN, 0.3, 0.0, 0.45)
+	await wait(0.31)
+	grid.modulate.a = 0.0
+	var rec := label("● AO VIVO  ·  GAMEPLAY REAL", "mono", 26, RED, Vector2(70, 60), 900, HORIZONTAL_ALIGNMENT_LEFT)
+	rec.add_theme_color_override("font_outline_color", DEEP)
+	rec.add_theme_constant_override("outline_size", 8)
+	live_caption("NAVEGUE.", "> W A S D  ·  joystick no celular")
+	await at_bar(72.5)
+	await _clear_captions(rec)
+	world.ship.test_controls = Vector3(0.6, 0.0, 0)
+	world.naval.call("fire")
+	live_caption("ATIRE.", "> canhão de verdade, física de verdade")
+	await at_bar(75.0)
+	await _clear_captions(rec)
+	world.ship.test_controls = Vector3.ZERO
+	world.toggle_map()
+	await wait(1.6)
+	live_caption("GIRE O MUNDO.", "> mapa 3D do planeta")
+	var spin_end := now() + BAR * 1.6
+	while now() < spin_end:
+		await process_frame
+		world.camera.drag_orbit(Vector2(-9, 6))
+	await at_bar(78.0)
+	await _clear_captions(rec)
+	var visits := [[1, "EXPERIÊNCIA.", "> cada ilha, uma seção do currículo"], [3, "PROJETOS.", "> direto da API do GitHub, sempre atualizado"], [4, "CONTATO.", "> e um Den Den Mushi no farol"]]
+	for v in visits:
+		world.hud.island_pressed.emit(v[0])
+		sfx("whoosh", -14.0)
+		await wait(1.6)
+		if not world.hud.island_panel.visible:
+			world.hud.show_island(v[0], false)
+		live_caption(v[1], v[2])
+		await wait(BAR * 2.0 - 1.6)
+		await _clear_captions(rec)
+	world.select_time("night")
+	live_caption("E DE NOITE...", "> o farol acende")
+	await at_bar(87.5)
+	await _clear_captions(rec)
+	rec.queue_free()
+	await show_grid(true, 0.3)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("World"), -16.0)
+
+	# K · EU NO PROCESSO (88–93) -----------------------------------------------------------------------
+	await chapter(5, "06", "EU NO PROCESSO", "a parte que não aparece no código")
+	await at_bar(90.5)
+	var lines := [["escrevi o brief.", INK], ["aprovei cada asset.", INK], ["testei cada versão — no PC e no celular.", INK], ["disse \"não\" muitas vezes.", GOLD]]
+	for i in range(lines.size()):
+		var l := label(lines[i][0], "serif", 76, lines[i][1], Vector2(-1, 210 + i * 130))
+		pop(l, 0.85)
+		sfx("blip", -12.0, 1.0 + i * 0.1)
+		await wait(BEAT * 1.5)
+	await wait(BEAT)
+	var ai := label("A IA PROGRAMOU COMIGO. AS DECISÕES FORAM MINHAS.", "black", 58, CYAN, Vector2(-1, 780), 1800)
+	slam(ai, "boom", -6.0, 10.0)
+	await at_bar(95.0)
+	await fade_out_all(0.2)
+
+	# L · ASSINATURA (95–100) ---------------------------------------------------------------------------
+	route.visible = true
+	route.modulate.a = 0.35
+	route.progress = 5.0
+	route.reached = 6
+	for i in range(6):
+		route.ping(i)
+	sfx("cannon", -2.0)
+	do_flash(PARCH, 0.5)
+	shake(24.0, 0.5)
+	var who := label("Pedro D. Ferreira", "serif", 150, INK, Vector2(-1, 280))
+	slam(who, "", 0.0, 0.0)
+	await wait(BEAT)
+	var role := label("Data Engineer & Cybersecurity Student", "roman", 54, GOLD, Vector2(-1, 470))
+	pop(role)
+	await wait(BEAT)
+	var go := label("> zarpe:", "mono", 32, MIST, Vector2(-1, 600))
+	pop(go)
+	var url := label("portfolio-data-cybersecurity.data-pedutraferreira.workers.dev", "mono", 40, CYAN, Vector2(-1, 650), 1800)
+	await typewrite(url, 55.0)
+	var credits := label("Godot  ·  Meshy.ai  ·  Claude + Codex (MCP)  ·  Cloudflare", "sans", 28, MIST, Vector2(-1, 820))
+	pop(credits)
+	await at_bar(99.5)
+	var out := ColorRect.new()
+	out.color = Color.BLACK
+	out.size = SCREEN
+	out.modulate.a = 0.0
+	stage.add_child(out)
+	stage.create_tween().tween_property(out, "modulate:a", 1.0, BAR)
+	await at_bar(101.0)
+	quit()
+
+func _clear_captions(keep: Node) -> void:
+	for child in stage.get_children():
+		if child != keep and child is CanvasItem:
+			stage.create_tween().tween_property(child, "modulate:a", 0.0, 0.15)
+	await wait(0.15)
+	for child in stage.get_children():
+		if child != keep:
+			child.queue_free()
