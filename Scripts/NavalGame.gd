@@ -411,9 +411,9 @@ func _process(_delta: float) -> void:
 	if time_attack_mode:
 		var seconds := ceili(time_attack_remaining)
 		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == course_count else "TEMPO ESGOTADO")
-		hud.text = "TIME ATTACK  %02d:%02d · Boias %d/%d · %s\nCANHÃO  R/F inclina · Espaço atira" % [floori(float(seconds) / 60.0), seconds % 60, time_attack_hits.size(), course_count, result]
+		hud.text = "%.0f°  ·  regata %s" % [rad_to_deg(aim_elevation), result.to_lower()]
 	else:
-		hud.text = ("RECARREGANDO\n" if state != "PRONTO" else "") + "ELEVAÇÃO %.0f°    ACERTOS %d"%[rad_to_deg(aim_elevation),score]
+		hud.text = "%.0f°  ·  %d acertos%s"%[rad_to_deg(aim_elevation),score,"" if state == "PRONTO" else "  ·  recarregando"]
 
 func _play_impact(kind: String, point: Vector3) -> void:
 	var sound:=AudioStreamPlayer3D.new()

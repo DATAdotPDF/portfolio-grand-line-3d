@@ -57,6 +57,15 @@ func run() -> void:
 		world.camera.yaw = 0.0
 		world.camera.pitch = 0.0
 		world.ship.test_controls = Vector3.ZERO
+	if wants("route"):
+		world.camera.yaw = -world.log_pose.target_angle_rad
+		world.camera.follow_height = 14.0
+		world.camera.follow_distance = 22.0
+		await wait(2.0)
+		await shot("route")
+		world.camera.yaw = 0.0
+		world.camera.follow_height = 5.0
+		world.camera.follow_distance = 12.0
 	if wants("close"):
 		world.ship.controls_override = true
 		world.ship.test_controls = Vector3(1, 0.1, 1)
@@ -109,6 +118,9 @@ func run() -> void:
 		world.camera.return_to_boat()
 		root.size = Vector2i(390, 844)
 		world.get_node("TouchControls").enable()
+		world.hud.touch = true
+		world.hud.hide_island()
+		world.hud.show_island(0)
 		await wait(2.8)
 		await shot("mobile")
 		root.size = Vector2i(1280, 720)

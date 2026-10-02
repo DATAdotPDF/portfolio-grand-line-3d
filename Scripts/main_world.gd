@@ -16,6 +16,7 @@ const OceanPatchScript = preload("res://Scripts/OceanPatch.gd")
 const TouchControlsScript = preload("res://Scripts/TouchControls.gd")
 const PortfolioHUDScript = preload("res://Scripts/UI/PortfolioHUD.gd")
 const CloudLayerScript = preload("res://Scripts/CloudLayer.gd")
+const RouteLineScript = preload("res://Scripts/RouteLine.gd")
 const SHIP_LENGTH := 4.8
 const SEABED_DEPTH := 25.0
 const CORE_DEPTH := 30.0
@@ -75,6 +76,7 @@ var bow_wave_meshes: Array[MeshInstance3D] = []
 var islands: Array[Node3D] = []
 var hud: CanvasLayer
 var intro_orbit := false
+var route_line: MeshInstance3D
 var log_pose: Node3D
 @export_group("Editor Planet")
 @export_node_path("MeshInstance3D") var ocean_mesh_path: NodePath = ^"OceanMesh"
@@ -124,6 +126,11 @@ func _ready() -> void:
 	clouds.clock = clock
 	clouds.ocean_materials = ocean.materials
 	add_child(clouds)
+	route_line = RouteLineScript.new()
+	route_line.name = "RouteLine"
+	route_line.ship = ship
+	route_line.ocean = ocean
+	add_child(route_line)
 	_build_hud()
 	_build_log_pose()
 	_build_audio()
@@ -646,7 +653,7 @@ func _select_island(index: int) -> void:
 func _on_island_visit_started(index: int) -> void:
 	if intro_orbit:
 		return
-	if hud: hud.show_island(index)
+	if hud: hud.show_island(index, false)
 	if is_instance_valid(naval) and bool(naval.get("time_attack_mode")):
 		naval.call("leave_time_attack")
 
@@ -680,8 +687,29 @@ func wind_at(point: Vector3) -> Vector3:
 	return Scale.wind_at(point)
 
 func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
-	hud.set_status(section, nearest, ship.measured_speed, Engine.get_frames_per_second())
-	# Perto de uma ilha (e navegando), oferece abrir a seção dela.
+	# Destino: a ilha não visitada mais próxima (se todas visitadas, a mais próxima).
+	var up := ship.global_position.normalized()
+	var target_index := -1
+	var target_distance := INF
+	for i in range(islands.size()):
+		if hud.visited.has(i):
+			continue
+		var d := up.angle_to(islands[i].global_position.normalized()) * planet_radius
+		if d < target_distance:
+			target_distance = d
+			target_index = i
+	if target_index < 0:
+		target_index = nearest_index
+		target_distance = nearest
+	var target_name := str(islands[target_index].get_meta("section")) if target_index >= 0 else ""
+	hud.set_status(section, target_distance, ship.measured_speed, Engine.get_frames_per_second())
+	hud.set_route(target_name, target_distance)
+	if is_instance_valid(log_pose) and target_index >= 0:
+		log_pose.target_override = islands[target_index]
+	if is_instance_valid(route_line):
+		route_line.target = islands[target_index] if target_index >= 0 else null
+		route_line.visible = camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW and not hud.intro_visible
+	# Perto de uma ilha (e navegando), o painel dela abre sozinho à direita.
 	var close := nearest_index >= 0 and nearest < 110.0 and camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW
 	hud.set_approach(nearest_index if close else -1)
 	hud.set_daylight(1.0 - clock.night_at(camera.global_position))
@@ -690,9 +718,6 @@ func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
 		if naval.time_attack_mode and not naval.time_attack_running:
 			finished = "CONCLUÍDA" if naval.time_attack_hits.size() == naval.course_count else "FIM"
 		hud.set_race(naval.time_attack_mode, naval.time_attack_remaining, naval.time_attack_hits.size(), naval.course_count, finished)
-	if ship.measured_speed > 1.0:
-		hud.notify_player_input()
-
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return

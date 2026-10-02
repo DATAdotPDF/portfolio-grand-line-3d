@@ -25,6 +25,10 @@ var dragging := false
 var pointer_over := false
 var route_label: Label
 var internal_light: OmniLight3D
+## Ilha de destino escolhida pelo jogo (próxima não visitada). Vazio = mais próxima.
+var target_override: Node3D
+var target_distance := 0.0
+var pointer: Node3D
 
 func _ready() -> void:
 	compass_viewport = get_parent() as SubViewport
@@ -53,6 +57,23 @@ func _build_models() -> void:
 				paint.emission_texture = paint.albedo_texture
 				paint.emission_energy_multiplier = 0.35
 				mesh.set_surface_override_material(surface,paint)
+	# Ponta vermelha: deixa claro para onde a agulha aponta.
+	pointer = MeshInstance3D.new()
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 0.07
+	cone.height = 0.22
+	cone.radial_segments = 12
+	pointer.mesh = cone
+	var red := StandardMaterial3D.new()
+	red.albedo_color = Color("b3202f")
+	red.emission_enabled = true
+	red.emission = Color("c8283a")
+	red.emission_energy_multiplier = 0.6
+	pointer.material_override = red
+	pointer.rotation.x = -PI * 0.5
+	pointer.position = Vector3(0, 0.08, -0.5)
+	needle_pivot.add_child(pointer)
 	var dome_resource := load("res://Assets/Optimized/log_pose_dome.glb") as PackedScene
 	if dome_resource:
 		var dome := dome_resource.instantiate() as Node3D
@@ -77,7 +98,8 @@ func _process(delta: float) -> void:
 	_update_inspection(delta)
 	wobble_phase += delta * wobble_speed
 	current_angle_rad = lerp_angle(current_angle_rad, target_angle_rad, 1.0 - exp(-needle_smoothness * delta))
-	needle_pivot.rotation.y = current_angle_rad + sin(wobble_phase) * deg_to_rad(wobble_angle_deg)
+	# rotation.y = -ângulo leva o -Z local (ponta vermelha) para o rumo na tela.
+	needle_pivot.rotation.y = -(current_angle_rad + sin(wobble_phase) * deg_to_rad(wobble_angle_deg))
 	redraw_timer -= delta
 	if redraw_timer <= 0.0:
 		compass_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -88,6 +110,13 @@ func _update_nearest_island() -> void:
 		return
 	var islands := islands_parent.get_children().filter(func(node): return node is Node3D)
 	if islands.is_empty(): return
+	if is_instance_valid(target_override):
+		nearest_island = target_override
+		current_island_idx = islands.find(target_override)
+		target_distance = player_sloop.global_position.normalized().angle_to(target_override.global_position.normalized()) * Scale.radius()
+		if route_label:
+			route_label.text = "RUMO · %s · %s" % [str(target_override.get_meta("section", target_override.name)).to_upper(), _distance_text(target_distance)]
+		return
 	var boat_direction := player_sloop.global_position.normalized()
 	var nearest_distance := INF
 	for index in range(islands.size()):
@@ -98,7 +127,10 @@ func _update_nearest_island() -> void:
 			nearest_island = candidate
 			current_island_idx = index
 	if route_label:
-		route_label.text = "MAIS PERTO · " + str(nearest_island.get_meta("section",nearest_island.name)).to_upper()
+		route_label.text = "RUMO · " + str(nearest_island.get_meta("section",nearest_island.name)).to_upper()
+
+func _distance_text(meters: float) -> String:
+	return "%.1f km" % (meters / 1000.0) if meters >= 1000.0 else "%d m" % int(meters)
 
 func heading_to(island_position: Vector3) -> float:
 	var boat_up := player_sloop.global_position.normalized()
@@ -132,7 +164,7 @@ func _build_lighting_and_input() -> void:
 	compass_viewport.add_child(fill)
 	var control := compass_viewport.get_parent() as SubViewportContainer
 	control.mouse_filter = Control.MOUSE_FILTER_STOP
-	control.tooltip_text = "Log Pose: ilha mais próxima. Arraste com botão direito para examinar."
+	control.tooltip_text = "Log Pose: a ponta vermelha indica o rumo da próxima ilha."
 	control.gui_input.connect(_inspect_input)
 	control.mouse_entered.connect(func(): pointer_over = true)
 	control.mouse_exited.connect(func(): pointer_over = false; dragging = false; inspection_target = Vector2.ZERO)
@@ -141,10 +173,14 @@ func _build_lighting_and_input() -> void:
 	route_label.size = Vector2(220,24)
 	route_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	route_label.add_theme_font_size_override("font_size",13)
-	route_label.add_theme_color_override("font_shadow_color",Color.BLACK)
-	route_label.add_theme_constant_override("shadow_offset_y",1)
+	route_label.add_theme_font_override("font", load("res://Assets/Fonts/JetBrainsMono-Variable.ttf"))
+	route_label.add_theme_color_override("font_color", Color("2b2118"))
+	route_label.add_theme_color_override("font_outline_color", Color(0.94, 0.89, 0.8, 0.85))
+	route_label.add_theme_constant_override("outline_size", 6)
 	route_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	control.add_child(route_label)
+	# O rumo já aparece no cabeçalho do HUD; aqui só repetiria o texto.
+	route_label.visible = false
 
 func _inspect_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
