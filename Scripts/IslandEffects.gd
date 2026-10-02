@@ -29,6 +29,9 @@ var signal_rings: Array[MeshInstance3D] = []
 var smoke_emitters: Array[GPUParticles3D] = []
 var glows: Array[MeshInstance3D] = []
 var beacon: MeshInstance3D
+var panes: Array[MeshInstance3D] = []
+var bonfire: GPUParticles3D
+var lantern_materials: Array[ShaderMaterial] = []
 var lantern_glass: MeshInstance3D
 var snail_base := Vector3.ZERO
 
@@ -66,8 +69,6 @@ func window_light(where: Vector3, color: Color, reach: float) -> OmniLight3D:
 	light.shadow_enabled = false
 	add_child(light)
 	lamps.append(light)
-	# Halo visível (janela acesa): no Compatibility a luz omni sozinha mal aparece.
-	glow_sprite(where, color, 0.75)
 	return light
 
 ## Halo emissivo em billboard; some de dia. disable_fog para ser visto de longe.
@@ -99,6 +100,110 @@ func glow_sprite(where: Vector3, color: Color, size: float) -> MeshInstance3D:
 	add_child(sprite)
 	glows.append(sprite)
 	return sprite
+
+## Vidro de janela aceso: painel emissivo rente à parede + luz logo à frente.
+func lit_pane(where: Vector3, outward: Vector3, size: Vector2, color: Color) -> void:
+	var pane := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = size
+	pane.mesh = quad
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	mat.disable_fog = true
+	pane.material_override = mat
+	pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	pane.position = where + outward * 0.04
+	pane.basis = Basis.looking_at(-outward, Vector3.UP)
+	add_child(pane)
+	panes.append(pane)
+	var light := OmniLight3D.new()
+	light.position = where + outward * 0.7
+	light.light_color = color
+	light.omni_range = 3.5
+	light.omni_attenuation = 1.3
+	light.shadow_enabled = false
+	add_child(light)
+	lamps.append(light)
+
+## Fogueira: chamas em partículas + luz forte que tremula.
+func _build_bonfire(where: Vector3) -> void:
+	var fire := GPUParticles3D.new()
+	fire.name = "Bonfire"
+	fire.position = where
+	fire.amount = 26
+	fire.lifetime = 0.9
+	fire.local_coords = true
+	var motion := ParticleProcessMaterial.new()
+	motion.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	motion.emission_sphere_radius = 0.5
+	motion.direction = Vector3.UP
+	motion.spread = 15.0
+	motion.initial_velocity_min = 1.2
+	motion.initial_velocity_max = 2.2
+	motion.gravity = Vector3.ZERO
+	motion.scale_min = 0.6
+	motion.scale_max = 1.2
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0, 1))
+	shrink.add_point(Vector2(1, 0.1))
+	var shrink_tex := CurveTexture.new()
+	shrink_tex.curve = shrink
+	motion.scale_curve = shrink_tex
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 0.85, 0.4, 1.0))
+	ramp.set_color(1, Color(0.9, 0.2, 0.05, 0.0))
+	var ramp_tex := GradientTexture1D.new()
+	ramp_tex.gradient = ramp
+	motion.color_ramp = ramp_tex
+	fire.process_material = motion
+	var flame := QuadMesh.new()
+	flame.size = Vector2(0.7, 0.9)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.vertex_color_use_as_albedo = true
+	mat.disable_fog = true
+	var soft := Gradient.new()
+	soft.set_color(0, Color(1, 1, 1, 1))
+	soft.set_color(1, Color(1, 1, 1, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = soft
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(0.5, 0.0)
+	mat.albedo_texture = tex
+	flame.material = mat
+	fire.draw_pass_1 = flame
+	add_child(fire)
+	bonfire = fire
+	var light := OmniLight3D.new()
+	light.name = "BonfireLight"
+	light.position = where + Vector3.UP * 1.0
+	light.light_color = Color("ff8a2a")
+	light.omni_range = 14.0
+	light.shadow_enabled = false
+	add_child(light)
+	lamps.append(light)
+
+## Vidro da lanterna do farol pintado de branco fluorescente à noite (a luz parece sair dali).
+func _paint_lantern_glass(center_local: Vector3) -> void:
+	var model_center := model.transform.affine_inverse() * center_local
+	for mesh in model.find_children("*", "MeshInstance3D", true, false):
+		for surface in range(mesh.mesh.get_surface_count()):
+			var original := mesh.get_active_material(surface) as StandardMaterial3D
+			if original == null or original.albedo_texture == null:
+				continue
+			var glow := ShaderMaterial.new()
+			glow.shader = load("res://Shaders/lantern_glow.gdshader")
+			glow.set_shader_parameter("albedo_map", original.albedo_texture)
+			glow.set_shader_parameter("tint", original.albedo_color)
+			glow.set_shader_parameter("glow_center", model_center)
+			glow.set_shader_parameter("glow_radius", 0.12)
+			mesh.set_surface_override_material(surface, glow)
+			lantern_materials.append(glow)
 
 func _build_chimney_smoke(where: Vector3) -> void:
 	var smoke := GPUParticles3D.new()
@@ -148,16 +253,18 @@ func _ready() -> void:
 	clock = get_node("/root/DayNightCycle")
 	match index:
 		0:
-			# Posições medidas (Tests/island_markers.gd): luz quente logo à frente das janelas e da porta.
-			for w in [Vector3(0.46, 0.84, 0.56), Vector3(0.59, 0.84, 0.56), Vector3(0.37, 0.67, 0.58), Vector3(0.66, 0.67, 0.58), Vector3(0.48, 0.60, 0.62)]:
-				window_light(point(w.x, w.y, w.z), Color("ffb85c"), 2.2)
-			_build_chimney_smoke(point(0.73, 0.80, 0.33))
+			# Medido por raycast na malha (Tests/island_probe.gd): vidros das janelas da casa.
+			for w in [Vector3(0.345, 0.587, 0.262), Vector3(0.445, 0.596, 0.308), Vector3(0.498, 0.596, 0.309), Vector3(0.585, 0.357, 0.307), Vector3(0.641, 0.358, 0.309), Vector3(0.469, 0.781, 0.306)]:
+				lit_pane(point(w.x, w.y, w.z), Vector3.BACK, Vector2(0.55, 0.6), Color("ffb85c"))
+			for d in [Vector3(0.330, 0.354, 0.293), Vector3(0.466, 0.362, 0.310)]:
+				lit_pane(point(d.x, d.y, d.z), Vector3.BACK, Vector2(0.8, 1.2), Color("ff9f45"))
+			_build_chimney_smoke(point(0.632, 0.775, 0.275))
 		1:
 			_build_fort_cannons()
-			window_light(point(0.52, 0.76, 0.47), Color("ffa04a"), 7.0)
-			window_light(point(0.50, 0.73, 0.80), Color("ffb050"), 3.5)
-			window_light(point(0.27, 0.86, 0.72), Color("ffb050"), 2.5)
-			window_light(point(0.73, 0.86, 0.72), Color("ffb050"), 2.5)
+			# Fogueira no pátio + uma luz em cada torre (medidos no topo da malha).
+			_build_bonfire(point(0.488, 0.617, 0.488))
+			for tower in [Vector3(0.247, 0.90, 0.243), Vector3(0.734, 0.90, 0.243), Vector3(0.246, 0.90, 0.721), Vector3(0.733, 0.90, 0.721)]:
+				window_light(point(tower.x, tower.y, tower.z), Color("ffb050"), 5.0)
 		2:
 			_extract_cube()
 			var glow := lamp(point(0.5, 0.60, 0.50), Color("00f0ff"), 7.0)
@@ -189,8 +296,10 @@ func _ready() -> void:
 			add_child(particles)
 		3:
 			_build_treasure()
-			window_light(point(0.36, 0.32, 0.60), Color("ffcc40"), 2.8)
-			window_light(point(0.71, 0.32, 0.60), Color("ffcc40"), 2.8)
+			# Brilho do ouro logo acima de cada baú.
+			for chest in [Vector3(0.290, 0.30, 0.712), Vector3(0.742, 0.27, 0.686)]:
+				window_light(point(chest.x, chest.y, chest.z), Color("ffcc40"), 4.0)
+				glow_sprite(point(chest.x, chest.y + 0.02, chest.z), Color(1.0, 0.8, 0.3), 1.4)
 		4:
 			snail = Parts.extract(model, AABB(Vector3(-0.1, 0.64, -0.50), Vector3(0.58, 0.34, 0.65)), "DenDenMushi")
 			lantern_pivot = Node3D.new()
@@ -203,7 +312,8 @@ func _ready() -> void:
 			beam.light_color = Color("fff4b8")
 			beam.shadow_enabled = false
 			lantern_pivot.add_child(beam)
-			var glow := window_light(lantern_pivot.position, Color("fff4b8"), 9.0)
+			# Alcance curto: a luz de 9 m atravessava os polígonos do Den Den Mushi logo acima.
+			var glow := window_light(lantern_pivot.position, Color("fff4b8"), 2.2)
 			glow.name = "LanternInteriorGlow"
 			# Lanterna acesa por dentro: núcleo emissivo que aparece de longe (sem névoa).
 			lantern_glass = MeshInstance3D.new()
@@ -219,7 +329,8 @@ func _ready() -> void:
 			lantern_glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			lantern_glass.position = lantern_pivot.position
 			add_child(lantern_glass)
-			beacon = glow_sprite(lantern_pivot.position, Color(1.0, 0.92, 0.65), 9.0)
+			beacon = glow_sprite(lantern_pivot.position, Color(1.0, 0.92, 0.65), 2.6)
+			_paint_lantern_glass(model.transform * Vector3(0.17, 0.552, -0.19))
 			beam_cone = MeshInstance3D.new()
 			var cone := CylinderMesh.new()
 			cone.top_radius = 0.08
@@ -250,7 +361,8 @@ func _process(delta: float) -> void:
 		var light := lamps[i]
 		light.visible = (in_view or light.name == "LanternInteriorGlow") and (night > 0.05 or index == 2)
 		var flicker := 1.0 + 0.10 * sin(elapsed * 8.1 + i * 2.0) + 0.05 * sin(elapsed * 13.7)
-		light.light_energy = (lerpf(0.35, 3.2, night) if index == 2 else night * 2.6) * flicker + flash
+		var strength := 6.0 if light.name == "BonfireLight" else 2.6
+		light.light_energy = (lerpf(0.35, 3.2, night) if index == 2 else night * strength) * flicker + flash
 	
 	if cube:
 		cube.position = cube_base + Vector3.UP * (sin(elapsed * 1.5) * 0.12 / factor)
@@ -317,6 +429,13 @@ func _process(delta: float) -> void:
 		if lantern_glass:
 			lantern_glass.visible = night > 0.05
 			(lantern_glass.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.95, 0.7) * lerpf(0.6, 1.6, night)
+	for pane in panes:
+		pane.visible = night > 0.08
+		(pane.material_override as StandardMaterial3D).albedo_color.a = 1.0
+	if bonfire:
+		bonfire.emitting = night > 0.05 and in_view
+	for mat in lantern_materials:
+		mat.set_shader_parameter("night", night)
 	for glow in glows:
 		glow.visible = night > 0.08
 		var mat := glow.material_override as StandardMaterial3D
@@ -338,7 +457,8 @@ func _extract_cube() -> void:
 			if not material is StandardMaterial3D or not material.albedo_texture: continue
 			var arrays := original.surface_get_arrays(surface)
 			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-			var region := AABB(Vector3(-0.196, 0.034, -0.234), Vector3(0.37, 0.393, 0.36))
+			# Começa acima do chão do pedestal: o chão fica inteiro, só o cubo levita.
+			var region := AABB(Vector3(-0.196, 0.085, -0.234), Vector3(0.37, 0.342, 0.36))
 			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 			var chosen := PackedInt32Array()
 			var kept := PackedInt32Array()

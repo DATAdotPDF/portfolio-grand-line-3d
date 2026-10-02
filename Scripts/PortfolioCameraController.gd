@@ -32,6 +32,8 @@ var transition_duration := 2.2
 var transition_tween: Tween
 var plate_tweens: Array[Tween] = []
 var elapsed := 0.0
+var overview_dragged := false
+var overview_up := Vector3.UP
 
 func _input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
@@ -84,6 +86,8 @@ func return_to_boat() -> void:
 	_begin_transition(CameraState.BOAT_FOLLOW)
 
 func show_overview() -> void:
+	overview_dragged = false
+	overview_up = Vector3.UP
 	active_island_idx = -1
 	target_island = null
 	overview_direction = global_position.normalized()
@@ -97,9 +101,11 @@ func drag_orbit(relative: Vector2) -> void:
 	elif state == CameraState.ISLAND_ORBIT:
 		orbit_angle -= relative.x * 0.005
 	elif state == CameraState.PLANET_OVERVIEW:
-		overview_direction = overview_direction.rotated(
-			Vector3.UP, -relative.x * 0.003
-		).normalized()
+		# Giro livre em 3D (trackball): horizontal gira em volta do 'cima' da tela, vertical em volta da 'direita'.
+		overview_dragged = true
+		overview_direction = overview_direction.rotated(global_basis.y.normalized(), -relative.x * 0.004)
+		overview_direction = overview_direction.rotated(global_basis.x.normalized(), -relative.y * 0.004).normalized()
+		overview_up = overview_up.rotated(global_basis.x.normalized(), -relative.y * 0.004)
 
 func _begin_transition(next_state: CameraState) -> void:
 	if transition_tween and transition_tween.is_running():
@@ -131,7 +137,7 @@ func _process(delta: float) -> void:
 			global_position = global_position.lerp(
 				_boat_position(), 1.0 - exp(-5.0 * delta)
 			)
-			_face(_boat_focus(), boat.global_position.normalized())
+			_face(_boat_focus(), _boat_xform().origin.normalized())
 		CameraState.FLYING:
 			var target := _destination_position()
 			var direction := transition_start.normalized().slerp(
@@ -155,11 +161,10 @@ func _process(delta: float) -> void:
 			global_position = _island_position()
 			_face(_island_focus(), target_island.global_position.normalized())
 		CameraState.PLANET_OVERVIEW:
-			overview_direction = overview_direction.rotated(
-				Vector3.UP, delta * 0.055
-			).normalized()
+			if not overview_dragged:
+				overview_direction = overview_direction.rotated(overview_up.normalized(), delta * 0.055).normalized()
 			global_position = overview_direction * _overview_distance()
-			_face(Vector3.ZERO, _fallback_tangent(overview_direction))
+			_face(Vector3.ZERO, overview_up.slide(overview_direction).normalized() if overview_up.slide(overview_direction).length_squared() > 0.001 else _fallback_tangent(overview_direction))
 	if active_island_idx >= 0 and state in [
 		CameraState.FLYING, CameraState.ISLAND_ORBIT
 	]:
@@ -168,14 +173,19 @@ func _process(delta: float) -> void:
 func _overview_distance() -> float:
 	return Scale.radius() * 2.6
 
+## Transform interpolado do barco: usar a posição física (60 Hz) fazia a tela tremer.
+func _boat_xform() -> Transform3D:
+	return boat.get_global_transform_interpolated() if boat.has_method("get_global_transform_interpolated") else boat.global_transform
+
 func _boat_position() -> Vector3:
-	var up := boat.global_position.normalized()
-	var forward := (-boat.global_transform.basis.z).rotated(up, yaw)
-	return boat.global_position - forward * follow_distance + up * (follow_height + pitch)
+	var xform := _boat_xform()
+	var up := xform.origin.normalized()
+	var forward := (-xform.basis.z).slide(up).normalized().rotated(up, yaw)
+	return xform.origin - forward * follow_distance + up * (follow_height + pitch)
 
 func _boat_focus() -> Vector3:
-	var up := boat.global_position.normalized()
-	return boat.global_position + up * 1.5
+	var origin := _boat_xform().origin
+	return origin + origin.normalized() * 1.5
 
 func _bounds_in_island(island: Node3D, visual: Node3D) -> AABB:
 	var total := AABB()

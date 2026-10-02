@@ -35,6 +35,8 @@ var virtual_boost := false
 @export var hull_half_beam := 0.8
 ## Quão rápido o casco acompanha a inclinação da onda (menor = mais peso/inércia).
 @export var wave_follow_rate := 7.0
+## Ajuste fino da linha d'água (m): positivo levanta o casco.
+@export var draft_offset := -0.38
 @export var buoyancy_spring := 46.0
 @export var buoyancy_damping := 12.5
 @export var max_bank_angle := deg_to_rad(15.0)
@@ -123,7 +125,10 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	var moved_up := global_position.normalized()
 	var center: Vector3 = ocean.surface_at(global_position)
-	var target_radius: float = (front.length() + rear.length() + port.length() + starboard.length() + center.length() * 2.0) / 6.0
+	# A altura segue o ponto mais alto entre o centro e a média do casco: nas cristas
+	# a média dos pontos baixava o barco ('afundava'). draft_offset ajusta a linha d'água.
+	var hull_mean: float = (front.length() + rear.length() + port.length() + starboard.length()) * 0.25
+	var target_radius: float = maxf(center.length(), hull_mean) + draft_offset
 	var current := global_position.length()
 	var radius := lerpf(current, target_radius, 1.0 - exp(-14.0 * delta))
 	radial_speed = (radius - current) / maxf(delta, 0.00001)

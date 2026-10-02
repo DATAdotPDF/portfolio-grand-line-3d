@@ -22,11 +22,11 @@ const CONTENT_PATH := "res://Config/portfolio_content.json"
 const ISLAND_NAMES := ["Sobre", "Experiência", "Formação", "Projetos", "Contato"]
 
 const ABYSS := Color("080f1e")
-const GLASS := Color(0.031, 0.059, 0.118, 0.72)
-const GLASS_EDGE := Color(0.165, 0.831, 0.847, 0.28)
-const GOLD := Color("e8c172")
-const WHITE := Color("f4f7fb")
-const MIST := Color("8a9bb0")
+const GLASS := Color(0.114, 0.145, 0.216, 0.9)
+const GLASS_EDGE := Color(0.937, 0.894, 0.8, 0.3)
+const GOLD := Color("e7c27a")
+const WHITE := Color("efe4cc")
+const MIST := Color("a9b3c7")
 const PAPER := Color("f2e6c8")
 const PAPER_EDGE := Color("c9b48a")
 const INK := Color("2b2118")
@@ -69,6 +69,7 @@ var island_body: VBoxContainer
 var page_label: Label
 var page_prev: Button
 var page_next: Button
+var island_tabs: Array[Button] = []
 var blocks: Array[Control] = []
 var page_of: Array[int] = []
 var page := 0
@@ -83,6 +84,7 @@ var intro_visible := false
 var map_layer: Control
 var map_markers: Array[Control] = []
 var map_hint: Label
+var you_marker: Label
 var live_projects: Array = []
 var projects_request: HTTPRequest
 ## Ilhas já lidas (a bússola sugere a próxima).
@@ -151,7 +153,7 @@ func _build_theme() -> Theme:
 	theme.default_font = fonts.sans
 	theme.default_font_size = 14
 	theme.set_color("font_color", "Label", WHITE)
-	var normal := _box(Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.16), 18, 7)
+	var normal := _box(Color(0, 0, 0, 0), Color(WHITE, 0.32), 1, 7)
 	normal.content_margin_left = 14
 	normal.content_margin_right = 14
 	var hover := normal.duplicate()
@@ -178,14 +180,17 @@ func _build_theme() -> Theme:
 	theme.set_font("font", "Row", fonts.sans)
 	theme.set_font_size("font_size", "Row", 16)
 	theme.set_type_variation("IconButton", "Button")
-	var round := _box(Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.16), 16, 6)
+	var round := _box(Color(0, 0, 0, 0), Color(WHITE, 0.32), 1, 6)
 	theme.set_stylebox("normal", "IconButton", round)
 	theme.set_stylebox("hover", "IconButton", hover)
 	theme.set_stylebox("pressed", "IconButton", active)
 	theme.set_type_variation("Glass", "PanelContainer")
-	theme.set_stylebox("panel", "Glass", _box(GLASS, GLASS_EDGE, 14, 18))
+	var glass := _box(GLASS, GLASS_EDGE, 1, 20)
+	glass.shadow_color = Color(0, 0, 0, 0.25)
+	glass.shadow_size = 12
+	theme.set_stylebox("panel", "Glass", glass)
 	theme.set_type_variation("Pill", "PanelContainer")
-	var pill := _box(GLASS, GLASS_EDGE, 26, 10)
+	var pill := _box(GLASS, GLASS_EDGE, 1, 10)
 	pill.content_margin_left = 22
 	pill.content_margin_right = 22
 	theme.set_stylebox("panel", "Pill", pill)
@@ -196,8 +201,8 @@ func _build_theme() -> Theme:
 	parchment.shadow_offset = Vector2(0, 4)
 	theme.set_stylebox("panel", "Parchment", parchment)
 	var labels := [
-		["Caps", fonts.caps, 11, MIST], ["Title", fonts.sans, 30, WHITE], ["Gold", fonts.medium, 30, GOLD],
-		["Stat", fonts.medium, 19, WHITE], ["Small", fonts.sans, 12, MIST], ["Body", fonts.sans, 14, WHITE],
+		["Caps", fonts.caps, 11, MIST], ["Title", fonts.serif_italic, 30, WHITE], ["Gold", fonts.serif, 24, WHITE],
+		["Stat", fonts.mono, 18, WHITE], ["Small", fonts.sans, 12, MIST], ["Body", fonts.sans, 14, WHITE],
 		["Mono", fonts.mono, 12, MIST],
 		["PCaps", fonts.caps, 11, INK_MUTED], ["PTitle", fonts.serif_italic, 30, INK], ["PHeading", fonts.serif, 21, INK],
 		["PBody", fonts.sans, 14, INK], ["PMono", fonts.mono, 12, INK_MUTED],
@@ -206,10 +211,10 @@ func _build_theme() -> Theme:
 		theme.set_type_variation(l[0], "Label")
 		if not str(l[0]).begins_with("P"):
 			# Sombra leve: texto sobre o céu claro do dia continua legível.
-			theme.set_color("font_shadow_color", l[0], Color(0.02, 0.05, 0.12, 0.55))
+			theme.set_color("font_shadow_color", l[0], Color(0.05, 0.07, 0.13, 0.45))
 			theme.set_constant("shadow_offset_x", l[0], 0)
 			theme.set_constant("shadow_offset_y", l[0], 1)
-			theme.set_constant("shadow_outline_size", l[0], 4)
+			theme.set_constant("shadow_outline_size", l[0], 2)
 		theme.set_font("font", l[0], l[1])
 		theme.set_font_size("font_size", l[0], l[2])
 		theme.set_color("font_color", l[0], l[3])
@@ -222,10 +227,15 @@ func _build_theme() -> Theme:
 	for state in ["normal", "focus", "disabled"]:
 		theme.set_stylebox(state, "Ink", ink)
 	theme.set_stylebox("hover", "Ink", ink_hover)
-	theme.set_stylebox("pressed", "Ink", ink_hover)
+	var ink_active := ink.duplicate()
+	ink_active.bg_color = Color(INK, 0.9)
+	ink_active.border_color = INK
+	theme.set_stylebox("pressed", "Ink", ink_active)
+	theme.set_stylebox("hover_pressed", "Ink", ink_active)
+	theme.set_color("font_hover_pressed_color", "Ink", PAPER)
 	theme.set_color("font_color", "Ink", INK)
 	theme.set_color("font_hover_color", "Ink", ACCENT)
-	theme.set_color("font_pressed_color", "Ink", ACCENT)
+	theme.set_color("font_pressed_color", "Ink", PAPER)
 	theme.set_color("font_disabled_color", "Ink", Color(INK, 0.25))
 	theme.set_type_variation("Rule", "HSeparator")
 	var rule := StyleBoxLine.new()
@@ -236,11 +246,12 @@ func _build_theme() -> Theme:
 	prule.color = Color(INK, 0.22)
 	theme.set_stylebox("separator", "PRule", prule)
 	theme.set_type_variation("Primary", "Button")
-	var primary := _box(GOLD, GOLD, 18, 9)
+	var primary := _box(WHITE, WHITE, 1, 9)
 	primary.content_margin_left = 18
 	primary.content_margin_right = 18
 	var primary_hover := primary.duplicate()
-	primary_hover.bg_color = Color("f3d38e")
+	primary_hover.bg_color = GOLD
+	primary_hover.border_color = GOLD
 	theme.set_stylebox("normal", "Primary", primary)
 	theme.set_stylebox("hover", "Primary", primary_hover)
 	theme.set_stylebox("pressed", "Primary", primary_hover)
@@ -314,6 +325,7 @@ func _build_destination() -> void:
 	column.add_theme_constant_override("separation", 2)
 	dest_box.add_child(column)
 	dest_name = _label("Mar aberto", "Title")
+	dest_name.add_theme_font_override("font", fonts.serif)
 	column.add_child(dest_name)
 	dest_sub = _label("", "Caps")
 	column.add_child(dest_sub)
@@ -365,7 +377,7 @@ func _build_carta() -> void:
 	modes.add_theme_constant_override("separation", 6)
 	column.add_child(modes)
 	var sail := _icon_button("boat", "Navegar", func(): free_sail_pressed.emit())
-	var race := _icon_button("flag", "Regata", func(): time_attack_pressed.emit())
+	var race := _icon_button("flag", "Desafio", func(): time_attack_pressed.emit())
 	for b in [sail, race]:
 		b.toggle_mode = true
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -510,24 +522,29 @@ func _build_island_panel() -> void:
 	island_body.clip_contents = true
 	column.add_child(island_body)
 	column.add_child(_rule(true))
-	var footer := HBoxContainer.new()
-	footer.add_theme_constant_override("separation", 6)
-	column.add_child(footer)
-	footer.add_child(_button("‹ ilha", func(): island_pressed.emit(posmod(current_island - 1, ISLAND_NAMES.size())), "Ink"))
-	var left := Control.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(left)
+	# Páginas da ilha atual.
+	var pager := HBoxContainer.new()
+	pager.alignment = BoxContainer.ALIGNMENT_CENTER
+	pager.add_theme_constant_override("separation", 8)
+	column.add_child(pager)
 	page_prev = _button("‹", func(): _show_page(page - 1), "Ink")
-	footer.add_child(page_prev)
+	pager.add_child(page_prev)
 	page_label = _label("1 / 1", "PMono")
-	footer.add_child(page_label)
+	pager.add_child(page_label)
 	page_next = _button("›", func(): _show_page(page + 1), "Ink")
-	footer.add_child(page_next)
-	var right := Control.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(right)
-	footer.add_child(_button("ilha ›", func(): island_pressed.emit(posmod(current_island + 1, ISLAND_NAMES.size())), "Ink"))
-
+	pager.add_child(page_next)
+	# As 5 ilhas pelo nome (a atual destacada): ir direto a qualquer uma.
+	var tabs := HFlowContainer.new()
+	tabs.alignment = FlowContainer.ALIGNMENT_CENTER
+	tabs.add_theme_constant_override("h_separation", 4)
+	tabs.add_theme_constant_override("v_separation", 4)
+	column.add_child(tabs)
+	for i in range(ISLAND_NAMES.size()):
+		var tab := _button(ISLAND_NAMES[i], island_pressed.emit.bind(i), "Ink")
+		tab.toggle_mode = true
+		tab.add_theme_font_size_override("font_size", 12)
+		tabs.add_child(tab)
+		island_tabs.append(tab)
 func _build_map_layer() -> void:
 	map_layer = Control.new()
 	map_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -535,11 +552,14 @@ func _build_map_layer() -> void:
 	map_layer.visible = false
 	root.add_child(map_layer)
 	for i in range(ISLAND_NAMES.size()):
-		var marker := _button("%d   %s" % [i + 1, ISLAND_NAMES[i]], island_pressed.emit.bind(i))
+		var marker := _button(ISLAND_NAMES[i], island_pressed.emit.bind(i))
 		marker.add_theme_stylebox_override("normal", _box(GLASS, Color(GOLD, 0.7), 14, 6))
 		map_layer.add_child(marker)
 		map_markers.append(marker)
-	map_hint = _label("MAPA  ·  CLIQUE NUMA ILHA  ·  M VOLTA AO BARCO", "Caps", 12)
+	you_marker = _label("VOCÊ", "Caps", 11)
+	you_marker.add_theme_color_override("font_color", Color("ff6070"))
+	map_layer.add_child(you_marker)
+	map_hint = _label("MAPA  ·  ARRASTE PARA GIRAR O GLOBO  ·  CLIQUE NUMA ILHA  ·  M VOLTA AO BARCO", "Caps", 12)
 	map_layer.add_child(map_hint)
 
 func _build_intro() -> void:
@@ -551,16 +571,17 @@ func _build_intro() -> void:
 	column.add_theme_constant_override("separation", 10)
 	intro_panel.add_child(column)
 	intro_column = column
-	column.add_child(_label(str(content.get("status", "Portfólio")).to_upper(), "Caps"))
-	column.add_child(_label(str(content.get("name", "Pedro D. Ferreira")), "Title", 46))
-	column.add_child(_wrap(str(content.get("role", "")), "Gold", 20))
+	var status := _label("●  " + str(content.get("status", "Portfólio")).to_upper(), "Caps")
+	column.add_child(status)
+	column.add_child(_label(str(content.get("name", "Pedro D. Ferreira")), "Title", 64))
+	column.add_child(_wrap(str(content.get("role", "")), "Gold", 24))
 	column.add_child(_wrap(str(content.get("tagline", "")).to_upper(), "Caps"))
 	column.add_child(_wrap(str(content.get("pitch", "")), "Body", 15))
 	var stats := HBoxContainer.new()
 	stats.add_theme_constant_override("separation", 28)
 	for stat in content.get("stats", []):
 		var block := VBoxContainer.new()
-		block.add_child(_label(str(stat.value), "Gold", 26))
+		block.add_child(_label(str(stat.value), "Stat", 24))
 		block.add_child(_label(str(stat.label), "Small"))
 		stats.add_child(block)
 	column.add_child(stats)
@@ -571,7 +592,7 @@ func _build_intro() -> void:
 	column.add_child(actions)
 	actions.add_child(_button("Zarpar e navegar", func(): start_sailing.emit(), "Primary"))
 	actions.add_child(_button("Explorar as ilhas", func(): island_pressed.emit(0)))
-	actions.add_child(_button("Regata · 3 min", func(): time_attack_pressed.emit()))
+	actions.add_child(_button("Desafio · 3 min", func(): time_attack_pressed.emit()))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	column.add_child(row)
@@ -621,6 +642,8 @@ func show_island(index: int, automatic := false) -> void:
 	auto_opened = automatic
 	dismissed_island = -1
 	visited[index] = true
+	for i in range(island_tabs.size()):
+		island_tabs[i].button_pressed = i == index
 	island_kicker.text = str(data.get("kicker", "")).to_upper()
 	island_title.text = str(data.get("title", ""))
 	for paragraph in data.get("paragraphs", []):
@@ -674,7 +697,7 @@ func _paginate() -> void:
 		return
 	var column := island_body.get_parent() as Control
 	var chrome := column.get_combined_minimum_size().y
-	var available := maxf(panel_height - 52.0 - chrome - 8.0, 120.0)
+	var available := maxf(panel_height - 52.0 - chrome + 8.0, 120.0)
 	for block in blocks:
 		block.visible = true
 	for i in range(3):
@@ -809,7 +832,7 @@ func set_race(active: bool, remaining: float, hits: int, total: int, finished_te
 	race_count.text = "boias %02d / %02d" % [hits, total]
 
 ## Mapa (M): marcadores 2D sobre as ilhas vistas do espaço.
-func update_map(camera: Camera3D, islands: Array, show: bool) -> void:
+func update_map(camera: Camera3D, islands: Array, show: bool, ship: Node3D = null) -> void:
 	var was := map_layer.visible
 	map_layer.visible = show and not intro_visible
 	if was != map_layer.visible:
@@ -824,6 +847,10 @@ func update_map(camera: Camera3D, islands: Array, show: bool) -> void:
 		if marker.visible:
 			marker.size = Vector2.ZERO
 			marker.position = camera.unproject_position(island.global_position) - Vector2(marker.get_combined_minimum_size().x * 0.5, 44.0)
+	if ship:
+		var ship_top := ship.global_position + ship.global_position.normalized() * 75.0
+		you_marker.visible = ship.global_position.normalized().dot((camera.global_position - ship.global_position).normalized()) > 0.05
+		you_marker.position = camera.unproject_position(ship_top) - Vector2(16, 18)
 	var screen := get_viewport().get_visible_rect().size
 	map_hint.size = Vector2.ZERO
 	map_hint.position = Vector2((screen.x - map_hint.get_combined_minimum_size().x) * 0.5, screen.y - 46.0)

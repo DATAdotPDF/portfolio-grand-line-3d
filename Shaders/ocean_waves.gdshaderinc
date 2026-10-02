@@ -143,6 +143,10 @@ void ocean_eval(vec3 p, float view_distance, out float h, out vec3 disp, out vec
 			float wavelength = 6.2831853 / wp.x;
 			w *= 1.0 - smoothstep(wavelength * far_detail_distance * 0.4, wavelength * far_detail_distance, view_distance);
 		}
+		// Grupos de ondas: a amplitude varia devagar pelo mar (umas mais altas e íngremes, outras mais 'gordinhas').
+		vec3 d2 = wave_dirs[(i + 2) % max(wave_count, 1)].xyz;
+		float group = 0.55 + 0.75 * (0.5 + 0.5 * sin(wp.x * 0.19 * dot(p, d2) + wp.x * 0.07 * dot(p, d) - wp.y * 0.05 * t + wave_dirs[i].w * 2.7));
+		w *= group;
 		float phi = wp.x * dot(p, d) - wp.y * t + wave_dirs[i].w;
 		float s = sin(phi);
 		float c = cos(phi);
@@ -213,18 +217,17 @@ float wake_foam(vec3 p) {
 	if (life <= 0.0) {
 		return 0.0;
 	}
-	// Esteira estilo Wind Waker (adaptada de water-wakes/trail2): duas bordas que se
-	// abrem com a idade e arcos em "V" entre elas, que ficam para trás do barco.
-	float spread = 0.6 + (1.0 - life) * 2.4;
-	float line_width = 0.16 + (1.0 - life) * 0.22;
-	float edge = 1.0 - smoothstep(line_width * 0.4, line_width, abs(distance_to_wake - spread));
-	float across = clamp(distance_to_wake / spread, 0.0, 1.0);
-	float arch_coord = fract(life * 18.0 + across * across * 0.6);
-	float arch = (1.0 - smoothstep(0.035, 0.07, abs(arch_coord - 0.5))) * step(distance_to_wake, spread);
-	arch *= 1.0 - smoothstep(0.95, 0.995, life); // arcos começam logo atrás da popa
-	float core = (1.0 - smoothstep(0.0, 0.5, distance_to_wake)) * 0.3;
-	return max(max(edge * life * life, arch * sqrt(life)), core * life);
-}
+	// Esteira discreta (Seagazer): duas linhas finas de espuma que se abrem e se
+	// quebram com a idade, e um rastro suave de água revolta no centro.
+	float spread = 0.55 + (1.0 - life) * 2.2;
+	float line_width = 0.07 + (1.0 - life) * 0.16;
+	float edge = 1.0 - smoothstep(line_width * 0.3, line_width, abs(distance_to_wake - spread));
+	// Quebra a linha em pedaços (ruído ao longo do mundo) conforme envelhece.
+	float breakup = sin(dot(p, vec3(1.7, 2.3, 1.1)) * 1.3 + life * 9.0) * 0.5 + 0.5;
+	breakup *= sin(dot(p, vec3(-2.9, 0.7, 2.1)) * 0.9) * 0.5 + 0.5;
+	edge *= mix(1.0, smoothstep(0.15, 0.45, breakup), 1.0 - life);
+	float core = (1.0 - smoothstep(0.0, spread * 0.8, distance_to_wake)) * 0.18;
+	return max(edge * 0.7, core) * life * life;}
 
 // Espuma de costa pela profundidade da cena (funciona no Compatibility e no Forward+).
 float shore_foam_from_depth(float raw_depth, vec2 screen_uv, mat4 inv_projection, vec3 vertex_view) {
@@ -278,5 +281,5 @@ void ocean_finish(vec3 p, vec3 normal_view, vec3 view, float foam, inout vec3 al
 	emission = sky_reflection_color * fresnel * mix(0.1, 0.4, day);
 	albedo = mix(albedo, albedo * 0.6, fresnel);
 	// Só as linhas da esteira brilham à noite (o miolo junto ao casco fica discreto).
-	emission += night_glow_color * smoothstep(0.45, 0.9, wake_foam(p)) * night_amount * 0.55;
+	emission += night_glow_color * smoothstep(0.3, 0.7, wake_foam(p)) * night_amount * 0.3;
 }

@@ -29,6 +29,7 @@ func run() -> void:
 	root.size = Vector2i(1280, 720)
 	world = (load("res://MainWorld.tscn") as PackedScene).instantiate()
 	world.show_intro_on_start = wants("intro") and only != ""
+	world.set("intro_capture", true)
 	root.add_child(world)
 	world.clock.set_time(0.42, true)
 	await wait(1.5)

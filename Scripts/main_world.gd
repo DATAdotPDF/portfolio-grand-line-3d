@@ -127,6 +127,7 @@ func _ready() -> void:
 	_build_wind_streaks()
 	_setup_cloud_shadows()
 	_build_map_beacons()
+	sky_material.set_shader_parameter("space_panorama", load("res://Shaders/Meshy_AI_deep-space-panoramic-skybox.png"))
 	route_line = RouteLineScript.new()
 	route_line.name = "RouteLine"
 	route_line.ship = ship
@@ -565,6 +566,22 @@ func _build_map_beacons() -> void:
 		beacon.visible = false
 		island.add_child(beacon)
 		map_beacons.append(beacon)
+	# Você está aqui: coluna vermelha sobre a chalupa.
+	var you := MeshInstance3D.new()
+	var pin := CylinderMesh.new()
+	pin.top_radius = 2.5
+	pin.bottom_radius = 0.5
+	pin.height = 70.0
+	you.mesh = pin
+	var red := StandardMaterial3D.new()
+	red.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	red.albedo_color = Color("e04050")
+	red.disable_fog = true
+	you.material_override = red
+	you.position = Vector3(0, 35.0, 0)
+	you.visible = false
+	ship.add_child(you)
+	map_beacons.append(you)
 
 func _setup_cloud_shadows() -> void:
 	var shape: Texture2D = sky_material.get_shader_parameter("cloud_shape_sampler") if sky_material else null
@@ -786,7 +803,7 @@ func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
 	for island in islands:
 		distances.append(up.angle_to(island.global_position.normalized()) * planet_radius)
 	hud.set_island_distances(distances)
-	hud.update_map(camera, islands, camera.state == PortfolioCamera.CameraState.PLANET_OVERVIEW)
+	hud.update_map(camera, islands, camera.state == PortfolioCamera.CameraState.PLANET_OVERVIEW, ship)
 	hud.set_wind(_wind_text(ship.global_position))
 	# Só BEM perto da costa (distância medida à linha d'água) o pergaminho abre sozinho.
 	var coast := INF

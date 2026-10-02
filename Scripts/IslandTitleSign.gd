@@ -47,6 +47,8 @@ func _ready() -> void:
 				paint.emission_enabled = true
 				paint.emission = Color("ffb84a")
 				paint.emission_texture = paint.albedo_texture
+				# A névoa deixava a placa fosca na visita de dia.
+				paint.disable_fog = true
 				mesh.set_surface_override_material(surface,paint)
 				title_materials.append(paint)
 	var factor := 8.0/bounds.size.x

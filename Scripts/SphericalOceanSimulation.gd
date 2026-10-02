@@ -122,10 +122,13 @@ func _swell(p: Vector3) -> Vector4:
 	var coast := _coast_factor(p)
 	var disp := Vector3.ZERO
 	var height := 0.0
-	for item in components:
+	for idx in range(components.size()):
+		var item: Dictionary = components[idx]
 		var d: Vector3 = item.dir
 		var g := d - n * n.dot(d)
 		var w := Scale.calm_factor(g.length()) * coast
+		var d2: Vector3 = components[(idx + 2) % components.size()].dir
+		w *= 0.55 + 0.75 * (0.5 + 0.5 * sin(float(item.k) * 0.19 * p.dot(d2) + float(item.k) * 0.07 * p.dot(d) - float(item.omega) * 0.05 * simulation_time + float(item.phase) * 2.7))
 		var phi: float = float(item.k) * p.dot(d) - float(item.omega) * simulation_time + float(item.phase)
 		var a: float = float(item.amplitude) * w
 		height += a * sin(phi)

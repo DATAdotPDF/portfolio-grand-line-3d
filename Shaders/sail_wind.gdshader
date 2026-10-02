@@ -16,7 +16,7 @@ uniform vec3 wind_direction = vec3(1.0, 0.0, 0.0);
 uniform vec3 forward_local = vec3(1.0, 0.0, 0.0);
 uniform float boat_speed = 0.0;
 uniform float max_speed = 12.5;
-uniform float flag_amount : hint_range(0.0, 0.2) = 0.05;
+uniform float flag_amount : hint_range(0.0, 0.3) = 0.11;
 varying vec3 sail_rest;
 
 void vertex() {
@@ -42,12 +42,19 @@ void vertex() {
 	float dark = 1.0 - smoothstep(0.12, 0.22, max(paint.r, max(paint.g, paint.b)));
 	float flag = dark * smoothstep(0.86, 0.92, h);
 	float from_pole = clamp(abs(VERTEX.z) / 0.25 + abs(VERTEX.x) / 0.25, 0.0, 1.0);
-	float wave = sin(TIME * (7.0 + speed * 6.0) - from_pole * 9.0);
-	VERTEX += cross(normalize(forward_local), vec3(0.0, 1.0, 0.0)) * wave * flag_amount * from_pole * flag;
-	VERTEX.y += cos(TIME * 6.0 - from_pole * 7.0) * flag_amount * 0.35 * from_pole * flag;
+	// Tecido mole: duas ondas viajando do mastro para a ponta + caimento leve.
+	float t_flag = TIME * (5.5 + speed * 5.0);
+	float wave = sin(t_flag - from_pole * 8.0) * 0.7 + sin(t_flag * 1.73 - from_pole * 13.0 + 1.3) * 0.3;
+	float reach = from_pole * from_pole;
+	VERTEX += cross(normalize(forward_local), vec3(0.0, 1.0, 0.0)) * wave * flag_amount * reach * flag;
+	VERTEX.y += (cos(t_flag * 0.9 - from_pole * 6.0) * 0.35 - (1.0 - speed) * 0.4) * flag_amount * reach * flag;
 }
 
 void fragment() {
+	// Faces de trás (pano, bandeira): normal invertida, senão ficam pretas.
+	if (!FRONT_FACING) {
+		NORMAL = -NORMAL;
+	}
 	vec3 base = texture(albedo_map, UV).rgb;
 	vec2 emblem_uv = vec2((sail_rest.z + 0.32) / 0.64, 1.0 - (sail_rest.y + 0.13) / 0.52);
 	vec2 q = (emblem_uv - vec2(0.5)) * 2.0;

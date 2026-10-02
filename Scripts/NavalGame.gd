@@ -411,7 +411,7 @@ func _process(_delta: float) -> void:
 	if time_attack_mode:
 		var seconds := ceili(time_attack_remaining)
 		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == course_count else "TEMPO ESGOTADO")
-		hud.text = "%.0f°  ·  regata %s" % [rad_to_deg(aim_elevation), result.to_lower()]
+		hud.text = "%.0f°  ·  desafio %s" % [rad_to_deg(aim_elevation), result.to_lower()]
 	else:
 		hud.text = "%.0f°  ·  %d acertos%s"%[rad_to_deg(aim_elevation),score,"" if state == "PRONTO" else "  ·  recarregando"]
 
