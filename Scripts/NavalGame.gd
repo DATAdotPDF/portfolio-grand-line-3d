@@ -345,22 +345,25 @@ func _physics_process(delta: float) -> void:
 			_set_target_active(target, true)
 		_push_target(target,delta)
 		var home: Vector3=target.normal*OCEAN_RADIUS
-		var field: Vector4=world.ocean.field_at(home)
-		var point: Vector3=(home+Vector3(field.x,field.y,field.z)).normalized()*OCEAN_RADIUS
 		var up: Vector3 = target.normal
 		var right := up.cross(Vector3.RIGHT if absf(up.x)<0.9 else Vector3.UP).normalized()
 		var forward := up.cross(right)
-		var dx: Vector3 = world.ocean.surface_at(point+right*0.5)-world.ocean.surface_at(point-right*0.5)
-		var dz: Vector3 = world.ocean.surface_at(point+forward*0.5)-world.ocean.surface_at(point-forward*0.5)
-		var wave_up := dx.cross(dz).normalized()
-		if wave_up.dot(up)<0.0: wave_up=-wave_up
 		var impact := elapsed-float(target.hit_time)
 		var kick := sin(impact*20.0)*exp(-impact*3.0) if impact<2.0 else 0.0
-		# Fora do trecho de mar com ondas reais (patch), a água desenhada é lisa: a boia fica nela.
-		var surface: Vector3 = world.ocean.surface_at(point)
+		# Fora do trecho de mar com ondas reais (patch), a água desenhada é lisa: a boia fica
+		# nela e não precisa avaliar as ondas (era metade do tempo de física por quadro).
 		var patch: Node3D = world.ocean_patch
-		if is_instance_valid(patch) and point.distance_to(patch.global_position) > float(patch.patch_radius) * 0.85:
-			surface = point.normalized() * OCEAN_RADIUS
+		var flat := is_instance_valid(patch) and home.distance_to(patch.global_position) > float(patch.patch_radius) * 0.85
+		var surface: Vector3 = home
+		var wave_up := up
+		if not flat:
+			var field: Vector4=world.ocean.field_at(home)
+			var point: Vector3=(home+Vector3(field.x,field.y,field.z)).normalized()*OCEAN_RADIUS
+			var dx: Vector3 = world.ocean.surface_at(point+right*0.5)-world.ocean.surface_at(point-right*0.5)
+			var dz: Vector3 = world.ocean.surface_at(point+forward*0.5)-world.ocean.surface_at(point-forward*0.5)
+			wave_up = dx.cross(dz).normalized()
+			if wave_up.dot(up)<0.0: wave_up=-wave_up
+			surface = world.ocean.surface_at(point)
 		node.position = surface+up*absf(kick)*0.15
 		var front := forward.rotated(up,float(target.spin)+elapsed*0.10+0.20*sin(elapsed*0.6+float(target.spin))).slide(wave_up).normalized()
 		node.basis = Basis(front.cross(wave_up),wave_up,-front).orthonormalized()
@@ -416,9 +419,10 @@ func _process(_delta: float) -> void:
 	if time_attack_mode:
 		var seconds := ceili(time_attack_remaining)
 		var result := "EM CURSO" if time_attack_running else ("CONCLUÍDO" if time_attack_hits.size() == course_count else "TEMPO ESGOTADO")
-		hud.text = "%.0f°  ·  desafio %s" % [rad_to_deg(aim_elevation), result.to_lower()]
+		hud.text = ("%.0f° · %s" if DisplayServer.is_touchscreen_available() else "%.0f°  ·  desafio %s") % [rad_to_deg(aim_elevation), result.to_lower()]
 	else:
-		hud.text = "%.0f°  ·  %d acertos"%[rad_to_deg(aim_elevation),score]
+		var compact := DisplayServer.is_touchscreen_available()
+		hud.text = ("%.0f° · %d" if compact else "%.0f°  ·  %d acertos")%[rad_to_deg(aim_elevation),score]
 
 func _play_impact(kind: String, point: Vector3) -> void:
 	var sound:=AudioStreamPlayer3D.new()

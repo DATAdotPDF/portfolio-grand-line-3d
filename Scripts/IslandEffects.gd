@@ -359,7 +359,9 @@ func _process(delta: float) -> void:
 	
 	for i in range(lamps.size()):
 		var light := lamps[i]
-		light.visible = (in_view or light.name == "LanternInteriorGlow") and (night > 0.05 or index == 2)
+		# No celular só as luzes da ilha bem próxima ficam ligadas (cada luz custa caro no WebGL).
+		var view_ok: bool = nearby if OS.has_feature("mobile_lite") else in_view
+		light.visible = (view_ok or light.name == "LanternInteriorGlow") and (night > 0.05 or index == 2)
 		var flicker := 1.0 + 0.10 * sin(elapsed * 8.1 + i * 2.0) + 0.05 * sin(elapsed * 13.7)
 		var strength := 6.0 if light.name == "BonfireLight" else 2.6
 		light.light_energy = (lerpf(0.35, 3.2, night) if index == 2 else night * strength) * flicker + flash

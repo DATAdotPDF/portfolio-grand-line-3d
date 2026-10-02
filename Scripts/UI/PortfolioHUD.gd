@@ -400,6 +400,17 @@ func _build_carta() -> void:
 		times.add_child(button)
 		time_buttons.append(button)
 	column.add_child(_rule())
+	column.add_child(_label("CONTROLES", "Caps"))
+	var guide := _wrap(_controls_text(), "Small", 12)
+	guide.visible = false
+	var guide_button := _button("Ver como jogar", Callable())
+	guide_button.pressed.connect(func():
+		guide.visible = not guide.visible
+		guide_button.text = "Ocultar controles" if guide.visible else "Ver como jogar"
+		_relayout_next_frames())
+	column.add_child(guide_button)
+	column.add_child(guide)
+	column.add_child(_rule())
 	column.add_child(_label("MÚSICA", "Caps"))
 	var player := HBoxContainer.new()
 	player.add_theme_constant_override("separation", 6)
@@ -431,6 +442,25 @@ func _build_carta() -> void:
 	carta_button.get_child(0).position = Vector2(14, 15)
 	root.add_child(carta_button)
 
+func _controls_text() -> String:
+	if touch:
+		return "\n".join([
+			"Joystick esquerdo — leme e velas (no limite, acelera)",
+			"Joystick direito — sobe e desce a mira do canhão",
+			"IMPULSO — segure para ganhar velocidade",
+			"FOGO — dispara o canhão nas boias",
+			"Dois dedos — giram a câmera",
+			"Um dedo na água — faz ondas",
+			"Chegue perto de uma ilha para abrir a seção"])
+	return "\n".join([
+		"W A S D — navegar",
+		"Shift — impulso",
+		"R / F — sobe e desce a mira",
+		"Espaço — dispara o canhão",
+		"M ou Tab — mapa  ·  1–5 — visitar ilha",
+		"Arrastar na água — faz ondas",
+		"Chegue perto de uma ilha para abrir a seção"])
+
 func _set_carta_open(open: bool) -> void:
 	carta_open = open
 	_layout()
@@ -440,8 +470,9 @@ func _build_telemetry() -> void:
 	telemetry.theme_type_variation = "Pill"
 	telemetry.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(telemetry)
+	# No toque a barra fica compacta: cabe entre os joysticks sem cortar.
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", 8 if touch else 16)
 	telemetry.add_child(row)
 	var items := [["boat", "VELOCIDADE"], ["pin", "DISTÂNCIA"], ["cannon", "CANHÃO"]]
 	var values: Array[Label] = []
@@ -449,14 +480,14 @@ func _build_telemetry() -> void:
 		if i > 0:
 			row.add_child(_vsep())
 		var cell := HBoxContainer.new()
-		cell.add_theme_constant_override("separation", 10)
+		cell.add_theme_constant_override("separation", 5 if touch else 10)
 		row.add_child(cell)
-		cell.add_child(Icon.new(items[i][0], 20.0, WHITE))
+		cell.add_child(Icon.new(items[i][0], 13.0 if touch else 20.0, WHITE))
 		var column := VBoxContainer.new()
 		column.add_theme_constant_override("separation", 0)
 		cell.add_child(column)
-		column.add_child(_label(items[i][1], "Caps", 9))
-		var value := _label("—", "Stat")
+		column.add_child(_label(items[i][1], "Caps", 7 if touch else 9))
+		var value := _label("—", "Stat", 12 if touch else 0)
 		column.add_child(value)
 		values.append(value)
 	stat_speed = values[0]
@@ -987,11 +1018,13 @@ func _layout() -> void:
 		carta.position = Vector2(screen.x - carta_size.x - margin, margin + 56.0)
 	else:
 		carta.position = Vector2(screen.x - carta_size.x - margin, clampf((screen.y - carta_size.y) * 0.5, margin + 56.0, maxf(margin + 56.0, screen.y - carta_size.y - margin)))
-	telemetry.visible = playing and not (mobile and reading)
+	# No celular a carta aberta cobre a barra de dados: esconde a barra enquanto isso.
+	telemetry.visible = playing and not (mobile and (reading or (carta_open and carta.visible)))
 	telemetry.size = Vector2.ZERO
 	var tel := telemetry.get_combined_minimum_size()
 	if mobile:
-		telemetry.position = Vector2((screen.x - tel.x) * 0.5, screen.y - tel.y - margin - touch_reserve)
+		# Um pouco à direita do centro para não cobrir a bússola (Log Pose) no canto esquerdo.
+		telemetry.position = Vector2(minf((screen.x - tel.x) * 0.5 + 18.0, screen.x - tel.x - 6.0), screen.y - tel.y - margin - touch_reserve)
 	else:
 		telemetry.position = Vector2(margin + 140.0, screen.y - tel.y - margin)
 	keys_box.size = Vector2.ZERO

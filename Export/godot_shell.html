@@ -66,7 +66,7 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 				<nav class="links" aria-label="Contatos"><!--LINKS--></nav>
 				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
 				<p id="status-numbers">preparando o mar</p>
-				<p class="hint">primeira visita ~75 MB · fica em cache · W A S D ou controles na tela</p>
+				<p class="hint">primeira visita ~75 MB (~25 MB no celular) · fica em cache · W A S D ou controles na tela</p>
 				<div id="status-notice"></div>
 				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio aqui mesmo ↓</button></p>
 				<div class="reader" id="reader"><!--READER--></div>
@@ -152,7 +152,17 @@ const engine = new Engine(GODOT_CONFIG);
 	// O jogo (.pck) é servido em partes < 25 MiB (limite do Cloudflare). O navegador
 	// baixa as partes (com nova tentativa), junta num buffer e entrega ao Godot — sem depender do Worker.
 	async function loadPackParts() {
-		const manifest = await fetch('index.pck.parts.json', { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
+		// Celular recebe o pacote leve (modelos e texturas menores). ?lite=1 / ?full=1 forçam.
+		const query = new URLSearchParams(location.search);
+		// Toque sem mouse (celular/tablet); notebook com tela touch continua no pacote completo.
+		const touchSmall = matchMedia('(pointer: coarse) and (hover: none)').matches;
+		const isMobile = (navigator.userAgentData && navigator.userAgentData.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || touchSmall;
+		const lite = query.has('lite') || (isMobile && !query.has('full'));
+		const manifestName = lite ? 'index.mobile.pck.parts.json' : 'index.pck.parts.json';
+		let manifest = await fetch(manifestName, { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
+		if (!manifest && lite) {
+			manifest = await fetch('index.pck.parts.json', { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
+		}
 		if (!manifest || !manifest.parts) return null;
 		let loaded = 0;
 		// Um único buffer pré-alocado (evita duplicar ~70 MB de memória no celular).
@@ -162,7 +172,7 @@ const engine = new Engine(GODOT_CONFIG);
 			for (let attempt = 1; ; attempt++) {
 				try {
 					loaded = start;
-					const response = await fetch('pck/' + part + '?v=' + manifest.version);
+					const response = await fetch((manifest.dir || 'pck') + '/' + part + '?v=' + manifest.version);
 					if (!response.ok || !response.body) throw new Error('HTTP ' + response.status);
 					const reader = response.body.getReader();
 					for (;;) {

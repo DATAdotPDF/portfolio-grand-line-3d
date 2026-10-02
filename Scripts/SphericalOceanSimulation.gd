@@ -28,6 +28,8 @@ const MAX_STROKE := 24
 const STROKE_LIFETIME := 3.0
 var stroke: Array[Vector4] = []
 var wake_head_active := false
+## Pontos de esteira enviados ao shader (o celular usa menos: cada ponto é um laço por pixel).
+var wake_limit := MAX_WAKE
 
 func _ready() -> void:
 	process_physics_priority = -20
@@ -86,8 +88,8 @@ func _process(_delta: float) -> void:
 	if wake_head_active and not live.is_empty():
 		var head := wake_head.normalized() * radius
 		live.append(Vector4(head.x, head.y, head.z, 1.0))
-		if live.size() > MAX_WAKE:
-			live.pop_front()
+	while live.size() > wake_limit:
+		live.pop_front()
 	var packed_wake := PackedVector4Array(live)
 	packed_wake.resize(MAX_WAKE)
 	var packed_stroke := PackedVector4Array(stroke)

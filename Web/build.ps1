@@ -22,7 +22,7 @@ Write-Host "2/5 Limpando saída anterior"
 foreach ($item in Get-ChildItem $public -Force) {
 	if ($item.Name -notin "404.html", "fonts") { Remove-Item $item.FullName -Recurse -Force -Confirm:$false }
 }
-New-Item -ItemType Directory -Force (Join-Path $public "pck"), (Join-Path $public "music"), (Join-Path $public "fonts") | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $public "music"), (Join-Path $public "fonts") | Out-Null
 
 Write-Host "3/5 Cartão de visita (conteúdo de Config/portfolio_content.json)"
 $content = Get-Content Config\portfolio_content.json -Raw -Encoding utf8 | ConvertFrom-Json
@@ -47,19 +47,25 @@ Get-ChildItem Builds\Web -File | Where-Object { $_.Name -notin "index.html", "in
 	ForEach-Object { Copy-Item $_.FullName $public }
 Copy-Item Assets\Fonts\*.ttf, Assets\Fonts\OFL-*.txt (Join-Path $public "fonts")
 
-Write-Host "4/5 pck em partes + wasm brotli"
-$pck = [IO.File]::ReadAllBytes((Resolve-Path Builds\Web\index.pck))
-$partSize = $PartMB * 1MB
-$parts = @()
-for ($offset = 0; $offset -lt $pck.Length; $offset += $partSize) {
-	$name = "part-{0:D2}" -f $parts.Count
-	$stream = [IO.File]::Create((Join-Path $public "pck\$name"))
-	$stream.Write($pck, $offset, [Math]::Min($partSize, $pck.Length - $offset))
-	$stream.Close()
-	$parts += $name
+Write-Host "4/5 pck em partes + wasm brotli (desktop e celular)"
+function Split-Pack([string]$pckPath, [string]$partsDir, [string]$manifestName) {
+	New-Item -ItemType Directory -Force (Join-Path $public $partsDir) | Out-Null
+	$bytes = [IO.File]::ReadAllBytes((Resolve-Path $pckPath))
+	$names = @()
+	for ($offset = 0; $offset -lt $bytes.Length; $offset += $PartMB * 1MB) {
+		$name = "part-{0:D2}" -f $names.Count
+		$stream = [IO.File]::Create((Join-Path $public "$partsDir\$name"))
+		$stream.Write($bytes, $offset, [Math]::Min($PartMB * 1MB, $bytes.Length - $offset))
+		$stream.Close()
+		$names += $name
+	}
+	$version = (Get-FileHash $pckPath -Algorithm SHA256).Hash.Substring(0, 16).ToLower()
+	@{ parts = $names; size = $bytes.Length; version = $version; dir = $partsDir } | ConvertTo-Json | Set-Content (Join-Path $public $manifestName)
+	return $names.Count
 }
-$version = (Get-FileHash Builds\Web\index.pck -Algorithm SHA256).Hash.Substring(0, 16).ToLower()
-@{ parts = $parts; size = $pck.Length; version = $version } | ConvertTo-Json | Set-Content (Join-Path $public "index.pck.parts.json")
+$parts = 1..(Split-Pack "Builds\Web\index.pck" "pck" "index.pck.parts.json")
+pwsh -NoProfile -File (Join-Path $PSScriptRoot "build_mobile.ps1") -Godot $Godot
+$mobileParts = Split-Pack "Builds\WebMobile\index.pck" "pck-mobile" "index.mobile.pck.parts.json"
 $wasmOut = Join-Path $public "index.wasm.br"
 node -e "const z=require('zlib'),f=require('fs');f.writeFileSync(process.argv[2],z.brotliCompressSync(f.readFileSync(process.argv[1]),{params:{[z.constants.BROTLI_PARAM_QUALITY]:11}}))" (Resolve-Path Builds\Web\index.wasm).Path $wasmOut
 
@@ -70,4 +76,5 @@ foreach ($t in $tracks) { Copy-Item -LiteralPath "Assets\Sound\$t" (Join-Path $p
 $big = Get-ChildItem $public -Recurse -File | Where-Object { $_.Length -gt 25MB }
 if ($big) { throw "Arquivos acima de 25 MiB: $($big.FullName -join ', ')" }
 $total = (Get-ChildItem $public -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
-Write-Host ("Pronto: {0} partes de pck ({1:N1} MB), wasm.br {2:N1} MB, site total {3:N1} MB" -f $parts.Count, ($pck.Length / 1MB), ((Get-Item $wasmOut).Length / 1MB), $total)
+Write-Host ("Celular: {0:N1} MB em {1} partes" -f ((Get-Item "Builds\WebMobile\index.pck").Length / 1MB), $mobileParts)
+Write-Host ("Pronto: {0} partes de pck ({1:N1} MB), wasm.br {2:N1} MB, site total {3:N1} MB" -f $parts.Count, ((Get-Item "Builds\Web\index.pck").Length / 1MB), ((Get-Item $wasmOut).Length / 1MB), $total)

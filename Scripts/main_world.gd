@@ -120,6 +120,7 @@ func _ready() -> void:
 	ocean.name = "OceanSimulation"
 	add_child(ocean)
 	_build_ocean()
+	_apply_mobile_profile()
 	_build_islands()
 	_update_island_coasts()
 	_build_ship()
@@ -164,7 +165,10 @@ func _ready() -> void:
 	add_child(touch)
 	# Abertura (como no nazarejose): o globo gira atrás do cartão de apresentação.
 	# Um link direto (?ilha= / ?modo=) pula a abertura.
-	var deeplink := OS.has_feature("web") and str(JavaScriptBridge.eval("window.location.search", true)).length() > 1
+	var search := str(JavaScriptBridge.eval("window.location.search", true)) if OS.has_feature("web") else ""
+	if search.contains("perf"):
+		_build_perf_overlay()
+	var deeplink := search.length() > 1 and not search.begins_with("?perf")
 	if deeplink:
 		_apply_web_deeplink.call_deferred()
 	elif show_intro_on_start:
@@ -282,6 +286,85 @@ func _place_editor_cameras(ship_node: Node3D) -> void:
 		preview.far = planet_radius * 4.5
 
 # --- Construção em runtime ------------------------------------------------------------
+
+## Pacote de celular (feature "mobile_lite"): troca qualidade por fluidez.
+func _apply_mobile_profile() -> void:
+	if not OS.has_feature("mobile_lite"):
+		return
+	var viewport := get_viewport()
+	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	viewport.scaling_3d_scale = 0.6
+	viewport.msaa_3d = Viewport.MSAA_DISABLED
+	# LODs gerados no import: limiar maior troca para malhas mais simples bem mais cedo.
+	viewport.mesh_lod_threshold = 6.0
+	# 30 fps estáveis travam menos do que 45 oscilando.
+	Engine.max_fps = 30
+	# Física a 30 Hz (a interpolação de física mantém o movimento suave): metade do custo de CPU.
+	Engine.physics_ticks_per_second = 30
+	Engine.max_physics_steps_per_frame = 3
+	if is_instance_valid(ocean_patch):
+		ocean_patch.patch_radius = 150.0
+		ocean_patch.resolution = 72
+	ocean.wake_limit = 10
+	get_tree().node_added.connect(_lighten_mobile_node)
+	_lighten_mobile_tree.call_deferred()
+	print("MOBILE_PROFILE on")
+
+## Diagnóstico (?perf=1): números do quadro na tela e no console, para medir no aparelho real.
+func _build_perf_overlay() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 120
+	add_child(layer)
+	var label := Label.new()
+	label.position = Vector2(8, 70)
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color.YELLOW)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 4)
+	layer.add_child(label)
+	var timer := Timer.new()
+	timer.wait_time = 1.0
+	timer.autostart = true
+	add_child(timer)
+	timer.timeout.connect(func():
+		var text := "fps %d | cpu %.1f ms | fís %.1f ms\ndraw %d | obj %d | tri %dk | %s" % [
+			Engine.get_frames_per_second(),
+			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000.0),
+			"lite" if OS.has_feature("mobile_lite") else "full"]
+		label.text = text
+		print("PERF ", text.replace("\n", " | ")))
+
+## Segunda passada do pacote de celular, depois que céu, luzes e efeitos existem.
+func _lighten_mobile_tree() -> void:
+	if is_instance_valid(sky_material):
+		sky_material.set_shader_parameter("clouds_samples", 4)
+		sky_material.set_shader_parameter("shadow_samples", 1)
+	if environment != null:
+		environment.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+		if environment.sky != null:
+			environment.sky.radiance_size = Sky.RADIANCE_SIZE_32
+	# O navio fica sempre perto da câmera: compensa o limiar de LOD para as velas finas não sumirem.
+	if is_instance_valid(ship):
+		for mesh in ship.find_children("*", "GeometryInstance3D", true, false):
+			(mesh as GeometryInstance3D).lod_bias = 8.0
+	var stack: Array[Node] = [get_tree().root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		_lighten_mobile_node(node)
+		stack.append_array(node.get_children())
+
+## Partículas pela metade e sem a luz decorativa das placas (cada luz é mais uma passada no WebGL).
+func _lighten_mobile_node(node: Node) -> void:
+	if node is GPUParticles3D and not node.has_meta("mobile_lite"):
+		node.set_meta("mobile_lite", true)
+		node.amount = maxi(2, node.amount / 2)
+	elif node is OmniLight3D and node.name == "TitleWarmLight":
+		node.visible = false
+		node.light_energy = 0.0
 
 func _build_ocean() -> void:
 	_apply_planet_geometry()
@@ -536,7 +619,8 @@ func _build_lighting() -> void:
 		sun.name = "Sun"
 		add_child(sun)
 	sun.light_energy = 1.0
-	sun.shadow_enabled = true
+	# Sombras desligadas no pacote de celular.
+	sun.shadow_enabled = not OS.has_feature("mobile_lite")
 	sun.directional_shadow_max_distance = 120.0
 	moon = get_node_or_null("MoonLight") as DirectionalLight3D
 	if moon == null:

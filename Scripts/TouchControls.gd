@@ -40,10 +40,11 @@ func enable() -> void:
 	add_child(root)
 	drive_pad = _make_pad(root, Control.PRESET_BOTTOM_LEFT, Vector2(36, -36), "drive")
 	aim_pad = _make_pad(root, Control.PRESET_BOTTOM_RIGHT, Vector2(-36, -36), "aim")
-	_make_button(root, "FOGO", true, func(): if naval: naval.call("fire"))
-	var boost_button := _make_button(root, "IMPULSO", false, Callable())
+	# Mão esquerda navega; mão direita: mira + IMPULSO e FOGO lado a lado, acima do joystick direito.
+	var boost_button := _make_button(root, "IMPULSO", -1, Callable())
 	boost_button.button_down.connect(func(): boost = true)
 	boost_button.button_up.connect(func(): boost = false)
+	_make_button(root, "FOGO", 1, func(): if naval: naval.call("fire"))
 
 func _make_pad(parent: Control, preset: int, margin: Vector2, kind: String) -> Control:
 	var pad := Control.new()
@@ -64,17 +65,18 @@ func _make_pad(parent: Control, preset: int, margin: Vector2, kind: String) -> C
 		pad.position = Vector2((screen.x - pad.size.x + margin.x) if right else margin.x, screen.y - pad.size.y + margin.y))
 	return pad
 
-## Botão logo acima do joystick do mesmo lado.
-func _make_button(parent: Control, text: String, right_side: bool, action: Callable) -> Button:
+## Botão pequeno acima do joystick direito; slot -1 fica à esquerda do centro, +1 à direita.
+func _make_button(parent: Control, text: String, slot: int, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(110, 64)
-	button.add_theme_font_size_override("font_size", 20)
+	button.custom_minimum_size = Vector2(72, 40)
+	button.add_theme_font_size_override("font_size", 12)
 	var place := func():
 		var screen := get_viewport().get_visible_rect().size
-		var pad_center_x := (screen.x - 36.0 - STICK_RADIUS) if right_side else 36.0 + STICK_RADIUS
-		button.position = Vector2(pad_center_x - button.size.x * 0.5, screen.y - 36.0 - STICK_RADIUS * 2.0 - 16.0 - button.size.y)
+		var pad_center_x := screen.x - 36.0 - STICK_RADIUS
+		var x := pad_center_x + 4.0 if slot > 0 else pad_center_x - 4.0 - button.size.x
+		button.position = Vector2(minf(x, screen.x - button.size.x - 8.0), screen.y - 36.0 - STICK_RADIUS * 2.0 - 12.0 - button.size.y)
 	parent.add_child(button)
 	place.call()
 	get_viewport().size_changed.connect(place)
