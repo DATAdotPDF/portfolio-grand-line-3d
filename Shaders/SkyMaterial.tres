@@ -1,6 +1,32 @@
-[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+[gd_resource type="ShaderMaterial" load_steps=10 format=3]
 
 [ext_resource type="Shader" path="res://Shaders/radial_sky.gdshader" id="1_sky_shader"]
 
+[sub_resource type="Curve" id="Curve_clouds"]
+_data = [Vector2(0, 0), 0.0, 10.0, 0, 1, Vector2(0.1, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.8), -0.222222, 0.0, 1, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_clouds"]
+texture_mode = 1
+curve = SubResource("Curve_clouds")
+
+[sub_resource type="FastNoiseLite" id="Noise_small"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture_small"]
+width = 256
+height = 256
+seamless = true
+noise = SubResource("Noise_small")
+
+[sub_resource type="FastNoiseLite" id="Noise_shape"]
+fractal_octaves = 10
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture_shape"]
+seamless = true
+noise = SubResource("Noise_shape")
+
 [resource]
 shader = ExtResource("1_sky_shader")
+shader_parameter/cloud_shape_sampler = SubResource("NoiseTexture_shape")
+shader_parameter/cloud_noise_sampler = SubResource("NoiseTexture_small")
+shader_parameter/cloud_curves = SubResource("CurveTexture_clouds")

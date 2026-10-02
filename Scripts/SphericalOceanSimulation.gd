@@ -20,6 +20,14 @@ var ripple_info: Array[Vector4] = []
 var island_centers := PackedVector3Array()
 var island_radii := PackedFloat32Array()
 var components: Array[Dictionary] = []
+## Ponto vivo da esteira (popa do barco), ligado ao último ponto gravado:
+## evita o rastro 'desconectado' do casco.
+var wake_head := Vector3.ZERO
+## Arrasto contínuo na água (mouse/dedo segurado).
+const MAX_STROKE := 24
+const STROKE_LIFETIME := 3.0
+var stroke: Array[Vector4] = []
+var wake_head_active := false
 
 func _ready() -> void:
 	process_physics_priority = -20
@@ -59,6 +67,10 @@ func _physics_process(delta: float) -> void:
 		wake[i].w -= delta / 7.0
 		if wake[i].w <= 0.0:
 			wake.remove_at(i)
+	for i in range(stroke.size() - 1, -1, -1):
+		stroke[i].w += delta
+		if stroke[i].w > STROKE_LIFETIME:
+			stroke.remove_at(i)
 	for i in range(ripples.size() - 1, -1, -1):
 		ripples[i].w += delta
 		if ripples[i].w > RIPPLE_LIFETIME:
@@ -70,8 +82,16 @@ func _process(_delta: float) -> void:
 		return
 	var interpolation_delay := (1.0 - Engine.get_physics_interpolation_fraction()) / float(Engine.physics_ticks_per_second)
 	var render_time := maxf(0.0, simulation_time - interpolation_delay)
-	var packed_wake := PackedVector4Array(wake)
+	var live := wake.duplicate()
+	if wake_head_active and not live.is_empty():
+		var head := wake_head.normalized() * radius
+		live.append(Vector4(head.x, head.y, head.z, 1.0))
+		if live.size() > MAX_WAKE:
+			live.pop_front()
+	var packed_wake := PackedVector4Array(live)
 	packed_wake.resize(MAX_WAKE)
+	var packed_stroke := PackedVector4Array(stroke)
+	packed_stroke.resize(MAX_STROKE)
 	var packed_ripples := PackedVector4Array(ripples)
 	packed_ripples.resize(MAX_RIPPLES)
 	var packed_info := PackedVector4Array(ripple_info)
@@ -79,10 +99,12 @@ func _process(_delta: float) -> void:
 	for material in materials:
 		material.set_shader_parameter("ocean_time", render_time)
 		material.set_shader_parameter("wake_points", packed_wake)
-		material.set_shader_parameter("wake_count", wake.size())
+		material.set_shader_parameter("wake_count", live.size())
 		material.set_shader_parameter("ripple_points", packed_ripples)
 		material.set_shader_parameter("ripple_info", packed_info)
 		material.set_shader_parameter("ripple_count", ripples.size())
+		material.set_shader_parameter("stroke_points", packed_stroke)
+		material.set_shader_parameter("stroke_count", stroke.size())
 
 func _coast_factor(point: Vector3) -> float:
 	var factor := 1.0
@@ -158,3 +180,13 @@ func touch(position: Vector3, strength := 0.45, speed := 3.2) -> void:
 	if ripples.size() > MAX_RIPPLES:
 		ripples.pop_front()
 		ripple_info.pop_front()
+
+## Acrescenta um ponto ao sulco do arrasto. new_stroke = começa um traço novo.
+func drag(position: Vector3, new_stroke := false) -> void:
+	var point := position.normalized() * radius
+	if new_stroke and not stroke.is_empty():
+		# Traço novo não se liga ao anterior: envelhece o antigo de uma vez.
+		stroke.clear()
+	stroke.append(Vector4(point.x, point.y, point.z, 0.0))
+	if stroke.size() > MAX_STROKE:
+		stroke.pop_front()

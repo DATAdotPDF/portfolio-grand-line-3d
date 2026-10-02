@@ -20,6 +20,10 @@ uniform bool use_simulation_time = false;
 uniform vec4 ripple_points[MAX_RIPPLES]; // xyz = centro, w = idade (s)
 uniform vec4 ripple_info[MAX_RIPPLES];   // x = força, y = velocidade de frente
 uniform int ripple_count = 0;
+// Arrasto do mouse/dedo: polilinha (xyz, w = idade em s) que vira um sulco contínuo.
+#define MAX_STROKE 24
+uniform vec4 stroke_points[MAX_STROKE];
+uniform int stroke_count = 0;
 uniform vec4 wake_points[MAX_WAKE];
 uniform int wake_count = 0;
 
@@ -31,9 +35,11 @@ uniform vec3 boat_forward;
 uniform vec3 boat_right;
 uniform bool boat_cutout_enabled = false;
 
-// Sombras falsas das nuvens (CloudLayer.gd): xyz = ponto no mar, w = raio.
-uniform vec4 cloud_shadows[12];
-uniform int cloud_shadow_count = 0;
+// Sombras das nuvens: mesmo ruído das nuvens do céu, projetado no plano do vento.
+uniform sampler2D cloud_shadow_tex : filter_linear_mipmap, repeat_enable;
+uniform vec3 cloud_axis_u = vec3(1.0, 0.0, 0.0);
+uniform vec3 cloud_axis_v = vec3(0.0, 0.0, 1.0);
+uniform float cloud_shadow_scale = 900.0;
 uniform float cloud_shadow_strength = 0.0;
 
 uniform vec3 patch_center;
@@ -76,6 +82,43 @@ float coast_factor(vec3 p) {
 	return mix(0.08, 1.0, factor);
 }
 
+// Sulco do arrasto: cavado no centro e cristas laterais que se afastam com a idade.
+void stroke_eval(vec3 p, vec3 n, inout float h, inout vec3 grad, inout float glow) {
+	// Distância à polilinha inteira (segmento mais próximo), como na esteira.
+	float d = 1e6;
+	float age = 0.0;
+	vec3 to_p = vec3(0.0);
+	for (int i = 0; i < MAX_STROKE - 1; i++) {
+		if (i >= stroke_count - 1) {
+			break;
+		}
+		vec3 a = stroke_points[i].xyz;
+		vec3 seg = stroke_points[i + 1].xyz - a;
+		float t = clamp(dot(p - a, seg) / max(dot(seg, seg), 0.0001), 0.0, 1.0);
+		vec3 off = p - (a + seg * t);
+		float dist = length(off);
+		if (dist < d) {
+			d = dist;
+			to_p = off;
+			age = mix(stroke_points[i].w, stroke_points[i + 1].w, t);
+		}
+	}
+	if (d > 30.0) {
+		return;
+	}
+	float life = exp(-age * 1.1) * smoothstep(0.0, 0.1, age);
+	float width = 0.6 + age * 1.6;
+	float k = 1.0 / (width * width * 0.35);
+	float trough = -0.35 * exp(-d * d * k);
+	float ring = d - width * 1.5;
+	float s = 0.5 + age * 0.6;
+	float ridge = 0.22 * exp(-ring * ring / s);
+	h += (trough + ridge) * life;
+	float dv = (-2.0 * d * k * trough - 2.0 * ring / s * ridge) * life;
+	vec3 dir = d > 0.001 ? to_p / d : vec3(0.0);
+	grad += (dir - n * dot(n, dir)) * dv;
+	glow += ridge / 0.22 * life * 0.8;
+}
 // p: ponto na esfera (|p| = planet_radius). view_distance < 0 desliga o fade de LOD.
 // h: altura radial; disp: deslocamento tangente; grad: gradiente tangente da altura;
 // crest: compressão horizontal (> 0 nas cristas), usada para as bandas toon.
@@ -132,8 +175,10 @@ void ocean_eval(vec3 p, float view_distance, out float h, out vec3 disp, out vec
 		vec3 radial_dir = dist > 0.001 ? to_point / dist : vec3(0.0);
 		grad += (radial_dir - n * dot(n, radial_dir)) * dh;
 	}
+	stroke_eval(p, n, h, grad, ripple_glow);
 }
 
+// Sulco do arrasto: cavado no centro e cristas laterais que se afastam com a idade.
 vec3 ocean_normal(vec3 p, vec3 grad, float crest) {
 	vec3 n = normalize(p);
 	return normalize(n * max(1.0 - crest, 0.2) - grad);
@@ -214,14 +259,8 @@ vec3 ocean_albedo(vec3 p, vec3 wake_point, float h, float crest, float ripple_gl
 	float crest_line = smoothstep(0.32, 0.62, crest) * crest_line_amount;
 	color = mix(color, crest_color, crest_line);
 	color = mix(color, foam_color, clamp(ripple_glow, 0.0, 1.0) * 0.55);
-	float shadow = 0.0;
-	for (int i = 0; i < 12; i++) {
-		if (i >= cloud_shadow_count) {
-			break;
-		}
-		float r = cloud_shadows[i].w;
-		shadow = max(shadow, 1.0 - smoothstep(r * 0.45, r, distance(p, cloud_shadows[i].xyz)));
-	}
+	vec2 cloud_uv = vec2(dot(p, cloud_axis_u), dot(p, cloud_axis_v)) / cloud_shadow_scale + TIME * 0.0006;
+	float shadow = smoothstep(0.52, 0.62, texture(cloud_shadow_tex, cloud_uv).x);
 	color *= 1.0 - shadow * cloud_shadow_strength;
 	float wake = wake_foam(wake_point);
 	float foam = max(shore, wake * 0.75);

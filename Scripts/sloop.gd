@@ -34,7 +34,7 @@ var virtual_boost := false
 @export var hull_half_length := 2.0
 @export var hull_half_beam := 0.8
 ## Quão rápido o casco acompanha a inclinação da onda (menor = mais peso/inércia).
-@export var wave_follow_rate := 3.5
+@export var wave_follow_rate := 7.0
 @export var buoyancy_spring := 46.0
 @export var buoyancy_damping := 12.5
 @export var max_bank_angle := deg_to_rad(15.0)
@@ -56,6 +56,7 @@ var pitch_velocity := 0.0
 var current_turn_rate := 0.0
 var wave_basis := Basis.IDENTITY
 var turn_bias := 0.0
+var idle_time := 0.0
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -114,18 +115,19 @@ func _physics_process(delta: float) -> void:
 	var rear: Vector3 = ocean.surface_at(global_position - heading * hull_half_length)
 	var port: Vector3 = ocean.surface_at(global_position - right * hull_half_beam)
 	var starboard: Vector3 = ocean.surface_at(global_position + right * hull_half_beam)
-	var target_radius: float = (front.length() + rear.length() + port.length() + starboard.length()) * 0.25
-	var error := target_radius - global_position.length()
-	radial_speed += (error * buoyancy_spring - radial_speed * buoyancy_damping) * delta
-	radial_speed = clampf(radial_speed, -8.0, 8.0)
 	var before := global_position
 	up_direction = up
-	velocity = heading * drive_speed + up * radial_speed
+	# Movimento só na horizontal; a altura vem direto da superfície (como as boias).
+	velocity = heading * drive_speed
 	shore_blocked = false
 	move_and_slide()
-	# Mesh slopes must never add climbing motion to the buoyancy system.
-	if get_slide_collision_count() > 0:
-		global_position = global_position.normalized() * (before.length() + radial_speed * delta)
+	var moved_up := global_position.normalized()
+	var center: Vector3 = ocean.surface_at(global_position)
+	var target_radius: float = (front.length() + rear.length() + port.length() + starboard.length() + center.length() * 2.0) / 6.0
+	var current := global_position.length()
+	var radius := lerpf(current, target_radius, 1.0 - exp(-14.0 * delta))
+	radial_speed = (radius - current) / maxf(delta, 0.00001)
+	global_position = moved_up * radius
 	up = global_position.normalized()
 	heading = (Quaternion(old_up, up) * heading).slide(up).normalized()
 	basis = Basis(heading.cross(up).normalized(), up, -heading)
@@ -143,6 +145,8 @@ func _physics_process(delta: float) -> void:
 		wave_basis = wave_basis.slerp(desired_local, 1.0 - exp(-wave_follow_rate * delta)).orthonormalized()
 		update_attitude(delta,acceleration)
 		float_visual.basis = wave_basis * Basis.from_euler(Vector3(acceleration_pitch,0,bank_roll))
+	ocean.wake_head = global_position - heading * 1.9
+	ocean.wake_head_active = measured_speed > 0.3
 	if measured_speed > 0.3 and global_position.distance_to(last_wake) > 2.0:
 		ocean.add_wake(global_position - heading * 1.7)
 		last_wake = global_position

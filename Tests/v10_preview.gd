@@ -57,6 +57,23 @@ func run() -> void:
 		world.camera.yaw = 0.0
 		world.camera.pitch = 0.0
 		world.ship.test_controls = Vector3.ZERO
+	if wants("waterline"):
+		world.camera.follow_distance = 8.0
+		world.camera.follow_height = 0.6
+		world.camera.yaw = PI * 0.5
+		await wait(2.0)
+		await shot("waterline_rest")
+		world.ship.controls_override = true
+		world.ship.test_controls = Vector3(1, 0, 1)
+		world.camera.yaw = 0.35
+		world.camera.follow_distance = 6.0
+		world.camera.follow_height = 1.8
+		await wait(6.0)
+		await shot("waterline_bow")
+		world.ship.test_controls = Vector3.ZERO
+		world.camera.yaw = 0.0
+		world.camera.follow_distance = 12.0
+		world.camera.follow_height = 5.0
 	if wants("route"):
 		world.camera.yaw = -world.log_pose.target_angle_rad
 		world.camera.follow_height = 14.0
@@ -109,6 +126,13 @@ func run() -> void:
 		await wait(3.5)
 		await shot("hud_race")
 		world._return_to_navigation()
+	if wants("islandsnight"):
+		for i in range(world.islands.size()):
+			world.select_time("night")
+			world.camera.focus_island(world.islands[i])
+			await wait(2.8)
+			await shot("night_island_%d" % (i + 1))
+		world.select_time("auto")
 	if wants("islands"):
 		for i in range(world.islands.size()):
 			world.camera.focus_island(world.islands[i])

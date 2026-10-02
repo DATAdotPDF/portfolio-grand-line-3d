@@ -26,6 +26,11 @@ var flash := 0.0
 var snail_audio: AudioStreamPlayer3D
 var ring_timer := 0.0
 var signal_rings: Array[MeshInstance3D] = []
+var smoke_emitters: Array[GPUParticles3D] = []
+var glows: Array[MeshInstance3D] = []
+var beacon: MeshInstance3D
+var lantern_glass: MeshInstance3D
+var snail_base := Vector3.ZERO
 
 func point(x: float, y: float, z: float) -> Vector3:
 	return (bounds.position + bounds.size * Vector3(x, y, z)) * factor + model.position
@@ -51,14 +56,108 @@ func lamp(where: Vector3, color: Color, reach: float) -> OmniLight3D:
 	light.add_child(glass)
 	return light
 
+## Luz de janela/ambiente: sem esfera visível (antes as bolinhas pareciam soltas no ar).
+func window_light(where: Vector3, color: Color, reach: float) -> OmniLight3D:
+	var light := OmniLight3D.new()
+	light.position = where
+	light.light_color = color
+	light.omni_range = reach
+	light.omni_attenuation = 1.4
+	light.shadow_enabled = false
+	add_child(light)
+	lamps.append(light)
+	# Halo visível (janela acesa): no Compatibility a luz omni sozinha mal aparece.
+	glow_sprite(where, color, 0.75)
+	return light
+
+## Halo emissivo em billboard; some de dia. disable_fog para ser visto de longe.
+func glow_sprite(where: Vector3, color: Color, size: float) -> MeshInstance3D:
+	var sprite := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE * size
+	sprite.mesh = quad
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.disable_fog = true
+	var soft := Gradient.new()
+	soft.set_color(0, Color(1, 1, 1, 1))
+	soft.set_color(1, Color(1, 1, 1, 0))
+	soft.add_point(0.25, Color(1, 1, 1, 0.75))
+	var tex := GradientTexture2D.new()
+	tex.gradient = soft
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(0.5, 0.0)
+	mat.albedo_texture = tex
+	mat.albedo_color = color
+	sprite.material_override = mat
+	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sprite.position = where
+	add_child(sprite)
+	glows.append(sprite)
+	return sprite
+
+func _build_chimney_smoke(where: Vector3) -> void:
+	var smoke := GPUParticles3D.new()
+	smoke.name = "ChimneySmoke"
+	smoke.position = where
+	smoke.amount = 10
+	smoke.lifetime = 4.0
+	smoke.local_coords = false
+	smoke.visibility_aabb = AABB(Vector3(-6, -1, -6), Vector3(12, 14, 12))
+	var motion := ParticleProcessMaterial.new()
+	motion.direction = Vector3.UP
+	motion.spread = 12.0
+	motion.initial_velocity_min = 0.5
+	motion.initial_velocity_max = 0.9
+	motion.gravity = Vector3.ZERO
+	motion.scale_min = 0.4
+	motion.scale_max = 0.7
+	var grow := Curve.new()
+	grow.add_point(Vector2(0, 0.4))
+	grow.add_point(Vector2(1, 1.6))
+	var grow_tex := CurveTexture.new()
+	grow_tex.curve = grow
+	motion.scale_curve = grow_tex
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.85, 0.85, 0.85, 0.55))
+	fade.set_color(1, Color(0.85, 0.85, 0.85, 0.0))
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = fade
+	motion.color_ramp = ramp
+	smoke.process_material = motion
+	var puff := SphereMesh.new()
+	puff.radius = 0.35
+	puff.height = 0.7
+	puff.radial_segments = 8
+	puff.rings = 4
+	var paint := StandardMaterial3D.new()
+	paint.vertex_color_use_as_albedo = true
+	paint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	puff.material = paint
+	smoke.draw_pass_1 = puff
+	add_child(smoke)
+	smoke_emitters.append(smoke)
+
 func _ready() -> void:
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	clock = get_node("/root/DayNightCycle")
 	match index:
 		0:
-			pass # Luzes genéricas removidas: ficavam soltas (até sob o píer), sem lanterna no modelo.
+			# Posições medidas (Tests/island_markers.gd): luz quente logo à frente das janelas e da porta.
+			for w in [Vector3(0.46, 0.84, 0.56), Vector3(0.59, 0.84, 0.56), Vector3(0.37, 0.67, 0.58), Vector3(0.66, 0.67, 0.58), Vector3(0.48, 0.60, 0.62)]:
+				window_light(point(w.x, w.y, w.z), Color("ffb85c"), 2.2)
+			_build_chimney_smoke(point(0.73, 0.80, 0.33))
 		1:
 			_build_fort_cannons()
+			window_light(point(0.52, 0.76, 0.47), Color("ffa04a"), 7.0)
+			window_light(point(0.50, 0.73, 0.80), Color("ffb050"), 3.5)
+			window_light(point(0.27, 0.86, 0.72), Color("ffb050"), 2.5)
+			window_light(point(0.73, 0.86, 0.72), Color("ffb050"), 2.5)
 		2:
 			_extract_cube()
 			var glow := lamp(point(0.5, 0.60, 0.50), Color("00f0ff"), 7.0)
@@ -90,6 +189,8 @@ func _ready() -> void:
 			add_child(particles)
 		3:
 			_build_treasure()
+			window_light(point(0.36, 0.32, 0.60), Color("ffcc40"), 2.8)
+			window_light(point(0.71, 0.32, 0.60), Color("ffcc40"), 2.8)
 		4:
 			snail = Parts.extract(model, AABB(Vector3(-0.1, 0.64, -0.50), Vector3(0.58, 0.34, 0.65)), "DenDenMushi")
 			lantern_pivot = Node3D.new()
@@ -102,8 +203,23 @@ func _ready() -> void:
 			beam.light_color = Color("fff4b8")
 			beam.shadow_enabled = false
 			lantern_pivot.add_child(beam)
-			var glow := lamp(lantern_pivot.position, Color("fff4b8"), 4.0)
+			var glow := window_light(lantern_pivot.position, Color("fff4b8"), 9.0)
 			glow.name = "LanternInteriorGlow"
+			# Lanterna acesa por dentro: núcleo emissivo que aparece de longe (sem névoa).
+			lantern_glass = MeshInstance3D.new()
+			var core := SphereMesh.new()
+			core.radius = 0.55
+			core.height = 1.1
+			lantern_glass.mesh = core
+			var hot := StandardMaterial3D.new()
+			hot.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			hot.albedo_color = Color(1.0, 0.95, 0.7)
+			hot.disable_fog = true
+			lantern_glass.material_override = hot
+			lantern_glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			lantern_glass.position = lantern_pivot.position
+			add_child(lantern_glass)
+			beacon = glow_sprite(lantern_pivot.position, Color(1.0, 0.92, 0.65), 9.0)
 			beam_cone = MeshInstance3D.new()
 			var cone := CylinderMesh.new()
 			cone.top_radius = 0.08
@@ -128,28 +244,33 @@ func _process(delta: float) -> void:
 	var night: float = clock.night_at(global_position)
 	var camera := get_viewport().get_camera_3d()
 	var nearby := camera and camera.global_position.distance_to(global_position) < 85.0
+	var in_view := camera and camera.global_position.distance_to(global_position) < 260.0
 	
 	for i in range(lamps.size()):
 		var light := lamps[i]
-		light.visible = (nearby or light.name == "LanternInteriorGlow") and (night > 0.05 or index == 2)
+		light.visible = (in_view or light.name == "LanternInteriorGlow") and (night > 0.05 or index == 2)
 		var flicker := 1.0 + 0.10 * sin(elapsed * 8.1 + i * 2.0) + 0.05 * sin(elapsed * 13.7)
-		light.light_energy = (lerpf(0.35, 3.2, night) if index == 2 else night * 2.0) * flicker + flash
+		light.light_energy = (lerpf(0.35, 3.2, night) if index == 2 else night * 2.6) * flicker + flash
 	
 	if cube:
 		cube.position = cube_base + Vector3.UP * (sin(elapsed * 1.5) * 0.12 / factor)
-		cube.rotate_y(deg_to_rad(6.0) * delta)
+		# Gira no sentido contrário à órbita da câmera de visita.
+		cube.rotate_y(deg_to_rad(-14.0) * delta)
 		for mat in cube_materials:
 			mat.set_shader_parameter("glow", lerpf(0.35, 2.0, night) * (0.85 + 0.15 * sin(elapsed * 3.0)))
 	
-	if index == 1 and nearby:
+	if index == 1 and in_view:
 		cannon_timer -= delta
 		if cannon_timer <= 0.0 and not decorative_cannons.is_empty():
-			cannon_timer = cannon_rng.randf_range(8.0, 16.0)
+			cannon_timer = cannon_rng.randf_range(4.0, 8.0)
 			var cannon: Dictionary = decorative_cannons[cannon_rng.randi_range(0, decorative_cannons.size() - 1)]
 			var recoil := create_tween()
 			recoil.tween_property(cannon.node, "position:z", cannon.base_z - 0.16 / factor, 0.09)
 			recoil.tween_property(cannon.node, "position:z", cannon.base_z, 0.65)
 			cannon.smoke.restart()
+			# Clarão da boca do canhão.
+			cannon.muzzle.light_energy = 7.0
+			create_tween().tween_property(cannon.muzzle, "light_energy", 0.0, 0.35)
 			cannon.sound.play()
 	
 	if snail:
@@ -177,7 +298,9 @@ func _process(delta: float) -> void:
 					var color := ring_mat.albedo_color
 					color.a = (1.0 - phase) * 0.5
 					ring_mat.albedo_color = color
-		snail.rotation.z = sin(elapsed * 26.0) * 0.028 if ringing else sin(elapsed * 0.8) * 0.009
+		# Den Den Mushi (torre de rádio): balança e 'escuta' girando de leve.
+		snail.rotation.z = sin(elapsed * 26.0) * 0.028 if ringing else sin(elapsed * 1.3) * 0.035
+		snail.rotation.y = sin(elapsed * 0.45) * 0.25
 	
 	for mat in treasure_materials:
 		mat.set_shader_parameter("night", night)
@@ -191,6 +314,17 @@ func _process(delta: float) -> void:
 		beam.visible = beam.light_energy > 0.1
 		beam_cone.visible = beam.visible
 		beam_cone.material_override.set_shader_parameter("energy", night)
+		if lantern_glass:
+			lantern_glass.visible = night > 0.05
+			(lantern_glass.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.95, 0.7) * lerpf(0.6, 1.6, night)
+	for glow in glows:
+		glow.visible = night > 0.08
+		var mat := glow.material_override as StandardMaterial3D
+		var pulse := 0.9 + 0.1 * sin(elapsed * 2.3 + glow.position.x)
+		mat.albedo_color.a = night * pulse * (0.95 if glow == beacon else 0.8)
+	for smoke in smoke_emitters:
+		smoke.emitting = in_view
+		(smoke.process_material as ParticleProcessMaterial).gravity = global_position.normalized() * 0.15
 	flash = move_toward(flash, 0.0, delta * 5.0)
 
 func open_chest() -> void:

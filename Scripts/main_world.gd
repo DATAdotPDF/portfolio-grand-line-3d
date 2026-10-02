@@ -15,7 +15,6 @@ const PortfolioCamera = preload("res://Scripts/PortfolioCameraController.gd")
 const OceanPatchScript = preload("res://Scripts/OceanPatch.gd")
 const TouchControlsScript = preload("res://Scripts/TouchControls.gd")
 const PortfolioHUDScript = preload("res://Scripts/UI/PortfolioHUD.gd")
-const CloudLayerScript = preload("res://Scripts/CloudLayer.gd")
 const RouteLineScript = preload("res://Scripts/RouteLine.gd")
 const SHIP_LENGTH := 4.8
 const SEABED_DEPTH := 25.0
@@ -53,6 +52,9 @@ var playlist: Array[String] = []
 var music_bag: Array[String] = []
 var current_track := ""
 var web_music := false
+var track_history: Array[String] = []
+var history_index := -1
+var music_paused := false
 var web_music_timer := 0.0
 var naval: Node3D
 var time_mode := "auto"
@@ -69,6 +71,7 @@ var moon: DirectionalLight3D
 var sky_material: ShaderMaterial
 var bow_wave_materials: Array[ShaderMaterial] = []
 var water_droplets: GPUParticles3D
+var droplet_emitters: Array[GPUParticles3D] = []
 var sail_materials: Array[ShaderMaterial] = []
 var sail_model: Node3D
 var wind_streaks: Node3D
@@ -76,6 +79,8 @@ var bow_wave_meshes: Array[MeshInstance3D] = []
 var islands: Array[Node3D] = []
 var hud: CanvasLayer
 var intro_orbit := false
+var space_view := 0.0
+var map_beacons: Array[MeshInstance3D] = []
 var route_line: MeshInstance3D
 var log_pose: Node3D
 @export_group("Editor Planet")
@@ -120,12 +125,8 @@ func _ready() -> void:
 	_build_lighting()
 	_build_bow_wave()
 	_build_wind_streaks()
-	var clouds := CloudLayerScript.new()
-	clouds.name = "CloudLayer"
-	clouds.ship = ship
-	clouds.clock = clock
-	clouds.ocean_materials = ocean.materials
-	add_child(clouds)
+	_setup_cloud_shadows()
+	_build_map_beacons()
 	route_line = RouteLineScript.new()
 	route_line.name = "RouteLine"
 	route_line.ship = ship
@@ -354,6 +355,7 @@ func _build_islands() -> void:
 		zone.shape = shape
 		harbor.add_child(zone)
 		mount.add_child(harbor)
+		_tone_down_island(model)
 		var effects := IslandEffects.new()
 		effects.name = "IslandEffects"
 		effects.index = index
@@ -362,6 +364,17 @@ func _build_islands() -> void:
 		effects.factor = factor
 		mount.add_child(effects)
 		islands.append(mount)
+
+## As ilhas do Meshy vêm com texturas muito claras sob o sol toon: escurece um pouco.
+func _tone_down_island(model: Node3D) -> void:
+	for instance in model.find_children("*", "MeshInstance3D", true, false):
+		for surface in range(instance.mesh.get_surface_count()):
+			var material := instance.get_active_material(surface) as StandardMaterial3D
+			if material and not material.has_meta("toned"):
+				material.albedo_color = Color(0.8, 0.8, 0.82)
+				material.roughness = maxf(material.roughness, 0.85)
+				material.metallic_specular = 0.2
+				material.set_meta("toned", true)
 
 func _remove_harbor_baked_water(model: Node3D, bounds: AABB, _factor: float) -> void:
 	# Remove baked turquoise water triangles from a runtime copy. Keep pier vertices intact.
@@ -503,7 +516,7 @@ func _build_lighting() -> void:
 		sky_material.shader = load("res://Shaders/radial_sky.gdshader")
 		sky.sky_material = sky_material
 	# Disco solar discreto (o padrão do shader dava ~13° de raio).
-	sky_material.set_shader_parameter("sun_disk_size", 0.0012)
+	sky_material.set_shader_parameter("sun_disk_size", 0.00018)
 	sky_material.set_shader_parameter("sun_bloom", 0.08)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.72, 0.84, 0.9)
@@ -530,6 +543,39 @@ func _build_lighting() -> void:
 		add_child(moon)
 	moon.light_color = Color(0.43,0.59,0.86)
 
+## Colunas de luz sobre as ilhas, só na visão do mapa (as ilhas são pequenas no globo).
+func _build_map_beacons() -> void:
+	for island in islands:
+		var beacon := MeshInstance3D.new()
+		beacon.name = "MapBeacon"
+		var column := CylinderMesh.new()
+		column.top_radius = 3.0
+		column.bottom_radius = 9.0
+		column.height = 90.0
+		column.radial_segments = 12
+		beacon.mesh = column
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(0.91, 0.76, 0.45, 0.85)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.disable_fog = true
+		beacon.material_override = mat
+		beacon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		beacon.position = Vector3(0, 45.0, 0)
+		beacon.visible = false
+		island.add_child(beacon)
+		map_beacons.append(beacon)
+
+func _setup_cloud_shadows() -> void:
+	var shape: Texture2D = sky_material.get_shader_parameter("cloud_shape_sampler") if sky_material else null
+	var axis := Scale.wind_axis()
+	var u := axis.cross(Vector3.UP).normalized() if absf(axis.y) < 0.95 else axis.cross(Vector3.FORWARD).normalized()
+	var v := axis.cross(u).normalized()
+	for material in ocean.materials:
+		material.set_shader_parameter("cloud_shadow_tex", shape)
+		material.set_shader_parameter("cloud_axis_u", u)
+		material.set_shader_parameter("cloud_axis_v", v)
+
 func _build_bow_wave() -> void:
 	for side in [-1.0, 1.0]:
 		var mesh := MeshInstance3D.new()
@@ -550,33 +596,36 @@ func _build_bow_wave() -> void:
 		ship.float_visual.add_child(mesh)
 		bow_wave_materials.append(material)
 		bow_wave_meshes.append(mesh)
-	water_droplets = GPUParticles3D.new()
-	water_droplets.name = "WaterDroplets"
-	# Gotas soltas das cristas das folhas da proa (Seagazer). Quantidade segue a
-	# velocidade; a gravidade é atualizada para a vertical local em _process.
-	water_droplets.position = Vector3(0,0.55,-1.1)
-	water_droplets.amount = 14
-	water_droplets.lifetime = 0.75
-	water_droplets.emitting = false
-	water_droplets.visibility_aabb = AABB(Vector3(-4,-3,-4),Vector3(8,6,8))
-	var droplet_motion := ParticleProcessMaterial.new()
-	droplet_motion.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	droplet_motion.emission_box_extents = Vector3(1.0,0.08,0.7)
-	droplet_motion.direction = Vector3(0,1,0.35)
-	droplet_motion.spread = 50.0
-	droplet_motion.initial_velocity_min = 1.6
-	droplet_motion.initial_velocity_max = 3.4
-	droplet_motion.gravity = Vector3(0,-9.8,0)
-	droplet_motion.scale_min = 0.6
-	droplet_motion.scale_max = 1.5
-	water_droplets.process_material = droplet_motion
+	# Gotas: poucas, saindo para fora do casco a partir das cristas das folhas da proa.
 	var drop_mesh := QuadMesh.new()
-	drop_mesh.size = Vector2(0.11, 0.11)
+	drop_mesh.size = Vector2(0.06, 0.06)
 	var drop_material := ShaderMaterial.new()
 	drop_material.shader = load("res://Shaders/water_drop.gdshader")
 	drop_mesh.material = drop_material
-	water_droplets.draw_pass_1 = drop_mesh
-	ship.float_visual.add_child(water_droplets)
+	for side in [-1.0, 1.0]:
+		var emitter := GPUParticles3D.new()
+		emitter.name = "WaterDroplets_" + ("L" if side < 0.0 else "R")
+		emitter.position = Vector3(side * 0.75, 0.45, -1.2)
+		emitter.amount = 6
+		emitter.lifetime = 0.6
+		emitter.emitting = false
+		emitter.local_coords = false
+		emitter.visibility_aabb = AABB(Vector3(-4, -3, -4), Vector3(8, 6, 8))
+		var motion := ParticleProcessMaterial.new()
+		motion.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		motion.emission_box_extents = Vector3(0.05, 0.05, 0.5)
+		motion.direction = Vector3(side, 0.9, 0.3)
+		motion.spread = 18.0
+		motion.initial_velocity_min = 1.4
+		motion.initial_velocity_max = 2.6
+		motion.gravity = Vector3(0, -9.8, 0)
+		motion.scale_min = 0.6
+		motion.scale_max = 1.2
+		emitter.process_material = motion
+		emitter.draw_pass_1 = drop_mesh
+		ship.float_visual.add_child(emitter)
+		droplet_emitters.append(emitter)
+	water_droplets = droplet_emitters[0]
 
 func _build_wind_streaks() -> void:
 	wind_streaks = get_node_or_null("WindRibbonSystem") as Node3D
@@ -590,15 +639,21 @@ func _build_wind_streaks() -> void:
 func _fit_ui_to_screen() -> void:
 	var window := get_tree().root
 	var screen := Vector2(window.size)
-	window.content_scale_size = Vector2i(480, 854) if screen.x < screen.y else Vector2i(1152, 648)
-	# Log Pose menor em tela em pé, para não cobrir a masthead.
+	var portrait := screen.x < screen.y
+	window.content_scale_size = Vector2i(480, 854) if portrait else Vector2i(1152, 648)
+	# Log Pose pequeno no canto inferior esquerdo (no celular, acima dos controles).
 	var pose := get_node_or_null("LogPose_HUD/MarginContainer") as Control
 	if pose != null:
-		var side := 120.0 if screen.x < screen.y else 220.0
-		pose.offset_left = -side - 12.0
-		pose.offset_right = -12.0
-		pose.offset_top = 12.0
-		pose.offset_bottom = 12.0 + side
+		var side := 96.0 if portrait else 120.0
+		var bottom_gap := 262.0 if DisplayServer.is_touchscreen_available() else 14.0
+		pose.anchor_left = 0.0
+		pose.anchor_right = 0.0
+		pose.anchor_top = 1.0
+		pose.anchor_bottom = 1.0
+		pose.offset_left = 12.0
+		pose.offset_right = 12.0 + side
+		pose.offset_bottom = -bottom_gap
+		pose.offset_top = -bottom_gap - side
 		(pose.get_child(0) as Control).custom_minimum_size = Vector2(side, side)
 
 func _build_hud() -> void:
@@ -616,6 +671,8 @@ func _build_hud() -> void:
 	hud.time_attack_pressed.connect(_start_time_attack)
 	hud.time_mode_pressed.connect(select_time)
 	hud.next_track_pressed.connect(next_track)
+	hud.prev_track_pressed.connect(prev_track)
+	hud.toggle_music_pressed.connect(toggle_music_pause)
 	hud.panel_closed.connect(_return_to_navigation)
 	hud.start_sailing.connect(_start_sailing)
 	hud.set_time_mode(time_mode)
@@ -686,6 +743,22 @@ func wind_at(point: Vector3) -> Vector3:
 		return wind_manager.wind_at(point)
 	return Scale.wind_at(point)
 
+## Vento em rosa dos ventos local (norte = rumo ao polo de Sobre) e nós.
+func _wind_text(point: Vector3) -> String:
+	var wind := wind_at(point)
+	if wind.length() < 0.05:
+		return "calmaria"
+	var up := point.normalized()
+	var north := Vector3.UP.slide(up)
+	if north.length_squared() < 0.0001:
+		north = Vector3.FORWARD.slide(up)
+	north = north.normalized()
+	var east := north.cross(up).normalized()
+	var from := -wind.normalized()
+	var bearing := fposmod(rad_to_deg(atan2(from.dot(east), from.dot(north))), 360.0)
+	var names := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
+	return "%s  %d nós" % [names[int(round(bearing / 45.0)) % 8], int(round(wind.length() * 16.0))]
+
 func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
 	# Destino: a ilha não visitada mais próxima (se todas visitadas, a mais próxima).
 	var up := ship.global_position.normalized()
@@ -709,8 +782,17 @@ func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
 	if is_instance_valid(route_line):
 		route_line.target = islands[target_index] if target_index >= 0 else null
 		route_line.visible = camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW and not hud.intro_visible
-	# Perto de uma ilha (e navegando), o painel dela abre sozinho à direita.
-	var close := nearest_index >= 0 and nearest < 110.0 and camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW
+	var distances: Array = []
+	for island in islands:
+		distances.append(up.angle_to(island.global_position.normalized()) * planet_radius)
+	hud.set_island_distances(distances)
+	hud.update_map(camera, islands, camera.state == PortfolioCamera.CameraState.PLANET_OVERVIEW)
+	hud.set_wind(_wind_text(ship.global_position))
+	# Só BEM perto da costa (distância medida à linha d'água) o pergaminho abre sozinho.
+	var coast := INF
+	if nearest_index >= 0 and nearest < 160.0:
+		coast = Shore.distance_to_coast(islands[nearest_index], ship.global_position)
+	var close := coast < 30.0 and camera.state == PortfolioCamera.CameraState.BOAT_FOLLOW
 	hud.set_approach(nearest_index if close else -1)
 	hud.set_daylight(1.0 - clock.night_at(camera.global_position))
 	if is_instance_valid(naval):
@@ -734,8 +816,15 @@ func _process(delta: float) -> void:
 	for cloth in sail_materials:
 		cloth.set_shader_parameter("wind_direction",local_wind.normalized())
 		cloth.set_shader_parameter("boat_speed",ship.measured_speed)
+		cloth.set_shader_parameter("forward_local", (sail_model.global_basis.inverse() * render_forward).normalized())
 		cloth.set_shader_parameter("wind_strength",(0.04+minf(ship.measured_speed,12.0)*0.004)+0.06*wind_world.length())
 	sky_material.set_shader_parameter("local_up", camera.global_position.normalized())
+	# Visão do globo (mapa): sem névoa nem nuvens, para o planeta inteiro aparecer.
+	space_view = smoothstep(planet_radius * 1.15, planet_radius * 1.6, camera.global_position.length())
+	sky_material.set_shader_parameter("space_view", space_view)
+	environment.fog_density = 0.0022 * (1.0 - space_view)
+	for beacon in map_beacons:
+		beacon.visible = space_view > 0.3
 	web_music_timer -= delta
 	if web_music_timer <= 0.0:
 		web_music_timer = 1.0
@@ -747,7 +836,8 @@ func _process(delta: float) -> void:
 		material.set_shader_parameter("boat_position", render_position)
 		material.set_shader_parameter("boat_forward", render_forward)
 		material.set_shader_parameter("boat_right", render_forward.cross(up))
-		material.set_shader_parameter("boat_cutout_enabled", true)
+		# Sem recorte: o buraco mostrava o fundo escuro sob a proa (o 'nariz preto').
+		material.set_shader_parameter("boat_cutout_enabled", false)
 	var visual_transform: Transform3D = ship.float_visual.get_global_transform_interpolated()
 	var bow_forward: Vector3 = -visual_transform.basis.z.normalized()
 	var front_height: float = ocean.height_at(visual_transform.origin + bow_forward * 1.75)
@@ -767,10 +857,11 @@ func _process(delta: float) -> void:
 		mesh.visible = ship.measured_speed > 0.4
 	# Mais gotas com velocidade e quando a proa mergulha na onda (slam).
 	var bow_dip := clampf((back_height - front_height) * 0.8, 0.0, 1.0)
-	water_droplets.emitting = ship.measured_speed > 2.5
-	water_droplets.amount_ratio = clampf(ship.measured_speed / 16.0 + bow_dip * 0.5, 0.1, 0.8)
-	(water_droplets.process_material as ParticleProcessMaterial).gravity = -visual_transform.origin.normalized() * 9.8
-	(water_droplets.draw_pass_1.surface_get_material(0) as ShaderMaterial).set_shader_parameter("daylight", 1.0 - clock.night_at(render_position))
+	for emitter in droplet_emitters:
+		emitter.emitting = ship.measured_speed > 3.0
+		emitter.amount_ratio = clampf(ship.measured_speed / 12.0 + bow_dip * 0.4, 0.2, 1.0)
+		(emitter.process_material as ParticleProcessMaterial).gravity = -visual_transform.origin.normalized() * 9.8
+	(droplet_emitters[0].draw_pass_1.surface_get_material(0) as ShaderMaterial).set_shader_parameter("daylight", 1.0 - clock.night_at(render_position))
 	lantern.visible = lantern_enabled and clock.night_at(render_position)>0.05
 	var flicker := 0.85 + 0.1 * sin(Time.get_ticks_msec() * 0.011) + 0.05 * sin(Time.get_ticks_msec() * 0.037)
 	lantern.light_energy = 0.9 * clock.night_at(render_position) * flicker
@@ -831,6 +922,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if point != Vector3.INF:
 				# Clique: um "pingo" mais forte que afunda e rebate.
 				ocean.touch(point, 0.55, 3.0)
+				ocean.drag(point, true)
 				last_touch_point = point
 
 func _notification(what: int) -> void:
@@ -855,17 +947,17 @@ func _water_point(cursor: Vector2) -> Vector3:
 ## Arrastar deixa um rastro contínuo: novas perturbações a cada ~1,2 m percorrido,
 ## com força proporcional à velocidade do gesto (mais orgânico que pulsos fixos).
 func _drag_water(cursor: Vector2) -> void:
+	# Segurar e arrastar: um sulco contínuo (como uma mão passando na água).
 	var point := _water_point(cursor)
 	if point == Vector3.INF:
 		return
 	if last_touch_point == Vector3.INF:
+		ocean.drag(point, true)
 		last_touch_point = point
 		return
-	var travelled := point.distance_to(last_touch_point)
-	if travelled < 1.2:
+	if point.distance_to(last_touch_point) < 0.6:
 		return
-	var strength := clampf(0.18 + travelled * 0.05, 0.18, 0.5)
-	ocean.touch(point, strength, 2.6 + minf(travelled, 6.0) * 0.25)
+	ocean.drag(point)
 	last_touch_point = point
 
 func _build_audio() -> void:
@@ -916,38 +1008,52 @@ func _poll_web_music() -> void:
 		next_track()
 
 func toggle_music_pause() -> void:
+	music_paused = not music_paused
 	if web_music:
 		_web_music("if (a.paused) { a.play().catch(function(){}); } else { a.pause(); }")
 	else:
-		music.stream_paused = not music.stream_paused
+		music.stream_paused = music_paused
+	if hud:
+		hud.set_music_playing(not music_paused)
 
 func next_track() -> void:
 	if playlist.is_empty(): return
-	if web_music:
-		if music_bag.is_empty():
-			music_bag.assign(playlist)
-			music_bag.shuffle()
-		current_track = music_bag.pop_back()
-		if hud: hud.set_track(current_track.get_basename())
-		# Autoplay pode ser bloqueado até o primeiro gesto; o clique seguinte retoma.
-		_web_music("a.src = 'music/' + encodeURIComponent(%s); a.play().catch(function(){ window.__portfolioMusicBlocked = true; });" % JSON.stringify(current_track))
+	if history_index < track_history.size() - 1:
+		history_index += 1
+		_play_track(track_history[history_index])
 		return
-	var was_paused := music.stream_paused
 	if music_bag.is_empty():
 		music_bag.assign(playlist)
 		music_bag.shuffle()
-		if music_bag.size()>1 and music_bag.back()==current_track:
+		if music_bag.size() > 1 and music_bag.back() == current_track:
 			var swap := music_bag[0]
 			music_bag[0] = music_bag[-1]
 			music_bag[-1] = swap
-	current_track = music_bag.pop_back()
-	if hud: hud.set_track(current_track.get_file().get_basename())
+	track_history.append(music_bag.pop_back())
+	history_index = track_history.size() - 1
+	_play_track(track_history[history_index])
+
+func prev_track() -> void:
+	if history_index > 0:
+		history_index -= 1
+		_play_track(track_history[history_index])
+
+func _play_track(track_name: String) -> void:
+	current_track = track_name
+	music_paused = false
+	if hud:
+		hud.set_track(current_track.get_file().get_basename())
+		hud.set_music_playing(true)
+	if web_music:
+		# Autoplay pode ser bloqueado até o primeiro gesto; o clique seguinte retoma.
+		_web_music("a.src = 'music/' + encodeURIComponent(%s); a.play().catch(function(){ window.__portfolioMusicBlocked = true; });" % JSON.stringify(current_track))
+		return
 	var track := load(current_track) as AudioStream
-	if track is AudioStreamMP3 or track is AudioStreamOggVorbis: track.loop=false
-	elif track is AudioStreamWAV: track.loop_mode=AudioStreamWAV.LOOP_DISABLED
+	if track is AudioStreamMP3 or track is AudioStreamOggVorbis: track.loop = false
+	elif track is AudioStreamWAV: track.loop_mode = AudioStreamWAV.LOOP_DISABLED
 	music.stream = track
 	music.play()
-	music.stream_paused = was_paused
+	music.stream_paused = false
 
 func select_time(mode: String) -> void:
 	time_mode = mode
@@ -995,4 +1101,5 @@ func _update_day(_delta: float) -> void:
 	var reflection := Color(0.12, 0.17, 0.36).lerp(Color(0.78, 0.85, 0.96), daylight).lerp(Color(1.0, 0.78, 0.68), dusk * 0.6)
 	for material in ocean.materials:
 		material.set_shader_parameter("night_amount", 1.0 - daylight)
+		material.set_shader_parameter("cloud_shadow_strength", 0.2 * daylight * (1.0 - space_view))
 		material.set_shader_parameter("sky_reflection_color", reflection)

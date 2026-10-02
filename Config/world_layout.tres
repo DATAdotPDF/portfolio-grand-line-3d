@@ -22,7 +22,7 @@ script = ExtResource("2_anchor")
 section = "Formação"
 lat_deg = 0.0
 lon_deg = 120.0
-submersion = 6.6
+submersion = 8.0
 
 [sub_resource type="Resource" id="Anchor_projetos"]
 script = ExtResource("2_anchor")

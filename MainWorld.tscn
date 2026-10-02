@@ -150,7 +150,7 @@ script = ExtResource("10_sloop")
 [node name="HullVisualContainer" type="Node3D" parent="PlayerShip" unique_id=1489832668]
 
 [node name="ShipModel" parent="PlayerShip/HullVisualContainer" unique_id=594831352 instance=ExtResource("9_sloop_model")]
-transform = Transform3D(8.0702335e-07, 0, -2.570822, 0, 2.570822, 0, 2.570822, 0, 8.0702335e-07, 0, 1.533476, 0)
+transform = Transform3D(8.0702335e-07, 0, -2.570822, 0, 2.570822, 0, 2.570822, 0, 8.0702335e-07, 0, 1.3, 0)
 
 [node name="DeckCannon" parent="PlayerShip/HullVisualContainer" unique_id=743537612 instance=ExtResource("12_cannon")]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.4, 0.204, 0.4)
