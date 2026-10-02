@@ -35,3 +35,11 @@
 /Web/.wrangler/
 /.wrangler/
 
+
+# Versões otimizadas e efeitos sonoros entram no Git (o projeto roda com eles)
+!/Assets/Optimized/
+!/Assets/Optimized/**
+!/Assets/Sound/SFX/
+!/Assets/Sound/SFX/**
+/Assets/Sound/SFX/OCEAN AND SEAGULLS SFX.mp3
+
