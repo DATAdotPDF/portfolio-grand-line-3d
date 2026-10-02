@@ -149,15 +149,58 @@ const engine = new Engine(GODOT_CONFIG);
 		displayFailureNotice('recursos ausentes: ' + missing.join(', '));
 		return;
 	}
-	engine.startGame({
-		'onProgress': function (current, total) {
-			if (!initializing) return;
-			if (current > 0 && total > 0) {
-				meter.classList.remove('indeterminate');
-				meterBar.style.width = Math.min(100, current / total * 100).toFixed(1) + '%';
-				numbers.textContent = (current / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB';
+	// O jogo (.pck) é servido em partes < 25 MiB (limite do Cloudflare). O navegador
+	// baixa as partes (com nova tentativa), junta num buffer e entrega ao Godot — sem depender do Worker.
+	async function loadPackParts() {
+		const manifest = await fetch('index.pck.parts.json', { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
+		if (!manifest || !manifest.parts) return null;
+		let loaded = 0;
+		// Um único buffer pré-alocado (evita duplicar ~70 MB de memória no celular).
+		const bytes = new Uint8Array(manifest.size);
+		for (const part of manifest.parts) {
+			const start = loaded;
+			for (let attempt = 1; ; attempt++) {
+				try {
+					loaded = start;
+					const response = await fetch('pck/' + part + '?v=' + manifest.version);
+					if (!response.ok || !response.body) throw new Error('HTTP ' + response.status);
+					const reader = response.body.getReader();
+					for (;;) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						bytes.set(value, loaded);
+						loaded += value.length;
+						meter.classList.remove('indeterminate');
+						meterBar.style.width = Math.min(100, loaded / manifest.size * 100).toFixed(1) + '%';
+						numbers.textContent = (loaded / 1048576).toFixed(1) + ' / ' + (manifest.size / 1048576).toFixed(1) + ' MB';
+					}
+					break;
+				} catch (error) {
+					if (attempt >= 3) throw new Error('falha ao baixar ' + part + ': ' + error.message);
+					numbers.textContent = 'reconectando…';
+					await new Promise((r) => setTimeout(r, 1200 * attempt));
+				}
 			}
-		},
+		}		if (loaded !== manifest.size) throw new Error('download incompleto (' + loaded + ' de ' + manifest.size + ' bytes)');
+		return bytes;
+	}
+
+	const onProgress = function (current, total) {
+		if (!initializing) return;
+		if (current > 0 && total > 0) {
+			meter.classList.remove('indeterminate');
+			meterBar.style.width = Math.min(100, current / total * 100).toFixed(1) + '%';
+			numbers.textContent = (current / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB';
+		}
+	};
+	loadPackParts().then((bytes) => {
+		if (!bytes) {
+			return engine.startGame({ 'onProgress': onProgress });
+		}
+		// Entrega o .pck já montado ao sistema de arquivos do Godot e inicia sem novo download.
+		numbers.textContent = 'abrindo o mundo…';
+		engine.preloadFile(bytes, 'index.pck');
+		return engine.init(GODOT_CONFIG.executable).then(() => engine.start({ 'args': ['--main-pack', 'index.pck'], 'onProgress': onProgress }));
 	}).then(hideStatus, displayFailureNotice);
 }());
 		</script>

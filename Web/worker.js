@@ -65,14 +65,15 @@ async function assetOrNull(env, request, path) {
 	return response.ok ? response : null;
 }
 
-async function servePck(env, request) {
+async function servePck(env, request, ctx) {
 	const manifest = await assetOrNull(env, request, "/index.pck.parts.json");
 	if (!manifest) {
 		return new Response("pck manifest missing", { status: 500 });
 	}
 	const { parts, size, version } = await manifest.json();
 	const { readable, writable } = new TransformStream();
-	(async () => {
+	// waitUntil mantém o Worker vivo até a última parte: sem isso a resposta era cortada no meio.
+	const pump = (async () => {
 		try {
 			for (const part of parts) {
 				const response = await assetOrNull(env, request, `/pck/${part}`);
@@ -84,6 +85,7 @@ async function servePck(env, request) {
 			await writable.abort(error);
 		}
 	})();
+	ctx.waitUntil(pump);
 	return new Response(readable, {
 		headers: {
 			"Content-Type": "application/octet-stream",
@@ -116,7 +118,7 @@ export default {
 			return serveProjects(request, ctx);
 		}
 		if (url.pathname === "/index.pck") {
-			return servePck(env, request);
+			return servePck(env, request, ctx);
 		}
 		if (url.pathname === "/index.wasm") {
 			return serveWasm(env, request);
