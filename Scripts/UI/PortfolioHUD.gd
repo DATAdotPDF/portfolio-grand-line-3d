@@ -46,6 +46,9 @@ var intro_panel: PanelContainer
 var intro_column: VBoxContainer
 var intro_visible := false
 var current_island := -1
+## Últimos repositórios do GitHub (vazio = usa os projetos fixos do JSON).
+var live_projects: Array = []
+var projects_request: HTTPRequest
 
 func _ready() -> void:
 	layer = 4
@@ -67,6 +70,7 @@ func _ready() -> void:
 	_build_island_panel()
 	_build_approach_card()
 	_build_intro()
+	_fetch_projects()
 	set_daylight(1.0)
 	get_viewport().size_changed.connect(func(): _layout(); _relayout_next_frames())
 	_layout()
@@ -236,6 +240,57 @@ func _relayout_next_frames() -> void:
 		await get_tree().process_frame
 		_layout()
 
+## --- Projetos ao vivo do GitHub -------------------------------------------------
+## Na web lê /api/projetos (Worker com cache de 1 h); fora da web, a API do GitHub.
+func _fetch_projects() -> void:
+	var user := str(content.get("links", {}).get("github_user", "DATAdotPDF"))
+	var url := "https://api.github.com/users/%s/repos?sort=pushed&direction=desc&per_page=30" % user
+	if OS.has_feature("web"):
+		url = str(JavaScriptBridge.eval("window.location.origin", true)) + "/api/projetos"
+	projects_request = HTTPRequest.new()
+	projects_request.timeout = 8.0
+	add_child(projects_request)
+	projects_request.request_completed.connect(_on_projects_loaded.bind(user))
+	projects_request.request(url, PackedStringArray(["User-Agent: portfolio-data-cybersecurity", "Accept: application/vnd.github+json"]))
+
+func _on_projects_loaded(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray, user: String) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
+		return
+	var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+	var list: Array = []
+	if parsed is Dictionary:
+		list = parsed.get("projects", [])
+	elif parsed is Array:
+		for repo in parsed:
+			if repo.get("fork", false) or str(repo.get("name", "")).to_lower() == user.to_lower():
+				continue
+			list.append({"name": repo.name, "description": str(repo.get("description", "") if repo.get("description") != null else ""), "language": str(repo.get("language") if repo.get("language") != null else ""), "stars": int(repo.get("stargazers_count", 0)), "pushed_at": str(repo.get("pushed_at", "")), "url": str(repo.get("html_url", "")), "topics": repo.get("topics", [])})
+			if list.size() >= 6:
+				break
+	live_projects = list
+	if island_panel.visible and current_island == 3:
+		show_island(3)
+
+func _add_live_projects() -> void:
+	island_body.add_child(_label("ÚLTIMOS NO GITHUB  ·  ATUALIZA SOZINHO", "Kicker"))
+	for project in live_projects:
+		island_body.add_child(_rule())
+		var title := str(project.name).replace("_", " ").replace("-", " ")
+		island_body.add_child(_wrap(title, "Heading"))
+		if str(project.get("description", "")) != "":
+			island_body.add_child(_wrap(str(project.description), "Body"))
+		var meta: PackedStringArray = []
+		if str(project.get("language", "")) != "":
+			meta.append(str(project.language))
+		for topic in project.get("topics", []):
+			meta.append(str(topic))
+		meta.append("★ %d" % int(project.get("stars", 0)))
+		var pushed := str(project.get("pushed_at", ""))
+		if pushed.length() >= 10:
+			meta.append("atualizado %s/%s/%s" % [pushed.substr(8, 2), pushed.substr(5, 2), pushed.substr(0, 4)])
+		island_body.add_child(_wrap("  ·  ".join(meta), "Mono"))
+		island_body.add_child(_link("Ver no GitHub", str(project.url)))
+
 ## Contatos sempre à mão (recrutador não precisa achar a ilha Contato).
 func _contact_row() -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -340,7 +395,9 @@ func show_island(index: int) -> void:
 		island_body.add_child(_label(str(entry.org).to_upper(), "Kicker"))
 		if str(entry.get("text", "")) != "":
 			island_body.add_child(_wrap(str(entry.text), "Body"))
-	for project in data.get("projects", []):
+	if data.get("id", "") == "projetos" and not live_projects.is_empty():
+		_add_live_projects()
+	for project in ([] if (data.get("id", "") == "projetos" and not live_projects.is_empty()) else data.get("projects", [])):
 		island_body.add_child(_rule())
 		island_body.add_child(_wrap(str(project.title), "Heading"))
 		island_body.add_child(_wrap(str(project.text), "Body"))

@@ -7,6 +7,58 @@
 //  /world/*    -> redireciona para / (links antigos), mantendo ?ilha=
 
 const LONG_CACHE = "public, max-age=31536000, immutable";
+const GITHUB_USER = "DATAdotPDF";
+const PROJECTS_TTL = 3600; // 1 h: cada push aparece sozinho, sem novo deploy
+const PROJECTS_LIMIT = 6;
+
+// /api/projetos: últimos repositórios públicos (sem forks, sem o repo de perfil),
+// ordenados pelo último push. Cache de 1 h na borda; se o GitHub falhar, usa a
+// última resposta boa guardada.
+async function serveProjects(request, ctx) {
+	const cache = caches.default;
+	const freshKey = new Request("https://cache.local/api/projetos/fresh");
+	const staleKey = new Request("https://cache.local/api/projetos/stale");
+	const cached = await cache.match(freshKey);
+	if (cached) return withCors(cached);
+	try {
+		const api = `https://api.github.com/users/${GITHUB_USER}/repos?sort=pushed&direction=desc&per_page=30`;
+		const response = await fetch(api, {
+			headers: { "User-Agent": "portfolio-data-cybersecurity", "Accept": "application/vnd.github+json" },
+		});
+		if (!response.ok) throw new Error(`GitHub ${response.status}`);
+		const repos = await response.json();
+		const projects = repos
+			.filter((repo) => !repo.fork && !repo.archived && repo.name.toLowerCase() !== GITHUB_USER.toLowerCase())
+			.slice(0, PROJECTS_LIMIT)
+			.map((repo) => ({
+				name: repo.name,
+				description: repo.description || "",
+				language: repo.language || "",
+				topics: repo.topics || [],
+				stars: repo.stargazers_count,
+				pushed_at: repo.pushed_at,
+				url: repo.html_url,
+				homepage: repo.homepage || "",
+			}));
+		const body = JSON.stringify({ user: GITHUB_USER, updated_at: new Date().toISOString(), projects });
+		const fresh = new Response(body, { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${PROJECTS_TTL}` } });
+		const stale = new Response(body, { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=2592000" } });
+		ctx.waitUntil(Promise.all([cache.put(freshKey, fresh.clone()), cache.put(staleKey, stale)]));
+		return withCors(fresh);
+	} catch (error) {
+		const stale = await cache.match(staleKey);
+		if (stale) return withCors(stale);
+		return withCors(new Response(JSON.stringify({ user: GITHUB_USER, projects: [], error: String(error) }), {
+			status: 502, headers: { "Content-Type": "application/json; charset=utf-8" },
+		}));
+	}
+}
+
+function withCors(response) {
+	const copy = new Response(response.body, response);
+	copy.headers.set("Access-Control-Allow-Origin", "*");
+	return copy;
+}
 
 async function assetOrNull(env, request, path) {
 	const response = await env.ASSETS.fetch(new Request(new URL(path, request.url), { method: "GET" }));
@@ -58,8 +110,11 @@ async function serveWasm(env, request) {
 }
 
 export default {
-	async fetch(request, env) {
+	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
+		if (url.pathname === "/api/projetos") {
+			return serveProjects(request, ctx);
+		}
 		if (url.pathname === "/index.pck") {
 			return servePck(env, request);
 		}

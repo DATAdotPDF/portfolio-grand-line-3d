@@ -3,10 +3,10 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
-		<title>Pedro D. Ferreira · Junior Data Engineer</title>
-		<meta name="description" content="Portfólio navegável de Pedro D. Ferreira — Data Analytics, BI, Data Operations e Cybersecurity. Velejar pelas cinco ilhas do currículo.">
-		<meta property="og:title" content="Pedro D. Ferreira · Junior Data Engineer">
-		<meta property="og:description" content="Transformo dados em decisões, automações e produtos confiáveis. Portfólio em forma de mundo 3D navegável.">
+		<title>Pedro D. Ferreira · Data Engineer & Cybersecurity Student</title>
+		<meta name="description" content="Pedro D. Ferreira — Data Engineer & Cybersecurity Student | Red Team & Offensive Security | Python · SQL · Automation · Data Quality. Portfólio navegável em 3D.">
+		<meta property="og:title" content="Pedro D. Ferreira · Data Engineer & Cybersecurity Student">
+		<meta property="og:description" content="Red Team & Offensive Security | Python · SQL · Automation · Data Quality. Portfólio em forma de mundo 3D navegável.">
 		<meta property="og:type" content="website">
 		<meta name="theme-color" content="#efe4cc">
 		<link rel="preload" href="/fonts/IMFellEnglish-Italic.ttf" as="font" type="font/ttf" crossorigin>
@@ -89,6 +89,30 @@ const engine = new Engine(GODOT_CONFIG);
 	const reader = document.getElementById('reader');
 	let initializing = true;
 	let reading = false;
+
+	// Projetos ao vivo do GitHub (mesma rota que o jogo usa); sem resposta, fica a lista fixa.
+	fetch('/api/projetos').then((r) => r.ok ? r.json() : null).then((data) => {
+		const section = document.getElementById('reader-projetos');
+		if (!data || !data.projects || !data.projects.length || !section) return;
+		section.querySelectorAll('h3, p:not(.kicker)').forEach((node) => node.remove());
+		const note = document.createElement('p');
+		note.className = 'mono';
+		note.textContent = 'Últimos no GitHub · atualiza sozinho';
+		section.append(note);
+		for (const project of data.projects) {
+			const title = document.createElement('h3');
+			const link = document.createElement('a');
+			link.href = project.url; link.target = '_blank'; link.rel = 'noopener';
+			link.textContent = project.name.replace(/[_-]/g, ' ') + ' ↗';
+			title.append(link);
+			section.append(title);
+			if (project.description) { const p = document.createElement('p'); p.textContent = project.description; section.append(p); }
+			const meta = document.createElement('p');
+			meta.className = 'mono';
+			meta.textContent = [project.language, ...(project.topics || []), '★ ' + project.stars, 'atualizado ' + new Date(project.pushed_at).toLocaleDateString('pt-BR')].filter(Boolean).join(' · ');
+			section.append(meta);
+		}
+	}).catch(() => {});
 
 	document.getElementById('reader-toggle').addEventListener('click', () => {
 		reading = !reader.classList.contains('open');

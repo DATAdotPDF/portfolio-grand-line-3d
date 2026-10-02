@@ -8,4 +8,4 @@ directory = "./public"
 binding = "ASSETS"
 not_found_handling = "404-page"
 # O Worker só roda nestas rotas; o resto é servido direto da borda (mais rápido).
-run_worker_first = ["/index.pck", "/index.wasm", "/world", "/world/*"]
+run_worker_first = ["/index.pck", "/index.wasm", "/world", "/world/*", "/api/*"]

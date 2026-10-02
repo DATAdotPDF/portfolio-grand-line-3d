@@ -1,8 +1,8 @@
 {
   "_source": "Textos do portfólio publicado em portfolio-data-cybersecurity.data-pedutraferreira.workers.dev (capturado em 2026-10-01). Fonte única para os painéis das ilhas no Godot e para a landing web.",
   "name": "Pedro D. Ferreira",
-  "role": "Junior Data Engineer",
-  "tagline": "Data Analytics · BI · Data Operations · Cybersecurity",
+  "role": "Data Engineer & Cybersecurity Student",
+  "tagline": "Red Team & Offensive Security | Python · SQL · Automation · Data Quality",
   "pitch": "Transformo dados em decisões, automações e produtos confiáveis.",
   "status": "Disponível para novos desafios",
   "stats": [
@@ -13,7 +13,8 @@
     "whatsapp": "https://api.whatsapp.com/send/?phone=5521964094297&text&type=phone_number&app_absent=0",
     "linkedin": "https://www.linkedin.com/in/data-pdf/",
     "github": "https://github.com/DATAdotPDF",
-    "github_repos": "https://github.com/DATAdotPDF?tab=repositories"
+    "github_repos": "https://github.com/DATAdotPDF?tab=repositories",
+    "github_user": "DATAdotPDF"
   },
   "islands": [
     {

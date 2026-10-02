@@ -37,7 +37,7 @@ $reader = foreach ($island in $content.islands) {
 	foreach ($f in @($island.facts)) { if ($f) { $parts += "<p><span class=""kicker"">$(E $f.label)</span><br><span class=""mono"">$(E $f.value)</span></p>" } }
 	foreach ($e in @($island.entries)) { if ($e) { $parts += "<h3>$(E $e.title) · $(E $e.org)</h3><p class=""mono"">$(E $e.period)</p>" + $(if ($e.text) { "<p>$(E $e.text)</p>" } else { "" }) } }
 	foreach ($pr in @($island.projects)) { if ($pr) { $parts += "<h3><a href=""$(E $pr.url)"" target=""_blank"" rel=""noopener"">$(E $pr.title) ↗</a></h3><p>$(E $pr.text)</p><p class=""mono"">$(E ($pr.stack -join ' · '))</p>" } }
-	"<section>" + ($parts -join "") + "</section>"
+	"<section id=""reader-$($island.id)"">" + ($parts -join "") + "</section>"
 }
 $html = Get-Content Builds\Web\index.html -Raw -Encoding utf8
 $html = $html.Replace("<!--STATUS-->", (E $content.status)).Replace("<!--NAME-->", (E $content.name)).Replace("<!--ROLE-->", (E $content.role))
