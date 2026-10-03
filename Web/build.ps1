@@ -31,29 +31,37 @@ $links = ($content.links.PSObject.Properties | Where-Object { $_.Name -in "linke
 	$label = @{ linkedin = "LinkedIn"; github = "GitHub"; whatsapp = "WhatsApp" }[$_.Name]
 	"<a href=""$(E $_.Value)"" target=""_blank"" rel=""noopener"">$label ↗</a>"
 }) -join ""
+# Leitura sem 3D ("Ler o portfólio aqui mesmo"): uma ficha por ilha, mesma ordem e conteúdo do jogo.
 $reader = foreach ($island in $content.islands) {
-	$parts = @("<p class=""kicker"">$(E $island.kicker)</p><h2>$(E $island.title)</h2>")
+	$parts = @("<header><p class=""kicker"">$(E $island.kicker)</p><h2>$(E $island.title)</h2></header>")
 	foreach ($p in @($island.paragraphs)) { if ($p) { $parts += "<p>$(E $p)</p>" } }
-	foreach ($f in @($island.facts)) { if ($f) { $parts += "<p><span class=""kicker"">$(E $f.label)</span><br><span class=""mono"">$(E $f.value)</span></p>" } }
-	foreach ($e in @($island.entries)) { if ($e) { $parts += "<h3>$(E $e.title) · $(E $e.org)</h3><p class=""mono"">$(E $e.period)</p>" + $(if ($e.text) { "<p>$(E $e.text)</p>" } else { "" }) } }
-	foreach ($pr in @($island.projects)) { if ($pr) { $parts += "<h3><a href=""$(E $pr.url)"" target=""_blank"" rel=""noopener"">$(E $pr.title) ↗</a></h3><p>$(E $pr.text)</p><p class=""mono"">$(E ($pr.stack -join ' · '))</p>" } }
-	"<section id=""reader-$($island.id)"">" + ($parts -join "") + "</section>"
+	$facts = @($island.facts | Where-Object { $_ -and $_.label })
+	if ($facts.Count) { $parts += "<dl class=""facts"">" + (($facts | ForEach-Object { "<div><dt>$(E $_.label)</dt><dd>$(E $_.value)</dd></div>" }) -join "") + "</dl>" }
+	$entries = @($island.entries | Where-Object { $_ -and $_.title })
+	if ($entries.Count) { $parts += "<ol class=""timeline"">" + (($entries | ForEach-Object { "<li><span class=""period"">$(E $_.period)</span><h3>$(E $_.title)</h3><p class=""org"">$(E $_.org)</p>" + $(if ($_.text) { "<p>$(E $_.text)</p>" } else { "" }) + "</li>" }) -join "") + "</ol>" }
+	$projects = @($island.projects | Where-Object { $_ -and $_.title })
+	if ($projects.Count) { $parts += "<div class=""projects"">" + (($projects | ForEach-Object { "<a class=""project"" href=""$(E $_.url)"" target=""_blank"" rel=""noopener""><h3>$(E $_.title) <span>↗</span></h3><p>$(E $_.text)</p><p class=""stack"">$(E ($_.stack -join ' · '))</p></a>" }) -join "") + "</div>" }
+	if ($island.id -eq "contato") { $parts += "<nav class=""links"">$links</nav>" }
+	"<section class=""sheet"" id=""reader-$($island.id)"">" + ($parts -join "") + "</section>"
 }
-# Slides do carregamento: um por ilha, com o mesmo conteúdo do jogo (texto curto).
-function Short([string]$text, [int]$max = 230) {
+# Slides do carregamento: resumos curtos (cabem no cartão), um por ilha.
+function Short([string]$text, [int]$max = 150) {
+	# Primeira frase inteira, se couber; senão corta na última palavra.
+	$dot = $text.IndexOf('. ')
+	if ($dot -gt 0 -and $dot -lt $max) { return $text.Substring(0, $dot + 1) }
 	if ($text.Length -le $max) { return $text }
 	$cut = $text.Substring(0, $max)
 	return $cut.Substring(0, $cut.LastIndexOf(" ")) + "…"
 }
-$slideItems = @("<div class=""slide""><p class=""kicker"">Enquanto o mar carrega</p><h2>Um portfólio para navegar.</h2><p>Você vai pilotar uma chalupa por 5 ilhas — Sobre, Experiência, Formação, Projetos e Contato. Chegue perto de uma ilha para abrir a seção; no celular, joystick esquerdo navega e o direito mira o canhão.</p></div>")
+$slideItems = @("<div class=""slide""><p class=""kicker"">Enquanto o mar carrega</p><h2>Um portfólio para navegar.</h2><p>Uma chalupa, cinco ilhas e o meu currículo espalhado nelas.</p></div>")
 foreach ($island in $content.islands) {
 	$body = ""
 	$entries = @($island.entries | Where-Object { $_ -and $_.title })
 	$projects = @($island.projects | Where-Object { $_ -and $_.title })
 	if ($entries.Count) {
-		$body = "<ul>" + (($entries | Select-Object -First 4 | ForEach-Object { "<li><strong>$(E $_.title)</strong> · $(E $_.org) <span class=""mono"">$(E $_.period)</span></li>" }) -join "") + "</ul>"
+		$body = "<ul>" + (($entries | Select-Object -First 2 | ForEach-Object { "<li><strong>$(E $_.title)</strong> · $(E $_.org)</li>" }) -join "") + "</ul>"
 	} elseif ($projects.Count) {
-		$body = "<ul>" + (($projects | Select-Object -First 4 | ForEach-Object { "<li><strong>$(E $_.title)</strong></li>" }) -join "") + "</ul>"
+		$body = "<p>" + (E (($projects | Select-Object -First 3 | ForEach-Object { $_.title }) -join " · ")) + "</p>"
 	} elseif (@($island.paragraphs | Where-Object { $_ }).Count) {
 		$body = "<p>$(E (Short (@($island.paragraphs | Where-Object { $_ })[0])))</p>"
 	}

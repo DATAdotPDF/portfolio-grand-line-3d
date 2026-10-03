@@ -139,7 +139,7 @@ func _in_map() -> bool:
 	# PortfolioCameraController.CameraState.PLANET_OVERVIEW
 	return camera != null and int(camera.get("state")) == 3
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# Joysticks e botões somem no mapa (o globo usa a tela toda).
 	if controls_root:
 		controls_root.visible = not _in_map()
@@ -151,5 +151,8 @@ func _process(_delta: float) -> void:
 		ship.set("virtual_throttle", -drive.y if absf(drive.y) > 0.15 else 0.0)
 		ship.set("virtual_steering", drive.x if absf(drive.x) > 0.15 else 0.0)
 		ship.set("virtual_boost", boost or drive.length() > 0.92)
+	# Joystick direito: horizontal gira a câmera em volta do barco; vertical inclina o canhão.
+	if camera and absf(aim.x) > 0.15:
+		camera.call("drag_orbit", Vector2(aim.x * 520.0 * delta, 0.0))
 	if naval:
-		naval.set("virtual_aim", Vector2(aim.x if absf(aim.x) > 0.15 else 0.0, -aim.y if absf(aim.y) > 0.15 else 0.0))
+		naval.set("virtual_aim", Vector2(0.0, -aim.y if absf(aim.y) > 0.15 else 0.0))

@@ -110,8 +110,10 @@ func apply(new_tier: int) -> void:
 	viewport.mesh_lod_threshold = base.lod if high else (3.0 if tier == MEDIUM else 6.0)
 	# 30 fps estáveis travam menos do que 45 oscilando; física a 30 Hz (interpolada) custa metade.
 	Engine.max_fps = 30 if low else (60 if tier == MEDIUM else base.max_fps)
-	Engine.physics_ticks_per_second = 30 if low else base.ticks
-	Engine.max_physics_steps_per_frame = 3 if low else base.steps
+	# No pacote de celular a física fica em 30 Hz em qualquer nível: lá o gargalo medido é a CPU.
+	var light_cpu := low or OS.has_feature("mobile_lite")
+	Engine.physics_ticks_per_second = 30 if light_cpu else base.ticks
+	Engine.max_physics_steps_per_frame = 3 if light_cpu else base.steps
 	world.ocean.wake_limit = 10 if low else (16 if tier == MEDIUM else base.wake)
 	if is_instance_valid(world.ocean_patch) and base.has("patch_radius"):
 		world.ocean_patch.patch_radius = 150.0 if low else (200.0 if tier == MEDIUM else base.patch_radius)

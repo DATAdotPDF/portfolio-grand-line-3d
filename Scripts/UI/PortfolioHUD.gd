@@ -169,6 +169,13 @@ func _load_fonts() -> void:
 	mono.variation_opentype = {"wght": 500}
 	fonts = {"sans": sans, "medium": medium, "caps": caps, "mono": mono,
 		"serif": load("res://Assets/Fonts/IMFellEnglish-Regular.ttf"), "serif_italic": load("res://Assets/Fonts/IMFellEnglish-Italic.ttf")}
+	# IM Fell não tem ↗ → ✓ (viravam quadradinhos no celular, que não tem fonte do sistema de reserva);
+	# a Inter cobre o que faltar. Os recursos são compartilhados, então vale para o jogo todo.
+	var inter: Font = load("res://Assets/Fonts/Inter-Variable.ttf")
+	for path in ["res://Assets/Fonts/IMFellEnglish-Regular.ttf", "res://Assets/Fonts/IMFellEnglish-Italic.ttf", "res://Assets/Fonts/JetBrainsMono-Variable.ttf"]:
+		var file: FontFile = load(path)
+		if not file.fallbacks.has(inter):
+			file.fallbacks = file.fallbacks + [inter]
 
 func _box(bg: Color, edge: Color, radius: int, pad: float) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
@@ -532,7 +539,7 @@ func _controls_text() -> String:
 	if touch:
 		return "\n".join([
 			"Joystick esquerdo — leme e velas (no limite, acelera)",
-			"Joystick direito — sobe e desce a mira do canhão",
+			"Joystick direito — para os lados gira a câmera; para cima e para baixo mira o canhão",
 			"IMPULSO — segure para ganhar velocidade",
 			"FOGO — dispara o canhão nas boias",
 			"Dois dedos — giram a câmera",
@@ -739,8 +746,17 @@ func _build_intro() -> void:
 	actions.add_theme_constant_override("v_separation", 8)
 	column.add_child(actions)
 	actions.add_child(_button("Zarpar e navegar", func(): start_sailing.emit(), "Primary"))
-	actions.add_child(_button("Explorar as ilhas", func(): island_pressed.emit(0)))
 	actions.add_child(_button("Desafio · 3 min", func(): time_attack_pressed.emit()))
+	# Atalho para quem tem pouco tempo (recrutadores): cada seção direto, sem navegar.
+	column.add_child(_label("IR DIRETO PARA", "Caps", 11))
+	var sections := HFlowContainer.new()
+	sections.add_theme_constant_override("h_separation", 6)
+	sections.add_theme_constant_override("v_separation", 6)
+	column.add_child(sections)
+	for i in range(ISLAND_NAMES.size()):
+		var chip := _button(ISLAND_NAMES[i], island_pressed.emit.bind(i))
+		chip.add_theme_font_size_override("font_size", 13)
+		sections.add_child(chip)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	column.add_child(row)
@@ -1119,7 +1135,9 @@ func set_approach(index: int) -> void:
 		if island_panel.visible and auto_opened:
 			hide_island()
 		return
-	if index == dismissed_island:
+	# Cada ilha abre sozinha só na primeira chegada: depois de lida (ou fechada), só abre
+	# quando a pessoa pede (carta, abas, mapa). Antes reabria a cada manobra perto da costa.
+	if index == dismissed_island or visited.has(index):
 		return
 	if not island_panel.visible or (auto_opened and current_island != index):
 		show_island(index, true)

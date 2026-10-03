@@ -58,7 +58,31 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 .slide ul { margin: 0; padding: 0; list-style: none; font-size: 14px; }
 .slide li { padding: 2px 0; }
 .slide .mono { font: 400 11.5px "JetBrains Mono", monospace; color: var(--muted); white-space: nowrap; }
-.dots { display: flex; gap: 6px; margin-top: 10px; }
+.slide-nav { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.slide-nav button { border: 1px solid var(--line); background: none; color: var(--ink); width: 34px; height: 30px; font: 400 20px/1 "Inter", sans-serif; cursor: pointer; flex: none; }
+.slide-nav button:hover { border-color: var(--accent); color: var(--accent); }
+.dots { display: flex; gap: 6px; flex: 1; }
+.slides .track { min-height: 9.5em; }
+.reader section.sheet { border: 1px solid var(--line); border-left: 3px solid var(--accent); padding: 18px 20px; margin: 14px 0; background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
+.reader .sheet header { margin-bottom: 10px; }
+.reader .sheet h2 { margin: 2px 0 0; }
+.reader .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 18px; margin: 14px 0 4px; }
+.reader .facts dt { font: 600 11px/1.4 "Inter", sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+.reader .facts dd { margin: 2px 0 0; font: 400 13px/1.5 "JetBrains Mono", monospace; color: var(--muted); }
+.reader .timeline { list-style: none; margin: 8px 0 0; padding: 0 0 0 16px; border-left: 1px solid var(--line); }
+.reader .timeline li { position: relative; padding: 4px 0 14px; }
+.reader .timeline li::before { content: ""; position: absolute; left: -21px; top: 10px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+.reader .timeline .period { font: 500 12px "JetBrains Mono", monospace; color: var(--muted); }
+.reader .timeline h3 { margin: 2px 0 0; }
+.reader .timeline .org { font: 600 11px/1.4 "Inter", sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin: 2px 0 6px; }
+.reader .projects { display: grid; gap: 10px; margin-top: 10px; }
+.reader .project { display: block; border: 1px solid var(--line); padding: 12px 14px; color: var(--ink); text-decoration: none; transition: border-color .2s, transform .2s; }
+.reader .project:hover { border-color: var(--accent); transform: translateY(-2px); }
+.reader .project h3 { margin: 0 0 4px; }
+.reader .project h3 span { color: var(--accent); font-family: "Inter", sans-serif; font-size: .8em; }
+.reader .project p { margin: 0 0 6px; font-size: 14px; }
+.reader .stack { font: 400 12px/1.5 "JetBrains Mono", monospace; color: var(--muted); margin: 6px 0 0; }
+.reader .sheet .links { margin: 14px 0 0; }
 .dots i { flex: 1; height: 2px; background: var(--line); position: relative; overflow: hidden; }
 .dots i.done { background: var(--ink); }
 .dots i.on::after { content: ""; position: absolute; inset: 0; background: var(--ink); transform-origin: left; animation: fill 7s linear forwards; }
@@ -80,7 +104,7 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 				<p class="kicker"><!--TAGLINE--></p>
 				<p class="pitch"><!--PITCH--></p>
 				<nav class="links" aria-label="Contatos"><!--LINKS--></nav>
-				<div class="slides" id="slides" aria-label="Sobre mim" title="Toque para avançar"><div class="track"><!--SLIDES--></div><div class="dots" id="dots"></div></div>
+				<div class="slides" id="slides" aria-label="Sobre mim" title="Toque para avançar"><div class="track"><!--SLIDES--></div><div class="slide-nav"><button type="button" id="slide-prev" aria-label="Anterior">‹</button><div class="dots" id="dots"></div><button type="button" id="slide-next" aria-label="Próximo">›</button></div></div>
 				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
 				<p id="status-numbers">preparando o mar</p>
 				<p class="hint">primeira visita ~75 MB (~20 MB no celular) · fica em cache</p>
@@ -122,6 +146,8 @@ const engine = new Engine(GODOT_CONFIG);
 			clearTimeout(timer);
 			timer = setTimeout(() => show(current + 1), 7000);
 		};
+		document.getElementById('slide-prev').addEventListener('click', (e) => { e.stopPropagation(); show(current - 1 + slides.length); });
+		document.getElementById('slide-next').addEventListener('click', (e) => { e.stopPropagation(); show(current + 1); });
 		document.getElementById('slides').addEventListener('click', () => show(current + 1));
 		show(0);
 	}());
@@ -130,23 +156,26 @@ const engine = new Engine(GODOT_CONFIG);
 	fetch('/api/projetos').then((r) => r.ok ? r.json() : null).then((data) => {
 		const section = document.getElementById('reader-projetos');
 		if (!data || !data.projects || !data.projects.length || !section) return;
-		section.querySelectorAll('h3, p:not(.kicker)').forEach((node) => node.remove());
+		const grid = section.querySelector('.projects') || section.appendChild(document.createElement('div'));
+		grid.className = 'projects';
+		grid.replaceChildren();
 		const note = document.createElement('p');
-		note.className = 'mono';
-		note.textContent = 'Últimos no GitHub · atualiza sozinho';
-		section.append(note);
+		note.className = 'stack';
+		note.textContent = 'últimos no GitHub · atualiza sozinho';
+		grid.before(note);
 		for (const project of data.projects) {
+			const card = document.createElement('a');
+			card.className = 'project'; card.href = project.url; card.target = '_blank'; card.rel = 'noopener';
 			const title = document.createElement('h3');
-			const link = document.createElement('a');
-			link.href = project.url; link.target = '_blank'; link.rel = 'noopener';
-			link.textContent = project.name.replace(/[_-]/g, ' ') + ' ↗';
-			title.append(link);
-			section.append(title);
-			if (project.description) { const p = document.createElement('p'); p.textContent = project.description; section.append(p); }
+			title.textContent = project.name.replace(/[_-]/g, ' ') + ' ';
+			const arrow = document.createElement('span'); arrow.textContent = '↗'; title.append(arrow);
+			card.append(title);
+			if (project.description) { const p = document.createElement('p'); p.textContent = project.description; card.append(p); }
 			const meta = document.createElement('p');
-			meta.className = 'mono';
-			meta.textContent = [project.language, ...(project.topics || []), '★ ' + project.stars, 'atualizado ' + new Date(project.pushed_at).toLocaleDateString('pt-BR')].filter(Boolean).join(' · ');
-			section.append(meta);
+			meta.className = 'stack';
+			meta.textContent = [project.language, ...(project.topics || []).slice(0, 4), 'atualizado ' + new Date(project.pushed_at).toLocaleDateString('pt-BR')].filter(Boolean).join(' · ');
+			card.append(meta);
+			grid.append(card);
 		}
 	}).catch(() => {});
 
@@ -179,6 +208,19 @@ const engine = new Engine(GODOT_CONFIG);
 		initializing = false;
 	}
 
+	// ?texto: só a versão em texto, sem baixar o mundo 3D (conexão ruim ou recrutador com pressa).
+	if (new URLSearchParams(location.search).has('texto')) {
+		statusOverlay.style.visibility = 'visible';
+		reader.classList.add('open');
+		reading = true;
+		document.querySelector('.loading').style.display = 'none';
+		document.querySelector('.hint').style.display = 'none';
+		numbers.style.display = 'none';
+		const toggle = document.getElementById('reader-toggle');
+		toggle.textContent = '⚓ Abrir o mundo 3D';
+		toggle.onclick = (e) => { e.stopImmediatePropagation(); location.href = location.pathname; };
+		return;
+	}
 	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
 	statusOverlay.style.visibility = 'visible';
 	if (missing.length !== 0) {
@@ -206,7 +248,11 @@ const engine = new Engine(GODOT_CONFIG);
 		const cores = navigator.hardwareConcurrency || 8;
 		const weakGpu = /HD Graphics|UHD Graphics 6\d\d|Mali-[GT]?[0-7]\d\b|Adreno \(TM\) [1-5]\d\d|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu);
 		let tier = 'alto';
-		if (isMobile || memory <= 4 || cores <= 2 || weakGpu) tier = 'baixo';
+		// Celular forte (6 GB+, 6+ núcleos: iPhone 15, Galaxy A55...) começa no Médio (60 fps) com o pacote leve;
+		// se não segurar, o jogo desce para o Baixo sozinho. Os demais celulares começam no Baixo.
+		const strongPhone = isMobile && memory >= 6 && cores >= 6 && !weakGpu;
+		if (strongPhone) tier = 'medio';
+		else if (isMobile || memory <= 4 || cores <= 2 || weakGpu) tier = 'baixo';
 		else if (cores <= 4 || /Intel/i.test(gpu)) tier = 'medio';
 		if (saved !== 'auto') tier = saved;
 		window.__portfolioGraphics = { mode: saved, tier: tier };
