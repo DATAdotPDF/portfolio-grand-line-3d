@@ -1,9 +1,9 @@
 # Grava o making-of (Tests/making_of.gd) com o Movie Maker do Godot em 1080p,
 # gera uma folha de conferência (1 quadro a cada 5 s) e monta o MP4 final com a música.
-# Uso: pwsh -File Web\make_making_of.ps1 -FFmpeg <caminho do ffmpeg.exe> [-Option 1|2] [-SkipRecord]
+# Uso: pwsh -File Web\make_making_of.ps1 [-Option 1|2] [-SkipRecord] [-FFmpeg <caminho>]  (ffmpeg via winget: Gyan.FFmpeg)
 #   Opção 1: Barnacle Reel 1 · Opção 2: Open Sea Quest 2 (roteiros diferentes em Tests/making_of.gd)
 param(
-	[Parameter(Mandatory = $true)][string]$FFmpeg,
+	[string]$FFmpeg = "ffmpeg",
 	[string]$Godot = "D:\Godot\Godot.exe",
 	[ValidateSet(1, 2)][int]$Option = 1,
 	[string]$Music = "",
