@@ -193,7 +193,8 @@ npx wrangler deploy --config Web/wrangler.toml
 <h3 align="left">LIVE SITE:</h3>
 
 <p align="left">
-  <a href="https://portfolio-data-cybersecurity.data-pedutraferreira.workers.dev/">Open the live portfolio on Cloudflare</a>
+  <a href="https://dotpdf.dev/"><b>dotpdf.dev</b></a> &nbsp;·&nbsp; <a href="https://dotpdf.dev/?texto">text-only version</a><br>
+  <sub>Also served at <a href="https://portfolio-data-cybersecurity.data-pedutraferreira.workers.dev/">portfolio-data-cybersecurity.data-pedutraferreira.workers.dev</a> (same Cloudflare Worker).</sub>
 </p>
 
 ###

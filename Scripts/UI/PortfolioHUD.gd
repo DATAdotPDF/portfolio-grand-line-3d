@@ -119,7 +119,7 @@ var save_button: Button
 var last_result := {}
 var race_active := false
 var api_calls := 0
-const API_BASE := "https://portfolio-data-cybersecurity.data-pedutraferreira.workers.dev"
+const API_BASE := "https://dotpdf.dev"
 
 func _ready() -> void:
 	layer = 10

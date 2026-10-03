@@ -1,7 +1,14 @@
-# Mesmo Worker/domínio já ativo: portfolio-data-cybersecurity.data-pedutraferreira.workers.dev
+# Portfólio: https://dotpdf.dev (também em portfolio-data-cybersecurity.data-pedutraferreira.workers.dev)
 name = "portfolio-data-cybersecurity"
 main = "worker.js"
 compatibility_date = "2026-09-01"
+workers_dev = true
+
+# Endereço curto (registrado no Cloudflare). O *.workers.dev continua funcionando.
+routes = [
+	{ pattern = "dotpdf.dev", custom_domain = true },
+	{ pattern = "www.dotpdf.dev", custom_domain = true },
+]
 
 [assets]
 directory = "./public"
@@ -14,4 +21,3 @@ run_worker_first = ["/index.pck", "/index.wasm", "/world", "/world/*", "/api/*"]
 [[kv_namespaces]]
 binding = "LEADERBOARD"
 id = "905011cb0e354303beb84b8299d54c0e"
-
