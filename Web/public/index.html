@@ -21,9 +21,10 @@ html, body, #canvas { margin: 0; padding: 0; border: 0; }
 body { background: var(--paper); color: var(--ink); overflow: hidden; touch-action: none; font: 400 15px/1.55 "Inter", system-ui, sans-serif; }
 #canvas { display: block; }
 #canvas:focus { outline: none; }
-#status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px;
+#status { position: absolute; inset: 0; display: flex; padding: 20px;
 	background: var(--paper); visibility: hidden; overflow: auto; touch-action: pan-y; }
-.card { width: min(620px, 100%); border: 1px solid var(--line); padding: clamp(20px, 4vw, 34px); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+/* margin: auto centraliza sem cortar o topo quando o currículo aberto passa da altura da tela. */
+.card { margin: auto; box-sizing: border-box; width: min(680px, 100%); border: 1px solid var(--line); padding: clamp(20px, 4vw, 34px); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
 .kicker { font: 600 11px/1.4 "Inter", system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0; }
 .status-pill { display: inline-flex; align-items: center; gap: 8px; }
 .status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
@@ -87,7 +88,21 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 .dots i.done { background: var(--ink); }
 .dots i.on::after { content: ""; position: absolute; inset: 0; background: var(--ink); transform-origin: left; animation: fill 7s linear forwards; }
 @keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@media (max-width: 520px) { .pitch { display: none; } h1 { margin-top: 8px; } .links { margin-bottom: 14px; } }
+/* Primeira tela: currículo é a porta principal; o 3D só baixa se a pessoa escolher. */
+.choose { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cta { display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: none; color: var(--ink); padding: 14px 16px; cursor: pointer; font: italic 400 22px/1.15 "IM Fell English", Georgia, serif; }
+.cta small { display: block; margin-top: 6px; font: 500 11.5px/1.4 "JetBrains Mono", "Inter", monospace; font-style: normal; color: var(--muted); }
+.cta:hover { border-color: var(--accent); color: var(--accent); }
+.cta.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.cta.primary small { color: color-mix(in srgb, var(--paper) 72%, var(--ink)); }
+.cta.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.cta:disabled { opacity: .5; cursor: default; }
+.world[hidden] { display: none; }
+.reader .cv-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 4px; }
+.reader .cv-pdf { border: 1px solid var(--accent); color: var(--accent); padding: 7px 12px; font-size: 13px; text-decoration: none; }
+.reader .cv-pdf:hover { background: var(--accent); color: var(--paper); }
+.reader .reader-end { margin: 18px 0 4px; }
+@media (max-width: 520px) { .pitch { display: none; } h1 { margin-top: 8px; } .links { margin-bottom: 14px; } .choose { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } .slide { transition: none; } }
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
@@ -105,21 +120,31 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 				<p class="role">Data Engineer &amp; Cybersecurity Student</p>
 				<p class="kicker">Red Team &amp; Offensive Security | Python &#183; SQL &#183; Automation &#183; Data Quality</p>
 				<p class="pitch">Transformo dados em decis&#245;es, automa&#231;&#245;es e produtos confi&#225;veis.</p>
-				<nav class="links" aria-label="Contatos"><a href="https://api.whatsapp.com/send/?phone=5521964094297&amp;text&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">WhatsApp ↗</a><a href="https://www.linkedin.com/in/data-pdf/" target="_blank" rel="noopener">LinkedIn ↗</a><a href="https://github.com/DATAdotPDF" target="_blank" rel="noopener">GitHub ↗</a></nav>
+				<nav class="links" aria-label="Contatos"><a href="https://api.whatsapp.com/send/?phone=5521964094297&amp;text&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">WhatsApp ↗</a><a href="https://www.linkedin.com/in/data-pdf/" target="_blank" rel="noopener">LinkedIn ↗</a><a href="https://github.com/DATAdotPDF" target="_blank" rel="noopener">GitHub ↗</a><a href="/Pedro-Ferreira-CV.pdf" target="_blank" rel="noopener">Currículo PDF ↓</a></nav>
+				<!-- Duas portas: quem tem pressa lê (sem baixar nada); quem tem curiosidade entra no 3D. -->
+				<div class="choose" id="choose">
+					<button class="cta primary" type="button" id="read-cv">Ler o currículo<small>1 minuto · sem download</small></button>
+					<button class="cta" type="button" id="open-3d">⚓ Explorar em 3D<small id="open-3d-note">~75 MB (~20 MB no celular) · fica em cache</small></button>
+				</div>
+				<div class="world" id="world" hidden>
 				<div class="slides" id="slides" aria-label="Sobre mim" title="Toque para avançar"><div class="track"><div class="slide"><p class="kicker">Enquanto o mar carrega</p><h2>Um portfólio para navegar.</h2><p>Uma chalupa, cinco ilhas e o meu currículo espalhado nelas.</p></div><div class="slide"><p class="kicker">01 / Sobre</p><h2>Dados com contexto de neg&#243;cio.</h2><p>Minha trajet&#243;ria re&#250;ne mais de uma d&#233;cada no mercado de trabalho, com projetos, opera&#231;&#245;es, melhoria de processos e gest&#227;o de stakeholders.</p></div><div class="slide"><p class="kicker">02 / Experi&#234;ncia</p><h2>Trajet&#243;ria profissional.</h2><ul><li><strong>Data Analyst</strong> · CEPA Mobility Brazil</li><li><strong>CEO e produtor</strong> · Varanda Vista Filmes</li></ul></div><div class="slide"><p class="kicker">03 / Forma&#231;&#227;o</p><h2>Forma&#231;&#227;o cont&#237;nua.</h2><ul><li><strong>Ciberseguran&#231;a</strong> · Senac</li><li><strong>Engenharia de Dados</strong> · Escola DNC</li></ul></div><div class="slide"><p class="kicker">04 / Projetos</p><h2>C&#243;digo aplicado a problemas concretos.</h2><p>Detec&#231;&#227;o de fraudes com IA generativa &#183; Pipeline ETL Bronze, Silver e Gold &#183; Dados p&#250;blicos do SIDRA e IBGE</p></div><div class="slide"><p class="kicker">05 / Contato</p><h2>Vamos conversar sobre dados, opera&#231;&#245;es ou seguran&#231;a?</h2></div></div><div class="slide-nav"><button type="button" id="slide-prev" aria-label="Anterior">‹</button><div class="dots" id="dots"></div><button type="button" id="slide-next" aria-label="Próximo">›</button></div></div>
 				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
 				<p id="status-numbers">preparando o mar</p>
-				<p class="hint">primeira visita ~75 MB (~20 MB no celular) · fica em cache</p>
+				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio enquanto carrega ↓</button></p>
+				</div>
 				<div id="status-notice"></div>
-				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio aqui mesmo ↓</button></p>
-				<div class="reader" id="reader"><section class="sheet" id="reader-sobre"><header><p class="kicker">01 / Sobre</p><h2>Dados com contexto de neg&#243;cio.</h2></header><p>Minha trajet&#243;ria re&#250;ne mais de uma d&#233;cada no mercado de trabalho, com projetos, opera&#231;&#245;es, melhoria de processos e gest&#227;o de stakeholders. Ap&#243;s a forma&#231;&#227;o em Engenharia de Dados na Escola DNC, atuei por 1 ano e 2 meses na CEPA Mobility Brazil.</p><p>Na CEPA, apoiei opera&#231;&#245;es internacionais e qualidade de dados para o programa J&amp;J Safe Fleet em 10 pa&#237;ses. Antes da transi&#231;&#227;o para dados, conduzi projetos audiovisuais para marcas como Disney+, Canal Futura e Expedia.</p><p>Hoje conecto Python, SQL, ETL, dashboards e automa&#231;&#227;o para organizar informa&#231;&#245;es, reduzir trabalho manual e apoiar decis&#245;es.</p><dl class="facts"><div><dt>Engenharia de dados</dt><dd>Python &#183; SQL &#183; ETL &#183; Pipelines</dd></div><div><dt>Analytics e BI</dt><dd>Power BI &#183; Pandas &#183; Dashboards</dd></div><div><dt>Opera&#231;&#245;es</dt><dd>Data Quality &#183; Automa&#231;&#227;o &#183; Reporting</dd></div><div><dt>Ciberseguran&#231;a</dt><dd>Forma&#231;&#227;o em andamento &#183; Senac 2026</dd></div></dl></section><section class="sheet" id="reader-experiencia"><header><p class="kicker">02 / Experi&#234;ncia</p><h2>Trajet&#243;ria profissional.</h2></header><ol class="timeline"><li><span class="period">2025 — 2026</span><h3>Data Analyst</h3><p class="org">CEPA Mobility Brazil</p><p>Suporte ao J&amp;J Safe Fleet em 10 pa&#237;ses, com rotinas de dados, relat&#243;rios, qualidade e acompanhamento operacional entre APAC, Jap&#227;o e EMEA.</p></li><li><span class="period">2012 — 2025</span><h3>CEO e produtor</h3><p class="org">Varanda Vista Filmes</p><p>Gest&#227;o de projetos, prazos, custos, processos e clientes em produ&#231;&#245;es audiovisuais para empresas nacionais e internacionais.</p></li></ol></section><section class="sheet" id="reader-formacao"><header><p class="kicker">03 / Forma&#231;&#227;o</p><h2>Forma&#231;&#227;o cont&#237;nua.</h2></header><ol class="timeline"><li><span class="period">2026 — atual</span><h3>Ciberseguran&#231;a</h3><p class="org">Senac</p></li><li><span class="period">2024 — 2025</span><h3>Engenharia de Dados</h3><p class="org">Escola DNC</p></li><li><span class="period">2021 — 2023</span><h3>Mecatr&#244;nica</h3><p class="org">Electra</p></li><li><span class="period">2008 — 2021</span><h3>Cinema e Audiovisual</h3><p class="org">IBMR</p></li></ol></section><section class="sheet" id="reader-projetos"><header><p class="kicker">04 / Projetos</p><h2>C&#243;digo aplicado a problemas concretos.</h2></header><div class="projects"><a class="project" href="https://github.com/DATAdotPDF/Desafio_Final_II_DNC_RID211401" target="_blank" rel="noopener"><h3>Detec&#231;&#227;o de fraudes com IA generativa <span>↗</span></h3><p>API e an&#225;lise de rela&#231;&#245;es para identificar comportamentos suspeitos em transa&#231;&#245;es.</p><p class="stack">Python &#183; FastAPI &#183; NetworkX &#183; Docker</p></a><a class="project" href="https://github.com/DATAdotPDF/Desafio_Final_DNC_RID211401" target="_blank" rel="noopener"><h3>Pipeline ETL Bronze, Silver e Gold <span>↗</span></h3><p>Orquestra&#231;&#227;o de dados em camadas, armazenamento em S3 e visualiza&#231;&#227;o anal&#237;tica.</p><p class="stack">Airflow &#183; Python &#183; AWS S3 &#183; Plotly Dash</p></a><a class="project" href="https://github.com/DATAdotPDF/Desafio_Pratico_DNC_Grupo6" target="_blank" rel="noopener"><h3>Dados p&#250;blicos do SIDRA e IBGE <span>↗</span></h3><p>Modelagem dimensional e painel para explorar indicadores p&#250;blicos com clareza.</p><p class="stack">Power BI &#183; Power Query &#183; SIDRA &#183; Star Schema</p></a><a class="project" href="https://github.com/DATAdotPDF/BOT_Financeiro_WPP" target="_blank" rel="noopener"><h3>Bot financeiro para WhatsApp <span>↗</span></h3><p>Automa&#231;&#227;o para registrar movimenta&#231;&#245;es financeiras por mensagens no WhatsApp.</p><p class="stack">Node.js &#183; JavaScript &#183; WhatsApp &#183; Automa&#231;&#227;o</p></a></div></section><section class="sheet" id="reader-contato"><header><p class="kicker">05 / Contato</p><h2>Vamos conversar sobre dados, opera&#231;&#245;es ou seguran&#231;a?</h2></header><nav class="links"><a href="https://api.whatsapp.com/send/?phone=5521964094297&amp;text&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">WhatsApp ↗</a><a href="https://www.linkedin.com/in/data-pdf/" target="_blank" rel="noopener">LinkedIn ↗</a><a href="https://github.com/DATAdotPDF" target="_blank" rel="noopener">GitHub ↗</a></nav></section></div>
+				<div class="reader" id="reader">
+					<p class="cv-line"><a class="cv-pdf" href="/Pedro-Ferreira-CV.pdf" download>Baixar o currículo em PDF ↓</a><span class="mono">1 página · mesmo conteúdo</span></p>
+					<section class="sheet" id="reader-sobre"><header><p class="kicker">01 / Sobre</p><h2>Dados com contexto de neg&#243;cio.</h2></header><p>Minha trajet&#243;ria re&#250;ne mais de uma d&#233;cada no mercado de trabalho, com projetos, opera&#231;&#245;es, melhoria de processos e gest&#227;o de stakeholders. Ap&#243;s a forma&#231;&#227;o em Engenharia de Dados na Escola DNC, atuei por 1 ano e 2 meses na CEPA Mobility Brazil.</p><p>Na CEPA, apoiei opera&#231;&#245;es internacionais e qualidade de dados para o programa J&amp;J Safe Fleet em 10 pa&#237;ses. Antes da transi&#231;&#227;o para dados, conduzi projetos audiovisuais para marcas como Disney+, Canal Futura e Expedia.</p><p>Hoje conecto Python, SQL, ETL, dashboards e automa&#231;&#227;o para organizar informa&#231;&#245;es, reduzir trabalho manual e apoiar decis&#245;es.</p><dl class="facts"><div><dt>Engenharia de dados</dt><dd>Python &#183; SQL &#183; ETL &#183; Pipelines</dd></div><div><dt>Analytics e BI</dt><dd>Power BI &#183; Pandas &#183; Dashboards</dd></div><div><dt>Opera&#231;&#245;es</dt><dd>Data Quality &#183; Automa&#231;&#227;o &#183; Reporting</dd></div><div><dt>Ciberseguran&#231;a</dt><dd>Forma&#231;&#227;o em andamento &#183; Senac 2026</dd></div></dl></section><section class="sheet" id="reader-experiencia"><header><p class="kicker">02 / Experi&#234;ncia</p><h2>Trajet&#243;ria profissional.</h2></header><ol class="timeline"><li><span class="period">2025 — 2026</span><h3>Data Analyst</h3><p class="org">CEPA Mobility Brazil</p><p>Suporte ao J&amp;J Safe Fleet em 10 pa&#237;ses, com rotinas de dados, relat&#243;rios, qualidade e acompanhamento operacional entre APAC, Jap&#227;o e EMEA.</p></li><li><span class="period">2012 — 2025</span><h3>CEO e produtor</h3><p class="org">Varanda Vista Filmes</p><p>Gest&#227;o de projetos, prazos, custos, processos e clientes em produ&#231;&#245;es audiovisuais para empresas nacionais e internacionais.</p></li></ol></section><section class="sheet" id="reader-formacao"><header><p class="kicker">03 / Forma&#231;&#227;o</p><h2>Forma&#231;&#227;o cont&#237;nua.</h2></header><ol class="timeline"><li><span class="period">2026 — atual</span><h3>Ciberseguran&#231;a</h3><p class="org">Senac</p></li><li><span class="period">2024 — 2025</span><h3>Engenharia de Dados</h3><p class="org">Escola DNC</p></li><li><span class="period">2021 — 2023</span><h3>Mecatr&#244;nica</h3><p class="org">Electra</p></li><li><span class="period">2008 — 2021</span><h3>Cinema e Audiovisual</h3><p class="org">IBMR</p></li></ol></section><section class="sheet" id="reader-projetos"><header><p class="kicker">04 / Projetos</p><h2>C&#243;digo aplicado a problemas concretos.</h2></header><div class="projects"><a class="project" href="https://github.com/DATAdotPDF/Desafio_Final_II_DNC_RID211401" target="_blank" rel="noopener"><h3>Detec&#231;&#227;o de fraudes com IA generativa <span>↗</span></h3><p>API e an&#225;lise de rela&#231;&#245;es para identificar comportamentos suspeitos em transa&#231;&#245;es.</p><p class="stack">Python &#183; FastAPI &#183; NetworkX &#183; Docker</p></a><a class="project" href="https://github.com/DATAdotPDF/Desafio_Final_DNC_RID211401" target="_blank" rel="noopener"><h3>Pipeline ETL Bronze, Silver e Gold <span>↗</span></h3><p>Orquestra&#231;&#227;o de dados em camadas, armazenamento em S3 e visualiza&#231;&#227;o anal&#237;tica.</p><p class="stack">Airflow &#183; Python &#183; AWS S3 &#183; Plotly Dash</p></a><a class="project" href="https://github.com/DATAdotPDF/Desafio_Pratico_DNC_Grupo6" target="_blank" rel="noopener"><h3>Dados p&#250;blicos do SIDRA e IBGE <span>↗</span></h3><p>Modelagem dimensional e painel para explorar indicadores p&#250;blicos com clareza.</p><p class="stack">Power BI &#183; Power Query &#183; SIDRA &#183; Star Schema</p></a><a class="project" href="https://github.com/DATAdotPDF/BOT_Financeiro_WPP" target="_blank" rel="noopener"><h3>Bot financeiro para WhatsApp <span>↗</span></h3><p>Automa&#231;&#227;o para registrar movimenta&#231;&#245;es financeiras por mensagens no WhatsApp.</p><p class="stack">Node.js &#183; JavaScript &#183; WhatsApp &#183; Automa&#231;&#227;o</p></a></div></section><section class="sheet" id="reader-contato"><header><p class="kicker">05 / Contato</p><h2>Vamos conversar sobre dados, opera&#231;&#245;es ou seguran&#231;a?</h2></header><nav class="links"><a href="https://api.whatsapp.com/send/?phone=5521964094297&amp;text&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">WhatsApp ↗</a><a href="https://www.linkedin.com/in/data-pdf/" target="_blank" rel="noopener">LinkedIn ↗</a><a href="https://github.com/DATAdotPDF" target="_blank" rel="noopener">GitHub ↗</a></nav></section>
+					<p class="reader-end" id="reader-end"><button class="cta" type="button" id="open-3d-end">⚓ Curtiu? Explore o portfólio em 3D<small>uma chalupa, cinco ilhas e este mesmo conteúdo</small></button></p>
+				</div>
 			</article>
 		</div>
 		<noscript><style>#status { visibility: visible !important; } .reader { display: block !important; }</style></noscript>
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":73624672,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":73624640,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -133,8 +158,8 @@ const engine = new Engine(GODOT_CONFIG);
 	let initializing = true;
 	let reading = false;
 
-	// Slides: avançam sozinhos a cada 7 s; um toque passa para o próximo.
-	(function () {
+	// Slides: avançam sozinhos a cada 7 s; um toque passa para o próximo. Só rodam durante o carregamento do 3D.
+	function startSlides() {
 		const slides = Array.from(document.querySelectorAll('#slides .slide'));
 		const dots = document.getElementById('dots');
 		if (!slides.length || !dots) return;
@@ -152,7 +177,7 @@ const engine = new Engine(GODOT_CONFIG);
 		document.getElementById('slide-next').addEventListener('click', (e) => { e.stopPropagation(); show(current + 1); });
 		document.getElementById('slides').addEventListener('click', () => show(current + 1));
 		show(0);
-	}());
+	}
 
 	// Projetos ao vivo do GitHub (mesma rota que o jogo usa); sem resposta, fica a lista fixa.
 	fetch('/api/projetos').then((r) => r.ok ? r.json() : null).then((data) => {
@@ -210,24 +235,51 @@ const engine = new Engine(GODOT_CONFIG);
 		initializing = false;
 	}
 
-	// ?texto: só a versão em texto, sem baixar o mundo 3D (conexão ruim ou recrutador com pressa).
-	if (new URLSearchParams(location.search).has('texto')) {
-		statusOverlay.style.visibility = 'visible';
-		reader.classList.add('open');
-		reading = true;
-		document.querySelector('.loading').style.display = 'none';
-		document.querySelector('.hint').style.display = 'none';
-		numbers.style.display = 'none';
-		const toggle = document.getElementById('reader-toggle');
-		toggle.textContent = '⚓ Abrir o mundo 3D';
-		toggle.onclick = (e) => { e.stopImmediatePropagation(); location.href = location.pathname; };
-		return;
-	}
-	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	// Primeira tela: nada do 3D é baixado até a pessoa escolher "Explorar em 3D".
+	// A maioria (RH com pressa) lê o currículo aqui mesmo e pronto.
+	const choose = document.getElementById('choose');
+	const world = document.getElementById('world');
+	const readerEnd = document.getElementById('reader-end');
+	let started = false;
 	statusOverlay.style.visibility = 'visible';
+
+	function openReader() {
+		reading = true;
+		reader.classList.add('open');
+		statusOverlay.scrollBy({ top: reader.getBoundingClientRect().top - 12, behavior: 'smooth' });
+	}
+	document.getElementById('read-cv').addEventListener('click', openReader);
+
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	const open3d = [document.getElementById('open-3d'), document.getElementById('open-3d-end')];
 	if (missing.length !== 0) {
-		displayFailureNotice('recursos ausentes: ' + missing.join(', '));
-		return;
+		open3d.forEach((button) => { button.disabled = true; });
+		document.getElementById('open-3d-note').textContent = 'não roda neste navegador';
+		readerEnd.remove();
+	} else {
+		open3d.forEach((button) => button.addEventListener('click', start3D));
+	}
+
+	function start3D() {
+		if (started) return;
+		started = true;
+		choose.remove();
+		readerEnd.remove();
+		world.hidden = false;
+		// Quem leu e depois escolheu o 3D volta para o topo e vê o carregamento.
+		reading = false;
+		reader.classList.remove('open');
+		statusOverlay.scrollTop = 0;
+		startSlides();
+		loadPackParts().then((bytes) => {
+			if (!bytes) {
+				return engine.startGame({ 'onProgress': onProgress });
+			}
+			// Entrega o .pck já montado ao sistema de arquivos do Godot e inicia sem novo download.
+			numbers.textContent = 'abrindo o mundo…';
+			engine.preloadFile(bytes, 'index.pck');
+			return engine.init(GODOT_CONFIG.executable).then(() => engine.start({ 'args': ['--main-pack', 'index.pck'], 'onProgress': onProgress }));
+		}).then(hideStatus, displayFailureNotice);
 	}
 	// O jogo (.pck) é servido em partes < 25 MiB (limite do Cloudflare). O navegador
 	// baixa as partes (com nova tentativa), junta num buffer e entrega ao Godot — sem depender do Worker.
@@ -311,15 +363,14 @@ const engine = new Engine(GODOT_CONFIG);
 			numbers.textContent = (current / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB';
 		}
 	};
-	loadPackParts().then((bytes) => {
-		if (!bytes) {
-			return engine.startGame({ 'onProgress': onProgress });
-		}
-		// Entrega o .pck já montado ao sistema de arquivos do Godot e inicia sem novo download.
-		numbers.textContent = 'abrindo o mundo…';
-		engine.preloadFile(bytes, 'index.pck');
-		return engine.init(GODOT_CONFIG.executable).then(() => engine.start({ 'args': ['--main-pack', 'index.pck'], 'onProgress': onProgress }));
-	}).then(hideStatus, displayFailureNotice);
+	// Links diretos para o mundo (?ilha=, ?3d, links antigos /world/*) pulam a escolha.
+	// ?texto abre já no currículo.
+	const query = new URLSearchParams(location.search);
+	if (query.has('texto')) {
+		openReader();
+	} else if (!missing.length && (query.has('ilha') || query.has('3d'))) {
+		start3D();
+	}
 }());
 		</script>
 	</body>

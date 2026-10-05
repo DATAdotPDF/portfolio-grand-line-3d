@@ -1,5 +1,6 @@
-# Monta o site em Web/public: o mundo 3D (Godot) É a página inicial.
-#   /                 export Web do Godot com o cartão de visita como tela de carregamento
+# Monta o site em Web/public: currículo primeiro, mundo 3D (Godot) para quem quiser explorar.
+#   /                 cartão de visita: "Ler o currículo" (sem download) ou "Explorar em 3D" (baixa o Godot)
+#   /Pedro-Ferreira-CV.pdf  currículo (Web/cv)
 #   /pck/part-XX      .pck em partes < 25 MiB (o worker.js costura em /index.pck)
 #   /index.wasm.br    wasm em brotli (o worker.js entrega como /index.wasm)
 #   /music/           trilha tocada pelo navegador (fora do .pck)
@@ -74,6 +75,7 @@ Set-Content (Join-Path $public "index.html") $html -Encoding utf8 -NoNewline
 Get-ChildItem Builds\Web -File | Where-Object { $_.Name -notin "index.html", "index.pck", "index.wasm" -and $_.Extension -ne ".tmp" } |
 	ForEach-Object { Copy-Item $_.FullName $public }
 Copy-Item Assets\Fonts\*.ttf, Assets\Fonts\OFL-*.txt (Join-Path $public "fonts")
+Copy-Item Web\cv\Pedro-Ferreira-CV.pdf $public
 
 Write-Host "4/5 pck em partes + wasm brotli (desktop e celular)"
 function Split-Pack([string]$pckPath, [string]$partsDir, [string]$manifestName) {

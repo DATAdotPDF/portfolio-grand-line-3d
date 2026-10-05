@@ -181,7 +181,10 @@ export default {
 			return serveWasm(env, request);
 		}
 		if (url.pathname === "/world" || url.pathname.startsWith("/world/")) {
-			return Response.redirect(new URL("/" + url.search, request.url).toString(), 301);
+			// Quem tinha o link /world queria o mundo 3D: pula a tela de escolha.
+			const query = new URLSearchParams(url.search);
+			if (!query.has("ilha")) query.set("3d", "1");
+			return Response.redirect(new URL("/?" + query, request.url).toString(), 301);
 		}
 		return env.ASSETS.fetch(request);
 	},

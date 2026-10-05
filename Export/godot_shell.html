@@ -21,9 +21,10 @@ html, body, #canvas { margin: 0; padding: 0; border: 0; }
 body { background: var(--paper); color: var(--ink); overflow: hidden; touch-action: none; font: 400 15px/1.55 "Inter", system-ui, sans-serif; }
 #canvas { display: block; }
 #canvas:focus { outline: none; }
-#status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px;
+#status { position: absolute; inset: 0; display: flex; padding: 20px;
 	background: var(--paper); visibility: hidden; overflow: auto; touch-action: pan-y; }
-.card { width: min(620px, 100%); border: 1px solid var(--line); padding: clamp(20px, 4vw, 34px); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+/* margin: auto centraliza sem cortar o topo quando o currículo aberto passa da altura da tela. */
+.card { margin: auto; box-sizing: border-box; width: min(680px, 100%); border: 1px solid var(--line); padding: clamp(20px, 4vw, 34px); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
 .kicker { font: 600 11px/1.4 "Inter", system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0; }
 .status-pill { display: inline-flex; align-items: center; gap: 8px; }
 .status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
@@ -87,7 +88,21 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 .dots i.done { background: var(--ink); }
 .dots i.on::after { content: ""; position: absolute; inset: 0; background: var(--ink); transform-origin: left; animation: fill 7s linear forwards; }
 @keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@media (max-width: 520px) { .pitch { display: none; } h1 { margin-top: 8px; } .links { margin-bottom: 14px; } }
+/* Primeira tela: currículo é a porta principal; o 3D só baixa se a pessoa escolher. */
+.choose { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cta { display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: none; color: var(--ink); padding: 14px 16px; cursor: pointer; font: italic 400 22px/1.15 "IM Fell English", Georgia, serif; }
+.cta small { display: block; margin-top: 6px; font: 500 11.5px/1.4 "JetBrains Mono", "Inter", monospace; font-style: normal; color: var(--muted); }
+.cta:hover { border-color: var(--accent); color: var(--accent); }
+.cta.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.cta.primary small { color: color-mix(in srgb, var(--paper) 72%, var(--ink)); }
+.cta.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.cta:disabled { opacity: .5; cursor: default; }
+.world[hidden] { display: none; }
+.reader .cv-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 4px; }
+.reader .cv-pdf { border: 1px solid var(--accent); color: var(--accent); padding: 7px 12px; font-size: 13px; text-decoration: none; }
+.reader .cv-pdf:hover { background: var(--accent); color: var(--paper); }
+.reader .reader-end { margin: 18px 0 4px; }
+@media (max-width: 520px) { .pitch { display: none; } h1 { margin-top: 8px; } .links { margin-bottom: 14px; } .choose { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .meter.indeterminate span { animation: none; width: 100%; opacity: .3; } .slide { transition: none; } }
 		</style>
 		$GODOT_HEAD_INCLUDE
@@ -103,14 +118,24 @@ h1 { font: italic 400 clamp(44px, 9vw, 72px)/.9 "IM Fell English", Georgia, seri
 				<p class="role"><!--ROLE--></p>
 				<p class="kicker"><!--TAGLINE--></p>
 				<p class="pitch"><!--PITCH--></p>
-				<nav class="links" aria-label="Contatos"><!--LINKS--></nav>
+				<nav class="links" aria-label="Contatos"><!--LINKS--><a href="/Pedro-Ferreira-CV.pdf" target="_blank" rel="noopener">Currículo PDF ↓</a></nav>
+				<!-- Duas portas: quem tem pressa lê (sem baixar nada); quem tem curiosidade entra no 3D. -->
+				<div class="choose" id="choose">
+					<button class="cta primary" type="button" id="read-cv">Ler o currículo<small>1 minuto · sem download</small></button>
+					<button class="cta" type="button" id="open-3d">⚓ Explorar em 3D<small id="open-3d-note">~75 MB (~20 MB no celular) · fica em cache</small></button>
+				</div>
+				<div class="world" id="world" hidden>
 				<div class="slides" id="slides" aria-label="Sobre mim" title="Toque para avançar"><div class="track"><!--SLIDES--></div><div class="slide-nav"><button type="button" id="slide-prev" aria-label="Anterior">‹</button><div class="dots" id="dots"></div><button type="button" id="slide-next" aria-label="Próximo">›</button></div></div>
 				<div class="loading"><strong>Içando as velas…</strong><div class="meter indeterminate" id="meter"><span id="meter-bar"></span></div></div>
 				<p id="status-numbers">preparando o mar</p>
-				<p class="hint">primeira visita ~75 MB (~20 MB no celular) · fica em cache</p>
+				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio enquanto carrega ↓</button></p>
+				</div>
 				<div id="status-notice"></div>
-				<p style="margin: 16px 0 0"><button class="reader-toggle" type="button" id="reader-toggle">Ler o portfólio aqui mesmo ↓</button></p>
-				<div class="reader" id="reader"><!--READER--></div>
+				<div class="reader" id="reader">
+					<p class="cv-line"><a class="cv-pdf" href="/Pedro-Ferreira-CV.pdf" download>Baixar o currículo em PDF ↓</a><span class="mono">1 página · mesmo conteúdo</span></p>
+					<!--READER-->
+					<p class="reader-end" id="reader-end"><button class="cta" type="button" id="open-3d-end">⚓ Curtiu? Explore o portfólio em 3D<small>uma chalupa, cinco ilhas e este mesmo conteúdo</small></button></p>
+				</div>
 			</article>
 		</div>
 		<noscript><style>#status { visibility: visible !important; } .reader { display: block !important; }</style></noscript>
@@ -131,8 +156,8 @@ const engine = new Engine(GODOT_CONFIG);
 	let initializing = true;
 	let reading = false;
 
-	// Slides: avançam sozinhos a cada 7 s; um toque passa para o próximo.
-	(function () {
+	// Slides: avançam sozinhos a cada 7 s; um toque passa para o próximo. Só rodam durante o carregamento do 3D.
+	function startSlides() {
 		const slides = Array.from(document.querySelectorAll('#slides .slide'));
 		const dots = document.getElementById('dots');
 		if (!slides.length || !dots) return;
@@ -150,7 +175,7 @@ const engine = new Engine(GODOT_CONFIG);
 		document.getElementById('slide-next').addEventListener('click', (e) => { e.stopPropagation(); show(current + 1); });
 		document.getElementById('slides').addEventListener('click', () => show(current + 1));
 		show(0);
-	}());
+	}
 
 	// Projetos ao vivo do GitHub (mesma rota que o jogo usa); sem resposta, fica a lista fixa.
 	fetch('/api/projetos').then((r) => r.ok ? r.json() : null).then((data) => {
@@ -208,24 +233,51 @@ const engine = new Engine(GODOT_CONFIG);
 		initializing = false;
 	}
 
-	// ?texto: só a versão em texto, sem baixar o mundo 3D (conexão ruim ou recrutador com pressa).
-	if (new URLSearchParams(location.search).has('texto')) {
-		statusOverlay.style.visibility = 'visible';
-		reader.classList.add('open');
-		reading = true;
-		document.querySelector('.loading').style.display = 'none';
-		document.querySelector('.hint').style.display = 'none';
-		numbers.style.display = 'none';
-		const toggle = document.getElementById('reader-toggle');
-		toggle.textContent = '⚓ Abrir o mundo 3D';
-		toggle.onclick = (e) => { e.stopImmediatePropagation(); location.href = location.pathname; };
-		return;
-	}
-	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	// Primeira tela: nada do 3D é baixado até a pessoa escolher "Explorar em 3D".
+	// A maioria (RH com pressa) lê o currículo aqui mesmo e pronto.
+	const choose = document.getElementById('choose');
+	const world = document.getElementById('world');
+	const readerEnd = document.getElementById('reader-end');
+	let started = false;
 	statusOverlay.style.visibility = 'visible';
+
+	function openReader() {
+		reading = true;
+		reader.classList.add('open');
+		statusOverlay.scrollBy({ top: reader.getBoundingClientRect().top - 12, behavior: 'smooth' });
+	}
+	document.getElementById('read-cv').addEventListener('click', openReader);
+
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	const open3d = [document.getElementById('open-3d'), document.getElementById('open-3d-end')];
 	if (missing.length !== 0) {
-		displayFailureNotice('recursos ausentes: ' + missing.join(', '));
-		return;
+		open3d.forEach((button) => { button.disabled = true; });
+		document.getElementById('open-3d-note').textContent = 'não roda neste navegador';
+		readerEnd.remove();
+	} else {
+		open3d.forEach((button) => button.addEventListener('click', start3D));
+	}
+
+	function start3D() {
+		if (started) return;
+		started = true;
+		choose.remove();
+		readerEnd.remove();
+		world.hidden = false;
+		// Quem leu e depois escolheu o 3D volta para o topo e vê o carregamento.
+		reading = false;
+		reader.classList.remove('open');
+		statusOverlay.scrollTop = 0;
+		startSlides();
+		loadPackParts().then((bytes) => {
+			if (!bytes) {
+				return engine.startGame({ 'onProgress': onProgress });
+			}
+			// Entrega o .pck já montado ao sistema de arquivos do Godot e inicia sem novo download.
+			numbers.textContent = 'abrindo o mundo…';
+			engine.preloadFile(bytes, 'index.pck');
+			return engine.init(GODOT_CONFIG.executable).then(() => engine.start({ 'args': ['--main-pack', 'index.pck'], 'onProgress': onProgress }));
+		}).then(hideStatus, displayFailureNotice);
 	}
 	// O jogo (.pck) é servido em partes < 25 MiB (limite do Cloudflare). O navegador
 	// baixa as partes (com nova tentativa), junta num buffer e entrega ao Godot — sem depender do Worker.
@@ -309,15 +361,14 @@ const engine = new Engine(GODOT_CONFIG);
 			numbers.textContent = (current / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB';
 		}
 	};
-	loadPackParts().then((bytes) => {
-		if (!bytes) {
-			return engine.startGame({ 'onProgress': onProgress });
-		}
-		// Entrega o .pck já montado ao sistema de arquivos do Godot e inicia sem novo download.
-		numbers.textContent = 'abrindo o mundo…';
-		engine.preloadFile(bytes, 'index.pck');
-		return engine.init(GODOT_CONFIG.executable).then(() => engine.start({ 'args': ['--main-pack', 'index.pck'], 'onProgress': onProgress }));
-	}).then(hideStatus, displayFailureNotice);
+	// Links diretos para o mundo (?ilha=, ?3d, links antigos /world/*) pulam a escolha.
+	// ?texto abre já no currículo.
+	const query = new URLSearchParams(location.search);
+	if (query.has('texto')) {
+		openReader();
+	} else if (!missing.length && (query.has('ilha') || query.has('3d'))) {
+		start3D();
+	}
 }());
 		</script>
 	</body>
