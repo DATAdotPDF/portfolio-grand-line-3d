@@ -156,7 +156,7 @@ Each row was found by a test or by me watching a recording, not assumed.
 
 ---
 
-## 5. Web and mobile: from 397 MB to 63 MB before the first frame
+## 5. Web and mobile: from a 397 MB package to 77 MiB on a phone
 
 The original Meshy models are huge: up to 6.7 million triangles and ~200 MB per file. With them,
 the world used **~4.4 GB of video memory** on my PC (`Tests/stress_sail.gd`). That can never run on
@@ -229,8 +229,25 @@ a phone, so the site uses generated copies.
 
 | | Before the first frame | Downloaded in the background |
 |---|---|---|
-| Mobile | **63.5 MB** (was 397 MB at the start of this phase) | 4 packs, 5.6–7.7 MB each |
-| Desktop | **139.7 MB** | 4 packs, 18.2–22.9 MB each |
+| Mobile | **77.1 MiB** (was 397 MB at the start of this phase; 63.5 MiB before the quality pass below) | 4 packs, 7.8–12.4 MiB each |
+| Desktop | **222.3 MiB** (139.7 MiB before the quality pass) | 4 packs, 51.5–76.7 MiB each, served in ≤20 MiB parts |
+
+- **Sizes are what crosses the network on a cold load.** Checked with response headers on the live
+  site: the package and pack parts are served without `Content-Encoding`, with `Content-Length`
+  equal to the file size. Gzip saves only ~2% on them, because the textures are already compressed.
+  On top of the package, the browser also downloads the engine (`index.wasm`, 7.1 MB with Brotli),
+  `index.js` and the fonts (~1.5 MB).
+- **Quality pass (Oct 16).** Testing the live site, I found the web models crude: faceted, low
+  detail, and desktop textures halved. The fixes:
+  - triangle budgets raised (cities 300k desktop / 70k mobile, landmarks 150k / 35k);
+  - rigged colossi no longer decimated on desktop;
+  - smooth-by-angle shading after decimation;
+  - every model texture at 2048 on desktop.
+  - The download grew as a result; that is the trade-off.
+- **Not measured yet:** the time from the click until the boat can be steered, on a real phone with
+  the device and network recorded. The only timing logged so far: the live site at phone size on my
+  PC, network not recorded, browser tab in the background. It took download 5.7 s, engine 2.1 s,
+  islands 4.0 s and first frames 8.5 s.
 
 - Every file in the site is under Cloudflare's 25 MiB static-asset limit.
 - The mobile package at the Low graphics tier, run on this PC (not on a phone): a steady 30 fps
