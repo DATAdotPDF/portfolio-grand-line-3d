@@ -292,15 +292,32 @@ a phone, so the site uses generated copies.
 | Every sector model in place | 20.7 s | 35.1 s |
 | FPS in the 5 s after the helm | 39 | **7** |
 
+- **Run 3, Oct 16, second real phone:**
+  - **Device:** a Samsung with an Xclipse GPU, 10 cores, 8 GB. Chrome 155 hides the exact model (its
+    reduced user agent reports "Android 10; K").
+  - **Viewport and network:** 384×832 @1.5, mobile package, Medium graphics, Wi-Fi ("4g · 1.5 Mbps ·
+    rtt 50 ms" is Chrome's capped estimate).
+  - **Cache:** cold. 126.6 MB transferred, 84.9 MB of it before the helm.
+  - **Times since the click:** package 6.4 s, engine 8.8 s, islands 14.0 s, boat answered the helm
+    **18.3 s**, first smooth frames 19.3 s, sector packs 22.0 s, sector models in place 22.5 s.
+  - **FPS in the 5 s after the helm: 40.**
+  - Same build as run 2; the load range below came after. The first phone ran in a different browser
+    (Opera, by its toolbar), and that may explain part of the gap between 7 and 40 fps; this was not
+    isolated.
 - **The 7 fps is a real problem, and it is reported as measured.** Two caveats:
   - On the phone, the 5 s window right after the helm overlaps the sector packs being downloaded and
     attached (until 35.1 s), so it is a worst case.
   - The game also lowers the graphics tier by itself after a few slow seconds.
-- **Next fixes, in order:**
-  1. Measure FPS again after every sector model is in place.
-  2. Start phones on the Low tier.
-  3. Spread the model attaching over more frames.
-  4. Revisit the mobile model budgets that grew in the quality pass.
+- **Fix chosen: a load range, not lighter models.** I chose not to cut model quality.
+  - Only the sector models within the load range stay in the scene: 520 m on desktop (the draw
+    distance, so nothing changes on screen) and 360 m on mobile, where the planet's curvature already
+    hides almost everything.
+  - Models outside the range leave the scene and their memory is released. Layout, collisions, lights
+    and effects always stay.
+  - Exported mobile package run on my PC: 8 of the 160 items hold a model at a time, video memory
+    ~160 MB, steady 30 fps on Low.
+  - `?medir` now also shows a second FPS window, taken after the nearby models are in place.
+  - A new phone run on this build is still pending.
 
 - Every file in the site is under Cloudflare's 25 MiB static-asset limit.
 - The mobile package at the Low graphics tier, run on this PC (not on a phone): a steady 30 fps
