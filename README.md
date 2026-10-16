@@ -15,7 +15,8 @@
 <p align="left">
   Interactive portfolio built as a 3D sailing world in Godot 4 and published on the web (WebGL 2) and mobile.<br><br>
   The visitor commands a pirate sloop across a spherical ocean and finds five themed islands, each one a section of my résumé: About, Experience, Education, Projects and Contact. Getting close to an island opens its chart with the content. A guided tour, a world map and a three-minute cannon challenge are available for anyone who prefers not to explore.<br><br>
-  The site opens straight into the world. While the 3D scene loads, a business card shows my name, role, summary and contact links, so a recruiter never waits on an empty screen. A text-only reading mode is available for slow connections.<br><br>
+  Between the islands the sea is alive: four biomes with cities and ruins, colossi that slowly circle their waters, storms, cyclones, a ghost ship and a rare Kraken encounter.<br><br>
+  The first screen is a business card with two choices: read the résumé right away (no download) or explore in 3D. The 3D world downloads only on that click, and the models of each biome keep arriving in the background while you sail.<br><br>
   The goal was a portfolio that is fast to read and fun to stay in: Seagazer-style sailing on large, readable waves, a Wind Waker sense of wind and open sea, and a clean nautical interface.
 </p>
 
@@ -58,8 +59,9 @@
 ###
 
 - **Godot 4.7** with GDScript and GLSL-style shaders (Compatibility renderer, WebGL 2)
-- **Meshy.ai** for every 3D model: islands, sloop, cannon, buoys, Log Pose compass and title plates
-- **Claude and Codex via MCP** as coding agents working directly inside the Godot project
+- **Meshy.ai** for every 3D model: islands, sloop, cannon, buoys, Log Pose compass, title plates, biome landmarks, cities and creatures
+- **Blender** (headless, from scripts) for rigs, animation clips and the lighter web copies of each model
+- **Claude and Codex via MCP** as coding tools working directly inside the Godot and Blender projects
 - **Cloudflare Workers** for hosting, chunked asset delivery and the live GitHub projects API
 - **glTF-Transform** for mesh simplification and texture resizing
 - Fonts: IM Fell English, Inter and JetBrains Mono (SIL Open Font License)
@@ -80,6 +82,10 @@
 - Stylized procedural clouds with shadows on the sea
 - World map with a 3D rotating globe, island markers and a "you are here" pin
 - Cannon challenge: 20 buoys in 3 minutes
+- Four biomes (runes, driftwood, abyss, corals) laid out so there is always something on the horizon
+- Colossi circling their sectors (timber whale, granite crab, obsidian giant, a turtle carrying an island), dolphins, flying fish and seagulls
+- Local storms, cyclones that carry the ship away, a ghost ship and a rare Kraken encounter
+- Proximity loading on the web: each biome's models arrive in the background and stay cached in the browser
 - Music player with track names and previous, pause and next controls
 - Responsive desktop and mobile layouts with touch joysticks
 - Text-only reading mode and graceful fallback when WebGL is unavailable
@@ -109,7 +115,7 @@
 
 **1. Concept and references.** The idea started from turning my existing static portfolio into a world worth exploring. The layout direction came from [José Nazaré's portfolio](https://nazarejose.vercel.app), where the site opens straight into a sailing scene, and the interface polish came from the [Melon Jelly Knife](https://claude.ai/artifact/RiTbBMEqgfNwgMHMTAhf5P) artifact: clean hierarchy, readable controls and instant feedback. The art direction mixes One Piece (the Grand Line, the Log Pose, the Den Den Mushi and Poneglyphs), The Legend of Zelda: The Wind Waker (wind as a real system, toon sea), Sea of Thieves (boat feel and cannon), Monkey Island and Pirates of the Caribbean (pirate atmosphere).
 
-**2. 3D assets with Meshy.ai.** Every model was generated and approved in Meshy.ai: five independent islands, the sloop with a clean sail ready for the Jolly Roger, a cannon split into barrel and carriage so only the barrel pitches, the cannonball, floating target buoys, a modular Log Pose and five sculpted title plates. Nothing was regenerated during development; problems were solved in the engine.
+**2. 3D assets with Meshy.ai.** Every model was generated and approved in Meshy.ai: five independent islands, the sloop with a clean sail ready for the Jolly Roger, a cannon split into barrel and carriage so only the barrel pitches, the cannonball, floating target buoys, a modular Log Pose and five sculpted title plates. Many models went through several Meshy versions until they looked right; the rest was solved in the engine.
 
 **3. First prototype with Codex.** Codex, connected to the project via MCP, built the first Godot scene: a spherical ocean, the islands, a playable sloop, the camera modes, the cannon and the first time-attack logic. That phase produced a long list of shader failures (grid patterns, banding, "boiling" water, a jelly-looking planet) that became the rules for everything after it.
 
@@ -129,6 +135,27 @@
 
 **11. Testing loop.** Every change was checked with headless Godot runs and scripted screenshots in the same renderer used on the web, then tested by me in the browser and on a phone through a local Worker before publishing.
 
+**12. A living sea (Oct 5 – Oct 16).** The empty ocean between the islands became four biomes on the 800 m planet. Layout rules (clear space around the islands, a sailing corridor, room for the creatures) are checked by a test script. Then came colossi rigged and animated in Blender, sea life, weather, a ghost ship and the Kraken. The full log of this phase, with every problem found and how it was fixed, is in **[docs/PROCESS_AUDIT.md](docs/PROCESS_AUDIT.md)**.
+
+**13. Colors that read right.** Some models looked almost white. I measured the cause instead of guessing: a dense light-blue fog (at ~170 m about 31% of a model's color was fog) plus Meshy materials exported as fully metallic. The fog was lowered and the metal tamed at load time.
+
+**14. Web budget.** With the original models the world used ~4.4 GB of video memory on my PC. The site now uses lighter copies generated in Blender (the originals are never changed) and keeps only the files the game actually uses. The biome models are split into four packs that download after the world opens. Mobile went from a 397 MB first build to 63.5 MB before the first frame, plus four packs of 6–8 MB in the background.
+
+###
+
+<h3 align="left">THE LIVING SEA:</h3>
+
+<p align="center">
+  <img src="docs/images/process/north-runestone-citadel.jpg" width="49%" alt="North: Runestone Citadel">
+  <img src="docs/images/process/east-driftwood-merchant.jpg" width="49%" alt="East: Driftwood Merchant">
+  <img src="docs/images/process/west-turtle-colossus.jpg" width="49%" alt="West: the turtle colossus carrying an island">
+  <img src="docs/images/process/south-basalt-caldera.jpg" width="49%" alt="South: basalt caldera with smoke and lava">
+  <img src="docs/images/process/east-timber-whale.jpg" width="49%" alt="Timber whale colossus">
+  <img src="docs/images/process/north-runes-at-night.jpg" width="49%" alt="Runes glowing at night">
+</p>
+
+<p align="center"><sub>More images, before/after comparisons and the full process log: <a href="docs/PROCESS_AUDIT.md">docs/PROCESS_AUDIT.md</a></sub></p>
+
 ###
 
 <h3 align="left">PROJECT STRUCTURE:</h3>
@@ -141,6 +168,8 @@ portfolio-grand-line-3d/
 │   └── Sound/SFX/             # sound effects (music streams from the web build)
 ├── Config/
 │   ├── world_layout.tres      # planet radius, wind, waves, island lat/lon
+│   ├── world_kinds.json       # measured bounds/collision of each biome model (sector packs)
+│   ├── sfx_credits.json       # Freesound credits (CC-BY / CC0)
 │   ├── portfolio_content.json # résumé content shown in the world and loading card
 │   └── music_playlist.json
 ├── Scenes/                    # cannon, Log Pose HUD, title signs, wind ribbons
@@ -151,15 +180,22 @@ portfolio-grand-line-3d/
 │   ├── sloop.gd               # sailing and buoyancy
 │   ├── SphericalOceanSimulation.gd
 │   ├── IslandEffects.gd       # per-island lights and animations
+│   ├── WorldDecor.gd          # four biomes: layout rules, landmarks, effects
+│   ├── SeaBeasts.gd           # colossi and their circuits
+│   ├── Weather.gd             # storms and cyclones
+│   ├── KrakenEvent.gd         # the Kraken encounter
+│   ├── AssetPacks.gd          # web: downloads each sector's models in the background
 │   └── NavalGame.gd           # cannon, buoys and challenge
 ├── Shaders/                   # ocean, patch, sky, sails, bow spray, droplets
-├── Tests/                     # headless checks, measurements and screenshots
+├── Tests/                     # headless checks, measurements, screenshots and videos
+├── Tools/                     # Blender rigs/animation, web variants, sound cutting
 ├── Export/                    # web shell (loading card) and world config
 ├── Web/
-│   ├── build.ps1              # export + chunking + Brotli + music
+│   ├── build.ps1              # export + chunking + Brotli + music + sector packs
+│   ├── build_variant.ps1      # desktop / mobile package from the web variants
 │   ├── worker.js              # Cloudflare Worker
 │   └── wrangler.toml
-├── docs/images/
+├── docs/                      # images and PROCESS_AUDIT.md
 ├── MainWorld.tscn
 └── project.godot
 ```
@@ -168,7 +204,7 @@ portfolio-grand-line-3d/
 
 <h3 align="left">RUN LOCALLY:</h3>
 
-Open `project.godot` in **Godot 4.7** and press F5. The original Meshy exports are not tracked in Git because of their size; the optimized models in `Assets/Optimized` are enough to run the world.
+Open `project.godot` in **Godot 4.7** and press F5. The original Meshy exports, the rigged creatures and the raw sound recordings are not tracked in Git because of their size (up to 330 MB per file). A fresh clone runs the islands and the sloop from `Assets/Optimized`; the biome landmarks and creatures need the original files. See [docs/PROCESS_AUDIT.md](docs/PROCESS_AUDIT.md#6-what-is-not-in-git-and-why).
 
 To build and serve the web version:
 
@@ -205,7 +241,11 @@ npx wrangler deploy --config Web/wrangler.toml
 - Interface reference: [Melon Jelly Knife](https://claude.ai/artifact/RiTbBMEqgfNwgMHMTAhf5P)
 - Art references: One Piece, The Legend of Zelda: The Wind Waker, Sea of Thieves, Monkey Island and Pirates of the Caribbean
 - Technical references: Seagazer's bow spray article on Jettelly, the trochoidal wave model and the open-source `godot-4-stylized-sky` and `water-wakes` studies
-- Music: AI-generated tracks and a fan remake of "The Great Sea" (not the official soundtrack)
+- Tornado: free VFX textures from Le Lu's "GODOT 3D VFX - Tornado Effect" tutorial; mesh, shaders and physics written for this project
+- Rain: technique from mmbwatt's "Easy Particle Rain in Godot 4" (CC0)
+- Music: AI-generated tracks
+- Sound effects: recordings from [Freesound](https://freesound.org), cut for the game; every author and license is listed in `Config/sfx_credits.json`
+- Weather and sea ideas studied from a reference video of The Wind Waker captured on noclip.website; nothing from Nintendo is in the project
 - All referenced franchises belong to their respective owners; this is a non-commercial personal portfolio
 
 ###
