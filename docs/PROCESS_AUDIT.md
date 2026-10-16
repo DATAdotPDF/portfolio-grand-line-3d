@@ -244,10 +244,36 @@ a phone, so the site uses generated copies.
   - smooth-by-angle shading after decimation;
   - every model texture at 2048 on desktop.
   - The download grew as a result; that is the trade-off.
-- **Not measured yet:** the time from the click until the boat can be steered, on a real phone with
-  the device and network recorded. The only timing logged so far: the live site at phone size on my
-  PC, network not recorded, browser tab in the background. It took download 5.7 s, engine 2.1 s,
-  islands 4.0 s and first frames 8.5 s.
+**5.6 Time until the boat answers the helm (cold load, measured).** `https://dotpdf.dev/?medir`
+- **What the mode does:** it opens the 3D world straight away and throttles the boat up by itself. It
+  marks the moment the hull passes 0.5 m/s, then hands the controls back. Times, bytes that really
+  crossed the network, FPS, device and network all show on screen.
+- **Run 1, Oct 16:**
+  - **Device:** desktop PC (RTX 3060 Ti, 16 cores, 32 GB) emulating a phone in the built-in browser
+    of the Claude app. Pixel 8 user agent, 375×812 viewport @1.5, mobile package, Medium graphics.
+  - **Not a real phone.** The GPU and CPU are far stronger than a phone's.
+  - **Network:** home connection. The browser reports "4g · 10 Mbps", but Chrome caps that estimate;
+    the package actually arrived at ~170 Mbps (77 MiB in 3.9 s).
+  - **Cache:** cold, with Cache Storage and IndexedDB cleared. 125.5 MiB transferred in total, which
+    matches package + engine + the four sector packs, so nothing came from the cache.
+
+| Since the click | Time |
+|---|---|
+| Game package downloaded (77.1 MiB) | 4.2 s |
+| Engine ready | 4.4 s |
+| Islands built | 9.0 s |
+| First smooth frames | 18.0 s |
+| **Boat answers the helm** | **18.0 s** |
+| Four sector packs downloaded | 20.2 s |
+| Every sector model in place | 20.7 s |
+| FPS in the 5 s after the helm | 39 |
+
+- **Where the time goes:** on a fast connection, most of the time is first-frame shader compilation
+  (9 → 18 s), not the download.
+- **On a real 4G line (estimate, not measured):** downloading the ~86 MB needed before the helm alone
+  would take ~35 s at 20 Mbps, or ~70 s at 10 Mbps.
+- **Still pending:** the same `?medir` run on a real phone. The screen shows everything needed for a
+  screenshot.
 
 - Every file in the site is under Cloudflare's 25 MiB static-asset limit.
 - The mobile package at the Low graphics tier, run on this PC (not on a phone): a steady 30 fps
