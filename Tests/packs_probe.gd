@@ -3,7 +3,7 @@ extends SceneTree
 ## Carregamento por proximidade: roda o pacote exportado (sem os modelos dos setores), põe a câmera
 ## perto de um marco do Norte e tira um print antes e depois de os pacotes chegarem.
 ## Uso (na pasta do build): Godot.exe --main-pack index.pck --resolution 1280x720
-##   --script <projeto>/Tests/packs_probe.gd -- --packs=<pasta>/packs --out=<pasta dos prints>
+##   --script <projeto>/Tests/packs_probe.gd -- --packs=<pasta>/packs-full --out=<pasta dos prints>
 
 var world: Node3D
 var out_dir := ""

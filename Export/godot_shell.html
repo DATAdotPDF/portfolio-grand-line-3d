@@ -328,6 +328,9 @@ const engine = new Engine(GODOT_CONFIG);
 			setProgress(0.7);
 			setPhase('Preparando o motor…', 'abrindo o mundo');
 			creepTo(0.8);
+			// O preloadFile do Godot usa o arquivo como chave (config.fileSizes[file]): um Uint8Array vira
+			// texto com todos os bytes, e acima de ~170 MB passa do limite de string do navegador.
+			bytes.toString = function () { return 'index.pck'; };
 			engine.preloadFile(bytes, 'index.pck');
 			return engine.init(GODOT_CONFIG.executable).then(() => {
 				mark('engineInit');

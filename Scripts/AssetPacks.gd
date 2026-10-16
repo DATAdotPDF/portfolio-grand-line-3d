@@ -73,10 +73,22 @@ func _next() -> void:
 	var url := "%s%s/%s?v=%s" % [base_url, manifest.get("dir", "packs"), entry.file, entry.version]
 	print("ASSET_PACKS baixando %s (%.1f MB)" % [current, float(entry.size) / 1048576.0])
 	if OS.has_feature("web"):
+		# Pacote acima de 20 MiB vem em partes (limite de 25 MiB por arquivo no Cloudflare): baixa
+		# todas e junta num só bloco.
+		var urls: Array = [url]
+		if entry.has("parts"):
+			urls = []
+			for part in entry.parts:
+				urls.append("%s%s/%s?v=%s" % [base_url, manifest.get("dir", "packs"), part, entry.version])
 		JavaScriptBridge.eval("""window.__portfolioPack = { done: false };
-			fetch(%s).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
-			.then(function (b) { window.__portfolioPack = { done: true, ok: true, data: new Uint8Array(b) }; })
-			.catch(function (e) { window.__portfolioPack = { done: true, ok: false, error: String(e) }; });""" % JSON.stringify(url), true)
+			Promise.all(%s.map(function (u) { return fetch(u).then(function (r) {
+				if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + u); return r.arrayBuffer(); }); }))
+			.then(function (list) {
+				var size = list.reduce(function (n, b) { return n + b.byteLength; }, 0);
+				var data = new Uint8Array(size), at = 0;
+				list.forEach(function (b) { data.set(new Uint8Array(b), at); at += b.byteLength; });
+				window.__portfolioPack = { done: true, ok: true, data: data }; })
+			.catch(function (e) { window.__portfolioPack = { done: true, ok: false, error: String(e) }; });""" % JSON.stringify(urls), true)
 		fetching = true
 		return
 	var error := http.request(url)

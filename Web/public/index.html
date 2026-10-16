@@ -157,7 +157,7 @@ h1 { font: italic 400 clamp(44px, 6.2vw, 124px)/.9 "IM Fell English", Georgia, s
 				<!-- Duas portas: quem tem pressa lê (sem baixar nada); quem tem curiosidade entra no 3D. -->
 				<div class="choose" id="choose">
 					<button class="cta primary" type="button" id="read-cv">Ler o currículo<small>1 minuto · sem download</small></button>
-					<button class="cta" type="button" id="open-3d">⚓ Explorar em 3D<small id="open-3d-note">~140 MB (~63 MB no celular) · fica em cache</small></button>
+					<button class="cta" type="button" id="open-3d">⚓ Explorar em 3D<small id="open-3d-note">~209 MB (~71 MB no celular) · fica em cache</small></button>
 				</div>
 				<div class="world" id="world" hidden>
 				<div class="voyage" id="voyage" aria-hidden="true"><div class="sea back"></div><div class="lane" id="ship"><span class="boat2d"><i></i></span></div><div class="sea front"></div></div>
@@ -178,7 +178,7 @@ h1 { font: italic 400 clamp(44px, 6.2vw, 124px)/.9 "IM Fell English", Georgia, s
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":146472600,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":219574880,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -330,6 +330,7 @@ const engine = new Engine(GODOT_CONFIG);
 			setProgress(0.7);
 			setPhase('Preparando o motor…', 'abrindo o mundo');
 			creepTo(0.8);
+			bytes.toString = function () { return 'index.pck'; };
 			engine.preloadFile(bytes, 'index.pck');
 			return engine.init(GODOT_CONFIG.executable).then(() => {
 				mark('engineInit');

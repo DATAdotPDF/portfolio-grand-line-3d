@@ -19,19 +19,24 @@ TOOL = os.path.join(ROOT, "Tools", "make_web_variant.py")
 SKIP_BELOW_MB = 6.0
 # (padrão no caminho, triângulos desktop, triângulos celular). O primeiro que casar vale.
 BUDGETS = [
-	(r"Meshy_AI_island_", 90000, 28000),       # as 5 ilhas do portfólio (o coração do site)
-	(r"Creatures/turtle", 80000, 25000),
-	(r"ghost_ship", 60000, 20000),
-	(r"Creatures/maw", 40000, 12000),
-	(r"Creatures/tentacle", 30000, 10000),
-	(r"Creatures/(dolphin|fin|flyfish)", 15000, 5000),
-	(r"Creatures/gull", 12000, 4000),
+	# Pedro achou os modelos do site toscos (2026-10-16): orçamentos maiores, sobretudo no desktop.
+	(r"Meshy_AI_island_", 200000, 50000),      # as 5 ilhas do portfólio (o coração do site)
+	# Colossos com rig (~110 mil triângulos no original): no desktop ficam inteiros (sem Decimate,
+	# que mexe nos pesos); no celular, reduzidos com folga.
+	(r"Creatures/(turtle|whale|obsidian|behemoth)", 400000, 60000),
+	(r"ghost_ship", 150000, 40000),
+	(r"Creatures/maw", 80000, 20000),
+	(r"Creatures/tentacle", 120000, 25000),
+	(r"Creatures/(dolphin|fin|flyfish)", 40000, 10000),
+	(r"Creatures/gull", 25000, 6000),
+	# Cidades (vistas de perto, 140 m de lado): o maior orçamento dos marcos.
+	(r"(driftwood_mercha|north_runestone|west_coral_paradise|mushroom_grotto)", 300000, 70000),
 	# Muitas peças pequenas: com pouco orçamento viravam cacos (folha de comparação) — celular maior.
-	(r"cargo_crates", 18000, 14000),
-	(r"abandoned_stilt_waterworks", 60000, 45000),
-	(r"(bell_buoy|spectral_lantern)", 15000, 6000),
-	(r"(coral_reef|palm_atoll|broken_megalithic)", 35000, 12000),
-	(r".*", 60000, 20000),                     # marcos dos biomas
+	(r"cargo_crates", 40000, 20000),
+	(r"abandoned_stilt_waterworks", 150000, 50000),
+	(r"(bell_buoy|spectral_lantern)", 25000, 8000),
+	(r"(coral_reef|palm_atoll|broken_megalithic)", 80000, 20000),
+	(r".*", 150000, 35000),                    # marcos dos biomas
 ]
 TOOL_ONLY = {"InspectIslandAxes.gd", "MeasureAssets.gd", "InspectIslandAxes.tscn", "MeasureAssets.tscn"}
 LEVELS = {"WebDesktop": (2048, "color_normal", 1), "WebMobile": (1024, "color", 2)}
@@ -57,7 +62,7 @@ def budget(rel):
 	for pattern, desktop, mobile in BUDGETS:
 		if re.search(pattern, rel):
 			return desktop, mobile
-	return 60000, 20000
+	return 150000, 35000
 
 
 def main():

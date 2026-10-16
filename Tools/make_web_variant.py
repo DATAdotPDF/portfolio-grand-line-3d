@@ -12,6 +12,7 @@ Malhas com esqueleto (bichos) mantêm os pesos e as animações: o Decimate é a
 modificador de Armature, que fica como está. Partes separadas (ilhas animadas, roda d'água) ficam
 separadas e com os mesmos nomes, para o jogo continuar achando cada peça.
 """
+import math
 import bpy
 import bmesh
 import sys
@@ -57,6 +58,12 @@ for obj in meshes:
 				bpy.ops.object.modifier_move_up(modifier="web_decimate")
 		with bpy.context.temp_override(object=obj):
 			bpy.ops.object.modifier_apply(modifier="web_decimate")
+
+# Sombreamento suave por ângulo: depois do Decimate a malha ficava facetada (cada face com a sua
+# normal). Arestas acima de 40° continuam vivas.
+for obj in meshes:
+	with bpy.context.temp_override(object=obj, active_object=obj, selected_objects=[obj], selected_editable_objects=[obj]):
+		bpy.ops.object.shade_smooth_by_angle(angle=math.radians(40.0), keep_sharp_edges=True)
 
 # Texturas: reduz e tira os mapas que este nível não usa.
 for mat in bpy.data.materials:

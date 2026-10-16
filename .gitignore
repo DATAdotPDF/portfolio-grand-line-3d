@@ -62,3 +62,7 @@
 /Assets/Optimized/ghost_ship*.png
 /Assets/Optimized/ghost_ship*.jpg
 /Assets/Optimized/World/_log*.txt
+
+# Cenas de trabalho do Blender (fontes locais, pesadas)
+*.blend
+*.blend1

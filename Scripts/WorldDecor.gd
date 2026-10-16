@@ -67,7 +67,6 @@ const MODELS := {
 	"driftwood_merchant": ["Meshy_AI_east_driftwood_mercha_1011001340_image-to-3d-texture.glb", 140.0, "max", 0.12],
 	"stilt_lookout_post": ["Meshy_AI_stilt_lookout_post_3d_1008215303_image-to-3d-texture.glb", 24.0, "h", 0.15],
 	"shipwreck_chest": ["Meshy_AI_shipwreck_with_chest__1008225020_image-to-3d-texture.glb", 32.0, "max", 0.12],
-	"kraken_maw_teeth": ["Meshy_AI_kraken_maw_teeth_3d_1009135650_image-to-3d-texture.glb", 46.0, "max", 0.1],
 	"coral_paradise": ["Meshy_AI_west_coral_paradise_i_1011000215_image-to-3d-texture.glb", 140.0, "max", 0.12],
 	"mushroom_grotto": ["Meshy_AI_mushroom_grotto_caver_1011005842_image-to-3d-texture.glb", 50.0, "max", 0.1],
 	"dragon_horns_reef": ["Meshy_AI_dragon_horns_reef_3d_1009111246_image-to-3d-texture.glb", 36.0, "max", 0.1],
@@ -132,7 +131,6 @@ const KINDS := {
 	"driftwood_merchant": [0.3, false, Color(1.0, 0.72, 0.4), 0.55],
 	"stilt_lookout_post": [0.3, false, Color(1.0, 0.72, 0.4), 0.85],
 	"shipwreck_chest": [0.3, false, Color(1.0, 0.8, 0.4), 0.4],
-	"kraken_maw_teeth": [0.3, false, Color(1.0, 0.3, 0.25), 0.4],
 	"coral_paradise": [0.3, false, Color(1.0, 0.5, 0.85), 0.5],
 	"mushroom_grotto": [0.3, false, Color(0.6, 1.0, 0.7), 0.5],
 	"dragon_horns_reef": [0.3, false, Color(1.0, 0.45, 0.85), 0.4],
@@ -142,7 +140,8 @@ const KINDS := {
 	"balancing_tor_rock": [0.3, false, null, 0.0],
 }
 ## Modelos antigos que ficaram fora dos biomas (não entram como "modelo novo").
-const RETIRED := ["sunken_lighthouse", "volcanic_island", "sea_arch", "needle_rocks", "lantern_buoy"]
+## kraken_maw_teeth: a boca do Kraken não é ilha (Pedro, 2026-10-16); ela só existe no encontro (KrakenEvent).
+const RETIRED := ["sunken_lighthouse", "volcanic_island", "sea_arch", "needle_rocks", "lantern_buoy", "kraken_maw_teeth"]
 ## Arcos navegáveis: só os dois pilares colidem (frações da largura no eixo x).
 const ARCHES := ["leviathan_jaw_arch", "low_reef_arch"]
 ## Modelos com runas: brilham mais à noite (shaders/rune_glow).
@@ -162,7 +161,7 @@ const GLOW_OF := {
 	"ocean_stonehenge": "stone", "megalithic_dolmen_ring": "stone", "cyclopean_stepped_cairn": "stone",
 	"coral_reef": "coral", "limestone_coral_needle": "coral", "twin_sea_pinnacles": "coral",
 	"low_reef_arch": "coral", "stepped_basalt_reef": "coral", "spectral_lantern": "lantern",
-	"runestone_citadel": "rune", "split_monolith_runes": "rune", "kraken_maw_teeth": "stone",
+	"runestone_citadel": "rune", "split_monolith_runes": "rune",
 	"coral_paradise": "coral", "mushroom_grotto": "coral", "dragon_horns_reef": "coral",
 }
 ## Quatro mares: cor para onde cada bioma puxa o mar (a = quanto), na ordem N, L, S, O
@@ -188,7 +187,7 @@ const BIOMES := {
 			"cyclopean_stepped_cairn", "megalithic_dolmen_ring", "shipwreck_chest"],
 		"filler": ["balancing_tor_rock", "sea_stack_spire"]},
 	Sector.SOUTH: {"name": "Abismo e Kraken", "anchor": Vector2(-50.0, 0.0),
-		"landmarks": ["basalt_caldera", "kraken_maw_teeth", "leviathan_jaw_arch", "ship_graveyard", "volcanic_crag",
+		"landmarks": ["basalt_caldera", "leviathan_jaw_arch", "ship_graveyard", "volcanic_crag",
 			"floating_basalt_chain", "obsidian_rib_spire", "dragon_horns_reef"],
 		"filler": ["dark_needle_rocks"]},
 	Sector.WEST: {"name": "Corais e Tartaruga", "anchor": Vector2(-12.0, 210.0),
@@ -280,6 +279,8 @@ const KIND_CACHE := "res://Config/world_kinds.json"
 const CORE_KINDS := ["turtle_island", "basalt_caldera", "volcanic_crag"]
 ## Itens montados por quadro quando um pacote chega (instanciar é o que pesa).
 const ATTACH_PER_FRAME := 2
+## Ritmo da roda d'água abandonada (fração do clipe "Idle" do Blender).
+const WATERWHEEL_SPEED := 0.15
 
 var world: Node3D
 var planet_radius := 800.0
@@ -1068,8 +1069,10 @@ func _dress_model(item: Dictionary, model: Node3D) -> void:
 		player.seek(float(item.idle_seek) * player.current_animation_length, true)
 		player.speed_scale = float(item.idle_speed)
 		item.player = player
-	if item.kind == "abandoned_stilt_waterworks":
-		_build_waterwheel_water(item)
+	# Roda d'água: POI antigo, sem água caindo; a roda só gira bem devagar, como se fosse o vento
+	# (Pedro, 2026-10-16). _build_waterwheel_water fica guardada, sem uso.
+	if item.kind == "abandoned_stilt_waterworks" and player:
+		player.speed_scale = WATERWHEEL_SPEED
 	# Colisão que esperava o contorno do modelo (não estava em KIND_CACHE).
 	if item.get("needs_footprint", false):
 		item.erase("needs_footprint")

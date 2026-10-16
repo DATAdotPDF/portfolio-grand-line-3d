@@ -26,7 +26,7 @@ robocopy $root $mirror /MIR /XD $excludeDirs /XF "*.tmp" /NFL /NDL /NJH /NJS /NP
 # Assets sem GLB e sem as texturas extraídas dos GLBs (a variante extrai as dela no import).
 robocopy (Join-Path $root "Assets") (Join-Path $mirror "Assets") /MIR `
 	/XD (Join-Path $root "Assets\WebDesktop") (Join-Path $root "Assets\WebMobile") `
-	/XF "*.tmp" "(PROPOSAL)*" "*.glb" "*.glb.import" "*_Image_*.jpg" "*_Image_*.jpg.import" "*image-to-3d-texture*.jpg" "*image-to-3d-texture*.jpg.import" "*concept*.png" "*concept*.png.import" `
+	/XF "*.tmp" "*.blend" "*.blend1" "(PROPOSAL)*" "*.glb" "*.glb.import" "*_Image_*.jpg" "*_Image_*.jpg.import" "*image-to-3d-texture*.jpg" "*image-to-3d-texture*.jpg.import" "*concept*.png" "*concept*.png.import" `
 	/NFL /NDL /NJH /NJS /NP | Out-Null
 New-Item -ItemType File -Force (Join-Path $mirror "Builds\.gdignore") | Out-Null
 # O export leva todo recurso do espelho: tira o que o jogo não usa. Gravações brutas de SFX (só os
@@ -104,9 +104,8 @@ foreach ($imp in Get-ChildItem (Join-Path $mirror "Assets") -Recurse -Include *.
 	$text = Get-Content $imp.FullName -Raw
 	if ($text -notmatch 'compress/mode=') { continue }
 	$new = $text -replace 'compress/mode=\d', "compress/mode=$mode"
-	# Texturas dos modelos (nome "<glb>_..."): tamanho cheio só no que se vê de perto (ilhas do
-	# portfólio, chalupa, placas); o resto (marcos, bichos, bússola, canhão) com metade do lado — 1/4 do
-	# download. Desktop 2048/1024, celular 1024/512 (no celular, mapas além da cor — normal, rugosidade —
+	# Texturas dos modelos (nome "<glb>_..."). Desktop: tudo 2048 (Pedro achou os modelos toscos com 1024, 2026-10-16). Celular: 1024 nas
+	# ilhas, placas, cidades e colossos, 512 no resto (mapas além da cor — normal, rugosidade —
 	# sempre 512). Céu, nuvens e efeitos: desktop como estão, celular 1024. As placas têm o título
 	# pintado na textura: ficam no tamanho cheio.
 	$texName = $imp.Name.Substring(0, $imp.Name.Length - ".import".Length)
@@ -114,7 +113,8 @@ foreach ($imp in Get-ChildItem (Join-Path $mirror "Assets") -Recurse -Include *.
 		Where-Object { $texName.StartsWith([IO.Path]::GetFileNameWithoutExtension($_.Name) + "_") } | Select-Object -First 1)
 	$full = if ($Profile -eq "desktop") { 2048 } else { 1024 }
 	$limit = if (-not $isModel) { $(if ($Profile -eq "mobile") { 1024 } else { 0 }) }
-		elseif ($texName -match '(?i)island_|chalupe|sloop|gear5|title_' -and ($Profile -eq "desktop" -or $texName -match '_(Image_)?(texture_)?0\.')) { $full }
+		elseif ($Profile -eq "desktop") { $full }
+		elseif ($texName -match '(?i)island_|chalupe|sloop|gear5|title_|driftwood_mercha|north_runestone|west_coral_paradise|mushroom_grotto|whale|turtle|obsidian|behemoth' -and $texName -match '_(Image_)?(texture_)?0\.') { $full }
 		else { $full / 2 }
 	$new = $new -replace 'process/size_limit=\d+', "process/size_limit=$limit"
 	if ($new -ne $text) { Set-Content $imp.FullName $new -NoNewline }
@@ -159,9 +159,32 @@ foreach ($pack in $packs.Keys) {
 	& $Godot --headless --path $mirror --export-pack "Pack-$pack" (Join-Path $packDir $file) 2>&1 | Out-Null
 	$path = Join-Path $packDir $file
 	if (-not (Test-Path $path)) { throw "Pacote $pack falhou" }
-	$manifest.packs[$pack] = [ordered]@{ file = $file; size = (Get-Item $path).Length
+	# Pacote vazio = os modelos não foram importados no espelho (já aconteceu com um .blend solto em
+	# Assets travando o import): para aqui em vez de publicar um mundo sem os setores.
+	if ((Get-Item $path).Length -lt 1MB) { throw "Pacote $pack vazio ($((Get-Item $path).Length) bytes): import do espelho falhou" }
+	$entry = [ordered]@{ file = $file; size = (Get-Item $path).Length
 		version = (Get-FileHash $path -Algorithm SHA256).Hash.Substring(0, 12).ToLower() }
-	Write-Host ("  [$Profile]     {0}: {1} modelos, {2:N1} MB" -f $file, @($packs[$pack]).Count, ((Get-Item $path).Length / 1MB))
+	# Acima de 20 MiB: em partes (o Cloudflare aceita até 25 MiB por arquivo); o jogo junta no navegador.
+	# O inteiro vai para packs-full (teste fora do navegador: --packs=<build>/packs-full).
+	$full = Join-Path $outDir "packs-full"
+	New-Item -ItemType Directory -Force $full | Out-Null
+	if ($entry.size -gt 20MB) {
+		$bytes = [IO.File]::ReadAllBytes($path)
+		$parts = @()
+		for ($offset = 0; $offset -lt $bytes.Length; $offset += 20MB) {
+			$name = "{0}.part-{1:D2}" -f $file, $parts.Count
+			$stream = [IO.File]::Create((Join-Path $packDir $name))
+			$stream.Write($bytes, $offset, [Math]::Min(20MB, $bytes.Length - $offset))
+			$stream.Close()
+			$parts += $name
+		}
+		$entry.parts = $parts
+		Move-Item $path (Join-Path $full $file) -Force
+	} else {
+		Copy-Item $path (Join-Path $full $file) -Force
+	}
+	$manifest.packs[$pack] = $entry
+	Write-Host ("  [$Profile]     {0}: {1} modelos, {2:N1} MB{3}" -f $file, @($packs[$pack]).Count, ($entry.size / 1MB), $(if ($entry.parts) { " em $($entry.parts.Count) partes" } else { "" }))
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $mirror "Config\world_packs.json") -Encoding utf8
 # O principal fica sem os modelos dos pacotes (e sem as texturas extraídas deles).
