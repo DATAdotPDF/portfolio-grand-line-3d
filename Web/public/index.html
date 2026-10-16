@@ -178,7 +178,7 @@ h1 { font: italic 400 clamp(44px, 6.2vw, 124px)/.9 "IM Fell English", Georgia, s
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":233062080,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":233062912,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -380,6 +380,62 @@ const engine = new Engine(GODOT_CONFIG);
 		setTimeout(hideStatus, new URLSearchParams(location.search).has('debug') ? 4000 : 500);
 	}
 	window.__worldReady = worldReady;
+
+	// ?medir: mede do clique até o barco responder ao leme (o jogo acelera sozinho e marca "steer"),
+	// os bytes que de fato passaram pela rede e o FPS, e mostra tudo na tela (para print no celular).
+	const measuring = new URLSearchParams(location.search).has('medir');
+	window.__portfolioMark = function (name) {
+		mark(name);
+		if (!measuring) return;
+		renderMeasure();
+		if (name === 'steer') {
+			let frames = 0;
+			const t0 = performance.now();
+			(function tick() {
+				frames++;
+				if (performance.now() - t0 < 5000) requestAnimationFrame(tick);
+				else { timings.fps = Math.round(frames / ((performance.now() - t0) / 1000)); renderMeasure(); }
+			})();
+		}
+	};
+	function transferredMB(until) {
+		const entries = performance.getEntriesByType('resource').filter((e) => until === undefined || e.responseEnd <= until);
+		return entries.reduce((n, e) => n + (e.transferSize || 0), 0) / 1048576;
+	}
+	function renderMeasure() {
+		let box = document.getElementById('measure');
+		if (!box) {
+			box = document.createElement('pre');
+			box.id = 'measure';
+			box.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99999;margin:0;padding:10px 12px;max-width:calc(100vw - 16px);' +
+				'white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace;color:#fff;background:rgba(10,20,40,.88);border-radius:6px;pointer-events:none';
+			document.body.appendChild(box);
+		}
+		const t = (name) => timings[name] !== undefined && timings.click !== undefined ? ((timings[name] - timings.click) / 1000).toFixed(1) + ' s' : '…';
+		const net = navigator.connection || {};
+		const prof = window.__portfolioProfile || {};
+		const lines = [
+			'MEDIÇÃO (tempos desde o clique em Explorar em 3D)',
+			'aparelho: ' + navigator.userAgent.replace(/^Mozilla\/5.0 /, '').slice(0, 90),
+			'tela: ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1).toFixed(2) + ' · núcleos ' + (prof.cores || '?') + ' · memória ' + (prof.memory ? prof.memory + ' GB' : '?'),
+			'gpu: ' + (prof.gpu || '?').slice(0, 60),
+			'rede: ' + (net.effectiveType || '?') + (net.downlink ? ' · ' + net.downlink + ' Mbps' : '') + (net.rtt ? ' · rtt ' + net.rtt + ' ms' : '') + (net.saveData ? ' · economia' : ''),
+			'pacote: ' + (prof.lite ? 'celular' : 'desktop') + ' · gráficos ' + (prof.tier || '?'),
+			'',
+			'pacote baixado ........ ' + t('downloaded'),
+			'motor pronto .......... ' + t('engineInit'),
+			'ilhas montadas ........ ' + t('worldBuilt'),
+			'primeiros quadros ..... ' + t('worldReady'),
+			'BARCO RESPONDEU ....... ' + t('steer') + (timings.steer ? '  (' + transferredMB(timings.steer).toFixed(1) + ' MB transferidos até aqui)' : ''),
+			'setores baixados ...... ' + t('packsLoaded'),
+			'setores no lugar ...... ' + t('sectorsPlaced'),
+			'FPS (5 s após o leme) . ' + (timings.fps || '…'),
+			'total transferido ..... ' + transferredMB().toFixed(1) + ' MB (0 = veio do cache)',
+		];
+		box.textContent = lines.join('\n');
+		console.info('[medir]', JSON.stringify({ timings: timings, transferred_mb: +transferredMB().toFixed(1), profile: prof,
+			net: { type: net.effectiveType, downlink: net.downlink, rtt: net.rtt }, ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio] }));
+	}
 	if (new URLSearchParams(location.search).has('debug')) numbers.hidden = false;
 	// O jogo (.pck) é servido em partes < 25 MiB (limite do Cloudflare). O navegador
 	// baixa as partes (com nova tentativa), junta num buffer e entrega ao Godot — sem depender do Worker.
@@ -419,6 +475,7 @@ const engine = new Engine(GODOT_CONFIG);
 			try { Object.defineProperty(window, 'devicePixelRatio', { get: () => dpr, configurable: true }); } catch (e) {}
 		}
 		const manifestName = lite ? 'index.mobile.pck.parts.json' : 'index.pck.parts.json';
+		window.__portfolioProfile = { lite: lite, tier: tier, gpu: gpu, memory: navigator.deviceMemory || null, cores: navigator.hardwareConcurrency || null };
 		let manifest = await fetch(manifestName, { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
 		if (!manifest && lite) {
 			manifest = await fetch('index.pck.parts.json', { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null);
@@ -467,7 +524,7 @@ const engine = new Engine(GODOT_CONFIG);
 	const query = new URLSearchParams(location.search);
 	if (query.has('texto')) {
 		openReader();
-	} else if (!missing.length && (query.has('ilha') || query.has('3d'))) {
+	} else if (!missing.length && (query.has('ilha') || query.has('3d') || query.has('medir'))) {
 		start3D();
 	}
 }());

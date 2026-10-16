@@ -1178,12 +1178,32 @@ func _apply_web_deeplink() -> void:
 		var parts := pair.split("=")
 		params[parts[0].uri_decode()] = parts[1].uri_decode() if parts.size() > 1 else ""
 	print("DEEPLINK ", params)
+	if params.has("medir"):
+		_start_measure()
 	await get_tree().create_timer(0.8).timeout
 	var ids := ["sobre", "experiencia", "formacao", "projetos", "contato"]
 	if params.has("ilha") and ids.has(params.ilha):
 		_select_island(ids.find(params.ilha))
 	elif params.get("modo", "") == "regata":
 		_start_time_attack()
+
+## ?medir (site): mede o tempo até o barco responder ao leme. Acelera sozinho desde o primeiro
+## quadro e avisa a página (marca "steer") quando o casco passa de 0,5 m/s; depois devolve o controle.
+func _start_measure() -> void:
+	ship.controls_override = true
+	ship.test_controls = Vector3(1.0, 0.0, 0.0)
+	var timer := Timer.new()
+	timer.wait_time = 0.05
+	timer.autostart = true
+	add_child(timer)
+	timer.timeout.connect(func() -> void:
+		if absf(float(ship.measured_speed)) < 0.5:
+			return
+		timer.queue_free()
+		ship.test_controls = Vector3.ZERO
+		ship.controls_override = false
+		print("MEASURE steer speed=%.2f" % ship.measured_speed)
+		JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('steer')", true))
 
 func _leave_intro() -> void:
 	intro_orbit = false

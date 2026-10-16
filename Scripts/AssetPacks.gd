@@ -56,6 +56,8 @@ func _next() -> void:
 	if queue.is_empty():
 		current = ""
 		print("ASSET_PACKS todos carregados")
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('packsLoaded')", true)
 		return
 	current = queue.pop_front()
 	var entry: Dictionary = manifest.packs[current]

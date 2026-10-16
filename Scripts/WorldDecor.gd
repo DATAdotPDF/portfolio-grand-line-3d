@@ -2119,3 +2119,5 @@ func _attach_pending() -> void:
 		_dress_model(item, (scenes[item.kind] as PackedScene).instantiate())
 	if pending.is_empty():
 		print("WORLD_DECOR todos os modelos dos setores no lugar")
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('sectorsPlaced')", true)
