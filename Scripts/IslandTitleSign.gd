@@ -1,6 +1,8 @@
 @tool
 extends Node3D
 
+const SIGN_WIDTH := 13.0
+
 const TITLES := ["SOBRE","EXPERIÊNCIA","FORMAÇÃO","PROJETOS","CONTATO"]
 const PLATES := [
 	"res://Assets/Optimized/title_sobre.glb",
@@ -51,7 +53,8 @@ func _ready() -> void:
 				paint.disable_fog = true
 				mesh.set_surface_override_material(surface,paint)
 				title_materials.append(paint)
-	var factor := 8.0/bounds.size.x
+	# Largura da placa no mundo (Pedro pediu maiores: eram 8 m).
+	var factor := SIGN_WIDTH/bounds.size.x
 	model.scale = Vector3.ONE*factor
 	model.position = -bounds.get_center()*factor
 	label.text = TITLES[island_index]
@@ -66,7 +69,7 @@ func _ready() -> void:
 		widest=maxf(widest,ThemeDB.fallback_font.get_string_size(line,HORIZONTAL_ALIGNMENT_LEFT,-1,label.font_size).x)
 	label.width=widest+8.0
 	label.autowrap_mode=TextServer.AUTOWRAP_WORD
-	label.pixel_size=minf(0.010,4.9/widest)
+	label.pixel_size=minf(0.010*SIGN_WIDTH/8.0,SIGN_WIDTH*0.6125/widest)
 	label.position=Vector3(0,0.12,bounds.size.z*factor*0.5+0.05)
 	label.modulate=Color("ffd700")
 	label.outline_modulate=Color.BLACK
@@ -77,8 +80,8 @@ func _ready() -> void:
 		label.reparent(meshes[0],true)
 	title_light = OmniLight3D.new()
 	title_light.name = "TitleWarmLight"
-	title_light.position = Vector3(0,0.5,2.0)
-	title_light.omni_range = 4.5
+	title_light.position = Vector3(0,0.5,2.0)*SIGN_WIDTH/8.0
+	title_light.omni_range = 4.5*SIGN_WIDTH/8.0
 	title_light.light_color = Color("ffe4a0")
 	title_light.shadow_enabled = false
 	add_child(title_light)

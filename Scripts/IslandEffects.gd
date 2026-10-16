@@ -1,7 +1,5 @@
 extends Node3D
 
-const Parts = preload("res://Scripts/MeshParts.gd")
-
 var decorative_cannons: Array[Dictionary] = []
 var cannon_timer := 8.0
 var cannon_rng := RandomNumberGenerator.new()
@@ -32,8 +30,62 @@ var beacon: MeshInstance3D
 var panes: Array[MeshInstance3D] = []
 var bonfire: GPUParticles3D
 var lantern_materials: Array[ShaderMaterial] = []
+var lantern_meshes: Array[MeshInstance3D] = []
 var lantern_glass: MeshInstance3D
 var snail_base := Vector3.ZERO
+var lamp_head: MeshInstance3D
+## Animações das ilhas feitas no Blender (Tools/animate_islands_blender.py): o GLB traz as peças que
+## se mexem (Chimney, Cannon_N, Poneglyph, Palm_N, ChestLid, LanternRoom, SnailShell, Antenna_N…)
+## e um AnimationPlayer; aqui só disparamos/repetimos. Cada animação ganha um player próprio para
+## várias tocarem juntas (loop das palmeiras + baú, por exemplo).
+var anim_players := {}
+var chimney: Node3D
+var chimney_puff: GPUParticles3D
+var puff_timer := 3.0
+var chests: Array[Dictionary] = []
+
+## Barco do jogador (main_world.ship; o nó não se chama mais PlayerSloop).
+func _player_ship() -> Node3D:
+	var world := get_parent().get_parent().get_parent()
+	return world.get("ship") as Node3D if world else null
+
+func part_mesh(part_name: String) -> MeshInstance3D:
+	return model.find_child(part_name, true, false) as MeshInstance3D
+
+## Caixa da peça no espaço da ilha (os vértices já estão nele).
+func part_box(part_name: String) -> AABB:
+	var mesh := part_mesh(part_name)
+	return model.global_transform.affine_inverse() * mesh.global_transform * mesh.mesh.get_aabb() if mesh else AABB()
+
+## Player só desta animação (sem as faixas de repouso das outras peças que o glTF põe junto).
+func island_anim(anim_name: String) -> AnimationPlayer:
+	if anim_players.has(anim_name):
+		return anim_players[anim_name]
+	var source := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if source == null or not source.has_animation(anim_name):
+		return null
+	var anim := source.get_animation(anim_name).duplicate() as Animation
+	for t in range(anim.get_track_count() - 1, -1, -1):
+		if anim.track_get_key_count(t) <= 1:
+			anim.remove_track(t)
+	var library := AnimationLibrary.new()
+	library.add_animation(anim_name, anim)
+	var player := AnimationPlayer.new()
+	player.name = "Anim_" + anim_name
+	source.get_parent().add_child(player)
+	player.root_node = player.get_path_to(source.get_node(source.root_node))
+	player.add_animation_library("", library)
+	anim_players[anim_name] = player
+	return player
+
+func play_loop(anim_name: String) -> void:
+	var player := island_anim(anim_name)
+	if player:
+		player.play(anim_name)
+
+## Ponto do espaço da ilha → espaço deste nó (onde ficam luzes e partículas).
+func island_point(at: Vector3) -> Vector3:
+	return to_local(model.global_transform * at)
 
 func point(x: float, y: float, z: float) -> Vector3:
 	return (bounds.position + bounds.size * Vector3(x, y, z)) * factor + model.position
@@ -126,6 +178,36 @@ func lit_pane(where: Vector3, outward: Vector3, size: Vector2, color: Color) -> 
 	add_child(light)
 	lamps.append(light)
 
+## Chama dentro da câmara de uma lanterna de pedra: miolo emissivo pequeno + luz curta, as duas lá
+## dentro; só as aberturas da lanterna brilham. O miolo entra em `panes` (aparece só à noite).
+func lantern_flame(where: Vector3) -> void:
+	var core := MeshInstance3D.new()
+	core.name = "LanternFlame"
+	var ball := SphereMesh.new()
+	ball.radius = 0.2
+	ball.height = 0.4
+	ball.radial_segments = 10
+	ball.rings = 5
+	core.mesh = ball
+	var hot := StandardMaterial3D.new()
+	hot.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	hot.albedo_color = Color(1.0, 0.82, 0.45)
+	hot.disable_fog = true
+	core.material_override = hot
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	core.position = where
+	add_child(core)
+	panes.append(core)
+	var light := OmniLight3D.new()
+	light.name = "LanternLight"
+	light.position = where
+	light.light_color = Color("ffb85c")
+	light.omni_range = 1.3
+	light.omni_attenuation = 1.0
+	light.shadow_enabled = false
+	add_child(light)
+	lamps.append(light)
+
 ## Fogueira: chamas em partículas + luz forte que tremula.
 func _build_bonfire(where: Vector3) -> void:
 	var fire := GPUParticles3D.new()
@@ -190,8 +272,9 @@ func _build_bonfire(where: Vector3) -> void:
 
 ## Vidro da lanterna do farol pintado de branco fluorescente à noite (a luz parece sair dali).
 func _paint_lantern_glass(center_local: Vector3) -> void:
-	var model_center := model.transform.affine_inverse() * center_local
+	var world_center: Vector3 = (get_parent() as Node3D).global_transform * center_local
 	for mesh in model.find_children("*", "MeshInstance3D", true, false):
+		var model_center: Vector3 = mesh.global_transform.affine_inverse() * world_center
 		for surface in range(mesh.mesh.get_surface_count()):
 			var original := mesh.get_active_material(surface) as StandardMaterial3D
 			if original == null or original.albedo_texture == null:
@@ -204,6 +287,7 @@ func _paint_lantern_glass(center_local: Vector3) -> void:
 			glow.set_shader_parameter("glow_radius", 0.12)
 			mesh.set_surface_override_material(surface, glow)
 			lantern_materials.append(glow)
+			lantern_meshes.append(mesh)
 
 func _build_chimney_smoke(where: Vector3) -> void:
 	var smoke := GPUParticles3D.new()
@@ -258,7 +342,14 @@ func _ready() -> void:
 				lit_pane(point(w.x, w.y, w.z), Vector3.BACK, Vector2(0.55, 0.6), Color("ffb85c"))
 			for d in [Vector3(0.330, 0.354, 0.293), Vector3(0.466, 0.362, 0.310)]:
 				lit_pane(point(d.x, d.y, d.z), Vector3.BACK, Vector2(0.8, 1.2), Color("ff9f45"))
-			_build_chimney_smoke(point(0.632, 0.775, 0.275))
+			chimney = part_mesh("Chimney")
+			if chimney:
+				var box := part_box("Chimney")
+				var top := island_point(box.get_center() + Vector3(0, box.size.y * 0.5, 0))
+				_build_chimney_smoke(top)
+				chimney_puff = _puff_emitter(top)
+			else:
+				_build_chimney_smoke(point(0.632, 0.775, 0.275))
 		1:
 			_build_fort_cannons()
 			# Fogueira no pátio + uma luz em cada torre (medidos no topo da malha).
@@ -267,6 +358,12 @@ func _ready() -> void:
 				window_light(point(tower.x, tower.y, tower.z), Color("ffb050"), 5.0)
 		2:
 			_extract_cube()
+			# Lanternas de pedra dos dois lados da escada: chama no miolo da câmara de cada uma (achado
+			# varrendo a frente com raios de física: abertura vazada à altura da janela, atrás da moldura).
+			for lantern in [Vector3(0.350, 0.477, 0.824), Vector3(0.621, 0.477, 0.824)]:
+				lantern_flame(point(lantern.x, lantern.y, lantern.z))
+			# Poneglyph flutua/gira e as palmeiras balançam: tudo no loop "idle" feito no Blender.
+			play_loop("idle")
 			var glow := lamp(point(0.5, 0.60, 0.50), Color("00f0ff"), 7.0)
 			if cube: glow.global_position = cube.global_position
 			particles = GPUParticles3D.new()
@@ -296,14 +393,20 @@ func _ready() -> void:
 			add_child(particles)
 		3:
 			_build_treasure()
+			# Único baú com tampa separada (ChestLid, animação chest_open); palmeiras no loop "idle".
+			_build_chest_lid()
+			play_loop("idle")
 			# Brilho do ouro logo acima de cada baú.
 			for chest in [Vector3(0.290, 0.30, 0.712), Vector3(0.742, 0.27, 0.686)]:
 				window_light(point(chest.x, chest.y, chest.z), Color("ffcc40"), 4.0)
 				glow_sprite(point(chest.x, chest.y + 0.02, chest.z), Color(1.0, 0.8, 0.3), 1.4)
 		4:
-			snail = Parts.extract(model, AABB(Vector3(-0.1, 0.64, -0.50), Vector3(0.58, 0.34, 0.65)), "DenDenMushi")
+			# Concha do Den Den Mushi (shell_ring quando toca), antenas e sala da lanterna (loop "idle").
+			snail = part_mesh("SnailShell")
+			var room := part_box("LanternRoom")
+			play_loop("idle")
 			lantern_pivot = Node3D.new()
-			lantern_pivot.position = Vector3(0.1815, 0.52, -0.204) * factor + model.position
+			lantern_pivot.position = island_point(room.get_center())
 			add_child(lantern_pivot)
 			beam = SpotLight3D.new()
 			beam.spot_range = 600.0
@@ -318,8 +421,8 @@ func _ready() -> void:
 			# Lanterna acesa por dentro: núcleo emissivo que aparece de longe (sem névoa).
 			lantern_glass = MeshInstance3D.new()
 			var core := SphereMesh.new()
-			core.radius = 0.55
-			core.height = 1.1
+			core.radius = 0.3
+			core.height = 0.6
 			lantern_glass.mesh = core
 			var hot := StandardMaterial3D.new()
 			hot.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -330,7 +433,21 @@ func _ready() -> void:
 			lantern_glass.position = lantern_pivot.position
 			add_child(lantern_glass)
 			beacon = glow_sprite(lantern_pivot.position, Color(1.0, 0.92, 0.65), 2.6)
-			_paint_lantern_glass(model.transform * Vector3(0.17, 0.552, -0.19))
+			# O topo do farol fica parado: quem gira é a lâmpada lá dentro, junto com o facho.
+			lamp_head = MeshInstance3D.new()
+			lamp_head.name = "LampHead"
+			var lens := BoxMesh.new()
+			lens.size = Vector3(0.7, 0.5, 0.14)
+			lamp_head.mesh = lens
+			var bright := StandardMaterial3D.new()
+			bright.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			bright.albedo_color = Color(1.0, 0.97, 0.8)
+			bright.disable_fog = true
+			lamp_head.material_override = bright
+			lamp_head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			lamp_head.position = Vector3(0, 0, -0.45)
+			lantern_pivot.add_child(lamp_head)
+			_paint_lantern_glass(model.transform * room.get_center())
 			beam_cone = MeshInstance3D.new()
 			var cone := CylinderMesh.new()
 			cone.top_radius = 0.08
@@ -364,12 +481,24 @@ func _process(delta: float) -> void:
 		light.visible = (view_ok or light.name == "LanternInteriorGlow") and (night > 0.05 or index == 2)
 		var flicker := 1.0 + 0.10 * sin(elapsed * 8.1 + i * 2.0) + 0.05 * sin(elapsed * 13.7)
 		var strength := 6.0 if light.name == "BonfireLight" else 2.6
-		light.light_energy = (lerpf(0.35, 3.2, night) if index == 2 else night * strength) * flicker + flash
+		light.light_energy = (lerpf(0.35, 3.2, night) if index == 2 and light.name != "LanternLight" else night * strength) * flicker + flash
 	
+	if chimney:
+		puff_timer -= delta
+		if puff_timer <= 0.0 and in_view:
+			puff_timer = randf_range(2.6, 4.2)
+			island_anim("chimney_puff").stop()
+			island_anim("chimney_puff").play("chimney_puff")
+			# A baforada sai no fim do squash (quadro 4 de 24 fps no Blender).
+			get_tree().create_timer(0.17).timeout.connect(chimney_puff.restart)
+		(chimney_puff.process_material as ParticleProcessMaterial).gravity = global_position.normalized() * 0.25
+	if not chests.is_empty():
+		var sloop := _player_ship()
+		# Abre com o barco chegando perto ou com a câmera de visita (Carta) rodando a ilha.
+		var near_chest: bool = (sloop != null and sloop.global_position.distance_to(global_position) < 60.0) or (camera != null and camera.global_position.distance_to(global_position) < 45.0)
+		for chest in chests:
+			_update_chest(chest, near_chest)
 	if cube:
-		cube.position = cube_base + Vector3.UP * (sin(elapsed * 1.5) * 0.12 / factor)
-		# Gira no sentido contrário à órbita da câmera de visita.
-		cube.rotate_y(deg_to_rad(-14.0) * delta)
 		for mat in cube_materials:
 			mat.set_shader_parameter("glow", lerpf(0.35, 2.0, night) * (0.85 + 0.15 * sin(elapsed * 3.0)))
 	
@@ -377,18 +506,10 @@ func _process(delta: float) -> void:
 		cannon_timer -= delta
 		if cannon_timer <= 0.0 and not decorative_cannons.is_empty():
 			cannon_timer = cannon_rng.randf_range(4.0, 8.0)
-			var cannon: Dictionary = decorative_cannons[cannon_rng.randi_range(0, decorative_cannons.size() - 1)]
-			var recoil := create_tween()
-			recoil.tween_property(cannon.node, "position:z", cannon.base_z - 0.16 / factor, 0.09)
-			recoil.tween_property(cannon.node, "position:z", cannon.base_z, 0.65)
-			cannon.smoke.restart()
-			# Clarão da boca do canhão.
-			cannon.muzzle.light_energy = 7.0
-			create_tween().tween_property(cannon.muzzle, "light_energy", 0.0, 0.35)
-			cannon.sound.play()
+			_fire_cannon(decorative_cannons[cannon_rng.randi_range(0, decorative_cannons.size() - 1)])
 	
 	if snail:
-		var boat := get_parent().get_parent().get_parent().get_node_or_null("PlayerSloop")
+		var boat := _player_ship()
 		var ringing: bool = boat != null and boat.global_position.distance_to(global_position) < 40.0
 		if camera and camera.global_position.distance_to(snail.global_position) < 85.0:
 			var cursor := get_viewport().get_mouse_position()
@@ -400,6 +521,10 @@ func _process(delta: float) -> void:
 		if ringing and ring_timer <= 0.0:
 			ring_timer = 4.5
 			snail_audio.play()
+			var ring_anim := island_anim("shell_ring")
+			if ring_anim:
+				ring_anim.stop()
+				ring_anim.play("shell_ring")
 		for i in range(signal_rings.size()):
 			var phase := (4.5 - ring_timer - float(i) * 0.2) / 1.2
 			var ring := signal_rings[i]
@@ -412,9 +537,6 @@ func _process(delta: float) -> void:
 					var color := ring_mat.albedo_color
 					color.a = (1.0 - phase) * 0.5
 					ring_mat.albedo_color = color
-		# Den Den Mushi (torre de rádio): balança e 'escuta' girando de leve.
-		snail.rotation.z = sin(elapsed * 26.0) * 0.028 if ringing else sin(elapsed * 1.3) * 0.035
-		snail.rotation.y = sin(elapsed * 0.45) * 0.25
 	
 	for mat in treasure_materials:
 		mat.set_shader_parameter("night", night)
@@ -428,6 +550,9 @@ func _process(delta: float) -> void:
 		beam.visible = beam.light_energy > 0.1
 		beam_cone.visible = beam.visible
 		beam_cone.material_override.set_shader_parameter("energy", night)
+		if lamp_head:
+			# De dia a lâmpada aparece apagada (amarelada); à noite acende forte.
+			(lamp_head.material_override as StandardMaterial3D).albedo_color = Color(0.85, 0.8, 0.6).lerp(Color(1.0, 0.97, 0.8) * 1.8, night)
 		if lantern_glass:
 			lantern_glass.visible = night > 0.05
 			(lantern_glass.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.95, 0.7) * lerpf(0.6, 1.6, night)
@@ -436,8 +561,11 @@ func _process(delta: float) -> void:
 		(pane.material_override as StandardMaterial3D).albedo_color.a = 1.0
 	if bonfire:
 		bonfire.emitting = night > 0.05 and in_view
-	for mat in lantern_materials:
+	var beam_world: Vector3 = -lantern_pivot.global_basis.z if lantern_pivot else Vector3.FORWARD
+	for i in lantern_materials.size():
+		var mat := lantern_materials[i]
 		mat.set_shader_parameter("night", night)
+		mat.set_shader_parameter("beam_dir", lantern_meshes[i].global_basis.inverse() * beam_world)
 	for glow in glows:
 		glow.visible = night > 0.08
 		var mat := glow.material_override as StandardMaterial3D
@@ -452,6 +580,15 @@ func open_chest() -> void:
 	flash = 5.0
 
 func _extract_cube() -> void:
+	var stone := part_mesh("Poneglyph")
+	if stone:
+		cube = stone
+		var glow := ShaderMaterial.new()
+		glow.shader = load("res://Shaders/runes.gdshader")
+		glow.set_shader_parameter("albedo_map", (stone.get_active_material(0) as StandardMaterial3D).albedo_texture)
+		stone.material_override = glow
+		cube_materials.append(glow)
+		return
 	for instance in model.find_children("*", "MeshInstance3D", true, false):
 		var original: Mesh = instance.mesh
 		for surface in range(original.get_surface_count()):
@@ -475,9 +612,7 @@ func _extract_cube() -> void:
 			var base_mesh := ArrayMesh.new()
 			base_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, base_arrays)
 			base_mesh.surface_set_material(0, material)
-			var base_lod := ImporterMesh.from_mesh(base_mesh)
-			base_lod.generate_lods(60.0, 0.0, [])
-			instance.mesh = base_lod.get_mesh()
+			instance.mesh = base_mesh
 			cube = Node3D.new()
 			cube.name = "PoneglyphContainer"
 			cube.position = region.get_center()
@@ -543,12 +678,18 @@ func _build_treasure() -> void:
 
 func _build_fort_cannons() -> void:
 	cannon_rng.seed = 2002
-	for x in [-0.59, 0.14]:
-		var region := AABB(Vector3(x, 0.135, 0.54), Vector3(0.30, 0.20, 0.29))
-		var part := Parts.extract(model, region, "FortCannon")
+	var center := part_box("Island").get_center()
+	for i in 8:
+		var part := part_mesh("Cannon_%d" % i)
 		if not part: continue
+		var box := part_box(part.name)
+		# Os canhões apontam para fora do forte: o coice é para dentro.
+		var out := Vector3(box.get_center().x - center.x, 0.0, box.get_center().z - center.z).normalized()
+		var muzzle := island_point(box.get_center() + out * box.size.length() * 0.45)
+		var aim := (muzzle - island_point(box.get_center())).normalized()
 		var smoke := GPUParticles3D.new()
-		smoke.position = region.get_center() * factor + model.position + Vector3(0, 0, 1.3)
+		smoke.position = muzzle
+		smoke.basis = Basis.looking_at(-aim, Vector3.UP)
 		smoke.amount = 14
 		smoke.lifetime = 1.7
 		smoke.one_shot = true
@@ -589,7 +730,129 @@ func _build_fort_cannons() -> void:
 		sound.volume_db = -24.0
 		sound.stream = _cannon_sound()
 		add_child(sound)
-		decorative_cannons.append({"node": part, "base_z": part.position.z, "smoke": smoke, "sound": sound})
+		decorative_cannons.append({"anim": "cannon_fire_%d" % i, "smoke": smoke, "sound": sound})
+
+## Tiro decorativo: coice + squash & stretch (animação do Blender), fumaça e som.
+func _fire_cannon(cannon: Dictionary) -> void:
+	var player := island_anim(cannon.anim)
+	if player:
+		player.stop()
+		player.play(cannon.anim)
+	cannon.smoke.restart()
+	cannon.sound.play()
+
+## Baforada da chaminé: 3 bolas maiores de uma vez, além da fumaça contínua.
+func _puff_emitter(where: Vector3) -> GPUParticles3D:
+	var puff := GPUParticles3D.new()
+	puff.name = "ChimneyPuff"
+	puff.position = where
+	puff.amount = 3
+	puff.lifetime = 2.6
+	puff.one_shot = true
+	puff.explosiveness = 0.85
+	puff.emitting = false
+	puff.local_coords = false
+	puff.visibility_aabb = AABB(Vector3(-6, -1, -6), Vector3(12, 14, 12))
+	var motion := ParticleProcessMaterial.new()
+	motion.direction = Vector3.UP
+	motion.spread = 18.0
+	motion.initial_velocity_min = 1.1
+	motion.initial_velocity_max = 1.6
+	motion.damping_min = 0.6
+	motion.damping_max = 0.9
+	motion.scale_min = 0.7
+	motion.scale_max = 1.0
+	var grow := Curve.new()
+	grow.add_point(Vector2(0, 0.3))
+	grow.add_point(Vector2(0.15, 1.0))
+	grow.add_point(Vector2(1, 1.8))
+	var grow_tex := CurveTexture.new()
+	grow_tex.curve = grow
+	motion.scale_curve = grow_tex
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.92, 0.92, 0.92, 0.75))
+	fade.set_color(1, Color(0.85, 0.85, 0.88, 0.0))
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = fade
+	motion.color_ramp = ramp
+	puff.process_material = motion
+	var ball := SphereMesh.new()
+	ball.radius = 0.4
+	ball.height = 0.8
+	ball.radial_segments = 8
+	ball.rings = 4
+	var paint := StandardMaterial3D.new()
+	paint.vertex_color_use_as_albedo = true
+	paint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ball.material = paint
+	puff.draw_pass_1 = ball
+	add_child(puff)
+	return puff
+
+## Tampa do baú (animação chest_open do Blender: começa fechada e abre); toca ao contrário para fechar.
+func _build_chest_lid() -> void:
+	var lid := part_mesh("ChestLid")
+	var player := island_anim("chest_open")
+	if lid == null or player == null:
+		return
+	player.play("chest_open")
+	player.seek(0.0, true)
+	player.pause()
+	var box := part_box("ChestLid")
+	var burst := _gold_burst(island_point(box.get_center()))
+	chests.append({"player": player, "open": false, "burst": burst})
+
+func _update_chest(chest: Dictionary, near: bool) -> void:
+	if near == chest.open:
+		return
+	chest.open = near
+	var player: AnimationPlayer = chest.player
+	if near:
+		player.play("chest_open")
+		chest.burst.restart()
+		flash = 3.0
+	else:
+		player.play_backwards("chest_open")
+
+func _gold_burst(where: Vector3) -> GPUParticles3D:
+	var burst := GPUParticles3D.new()
+	burst.name = "GoldBurst"
+	burst.position = where
+	burst.amount = 40
+	burst.lifetime = 1.6
+	burst.one_shot = true
+	burst.explosiveness = 0.9
+	burst.emitting = false
+	burst.local_coords = true
+	var motion := ParticleProcessMaterial.new()
+	motion.direction = Vector3.UP
+	motion.spread = 35.0
+	motion.initial_velocity_min = 2.5
+	motion.initial_velocity_max = 4.5
+	motion.gravity = Vector3(0, -6.0, 0)
+	motion.angular_velocity_min = -360.0
+	motion.angular_velocity_max = 360.0
+	motion.scale_min = 0.7
+	motion.scale_max = 1.3
+	burst.process_material = motion
+	var coin := CylinderMesh.new()
+	coin.top_radius = 0.09
+	coin.bottom_radius = 0.09
+	coin.height = 0.025
+	coin.radial_segments = 10
+	coin.rings = 1
+	var paint := StandardMaterial3D.new()
+	paint.albedo_color = Color("ffd74d")
+	paint.metallic = 0.9
+	paint.roughness = 0.25
+	paint.emission_enabled = true
+	paint.emission = Color("ffb820")
+	paint.emission_energy_multiplier = 0.6
+	coin.material = paint
+	burst.draw_pass_1 = coin
+	add_child(burst)
+	return burst
 
 func _cannon_sound() -> AudioStreamWAV:
 	var stream := AudioStreamWAV.new()
@@ -647,7 +910,7 @@ func _telephone_trill() -> AudioStreamWAV:
 	return stream
 
 func _animate_foliage() -> void:
-	for mesh in model.find_children("*", "MeshInstance3D", true, false):
+	for mesh in model.find_children("Island", "MeshInstance3D", true, false):
 		for surface in range(mesh.mesh.get_surface_count()):
 			var original: Material = mesh.get_active_material(surface)
 			if not original is StandardMaterial3D or not original.albedo_texture: continue

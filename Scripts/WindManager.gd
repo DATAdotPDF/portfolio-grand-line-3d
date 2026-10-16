@@ -12,6 +12,8 @@ const Scale = preload("res://Scripts/WorldScale.gd")
 @export var gust_period := 11.0
 
 var gust := 1.0
+## Badness (0..4) do clima no ponto, preenchido pelo Weather.gd: tempestade = vento mais forte.
+var badness_at := Callable()
 var elapsed := 0.0
 var noise := FastNoiseLite.new()
 
@@ -28,7 +30,10 @@ func _process(delta: float) -> void:
 
 ## Vetor tangente do vento no ponto; o comprimento é a intensidade local (0..~1.2).
 func wind_at(point: Vector3) -> Vector3:
-	return Scale.wind_at(point) * gust
+	var storm := 1.0
+	if badness_at.is_valid():
+		storm += 0.15 * float(badness_at.call(point))
+	return Scale.wind_at(point) * gust * storm
 
 func axis() -> Vector3:
 	return Scale.wind_axis()

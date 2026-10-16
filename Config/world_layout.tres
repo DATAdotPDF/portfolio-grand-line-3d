@@ -1,33 +1,28 @@
-[gd_resource type="Resource" script_class="WorldLayout" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="WorldLayout" format=3 uid="uid://ctcv2s1s8lkjo"]
 
-[ext_resource type="Script" path="res://Scripts/World/WorldLayout.gd" id="1_layout"]
-[ext_resource type="Script" path="res://Scripts/World/IslandAnchor.gd" id="2_anchor"]
+[ext_resource type="Script" uid="uid://bj86qkf06hskf" path="res://Scripts/World/WorldLayout.gd" id="1_layout"]
+[ext_resource type="Script" uid="uid://b0b1mg5rpba5" path="res://Scripts/World/IslandAnchor.gd" id="2_anchor"]
 
 [sub_resource type="Resource" id="Anchor_sobre"]
 script = ExtResource("2_anchor")
 section = "Sobre"
 lat_deg = 90.0
-lon_deg = 0.0
 submersion = 2.2
 
 [sub_resource type="Resource" id="Anchor_experiencia"]
 script = ExtResource("2_anchor")
 section = "Experiência"
-lat_deg = 0.0
-lon_deg = 0.0
-submersion = 3.7
+submersion = 6.2
 
 [sub_resource type="Resource" id="Anchor_formacao"]
 script = ExtResource("2_anchor")
 section = "Formação"
-lat_deg = 0.0
 lon_deg = 120.0
 submersion = 8.0
 
 [sub_resource type="Resource" id="Anchor_projetos"]
 script = ExtResource("2_anchor")
 section = "Projetos"
-lat_deg = 0.0
 lon_deg = 240.0
 submersion = 2.3
 
@@ -35,12 +30,10 @@ submersion = 2.3
 script = ExtResource("2_anchor")
 section = "Contato"
 lat_deg = -90.0
-lon_deg = 0.0
 submersion = 3.8
 
 [resource]
 script = ExtResource("1_layout")
-planet_radius = 800.0
 swell_wavelength = 85.0
 swell_amplitude = 1.9
 crest_sharpness = 1.0

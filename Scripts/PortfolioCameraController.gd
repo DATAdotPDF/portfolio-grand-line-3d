@@ -34,6 +34,11 @@ var plate_tweens: Array[Tween] = []
 var elapsed := 0.0
 var overview_dragged := false
 var overview_up := Vector3.UP
+## Chegada cinematográfica no barco (primeira entrada no jogo): a câmera vai para o lado do barco
+## e dá a volta nele (lado → frente → outro lado → popa), em vez de passar por cima dele.
+var arrival_cinematic := false
+var arrival_duration := 6.5
+var transition_look_start := Vector3.ZERO
 
 func _input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
@@ -91,6 +96,16 @@ func show_overview() -> void:
 	active_island_idx = -1
 	target_island = null
 	overview_direction = global_position.normalized()
+	# Abre o globo puxado para o lado do terminador (onde o dia vira noite): dá para ver o lado
+	# escuro e o sol no canto, e o planeta girando na frente dele.
+	var clock := get_node_or_null("/root/DayNightCycle")
+	if clock:
+		var sun_dir: Vector3 = clock.sun_direction
+		var across := overview_direction.slide(sun_dir)
+		if across.length() < 0.05:
+			across = sun_dir.cross(Vector3.RIGHT if absf(sun_dir.x) < 0.9 else Vector3.UP)
+		# Em cima do terminador, um pouco para o lado do dia (mapa ainda legível).
+		overview_direction = (across.normalized() + sun_dir * 0.3).normalized()
 	_animate_titles(-1)
 	_begin_transition(CameraState.PLANET_OVERVIEW)
 
@@ -111,20 +126,24 @@ func _begin_transition(next_state: CameraState) -> void:
 	if transition_tween and transition_tween.is_running():
 		transition_tween.kill()
 	transition_start = global_position
+	transition_look_start = global_position - global_basis.z * 40.0
 	transition_progress = 0.0
 	destination = next_state
+	if next_state != CameraState.BOAT_FOLLOW:
+		arrival_cinematic = false
 	state = CameraState.FLYING
 	transition_tween = create_tween()
 	transition_tween.set_trans(Tween.TRANS_SINE)
 	transition_tween.set_ease(Tween.EASE_IN_OUT)
 	transition_tween.tween_property(
-		self, "transition_progress", 1.0, transition_duration
+		self, "transition_progress", 1.0, arrival_duration if arrival_cinematic else transition_duration
 	)
 	transition_tween.finished.connect(_finish_transition)
 
 func _finish_transition() -> void:
 	if state == CameraState.FLYING:
 		state = destination
+	arrival_cinematic = false
 
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -139,6 +158,9 @@ func _process(delta: float) -> void:
 			)
 			_face(_boat_focus(), _boat_xform().origin.normalized())
 		CameraState.FLYING:
+			if arrival_cinematic and destination == CameraState.BOAT_FOLLOW and is_instance_valid(boat):
+				_arrival_step()
+				return
 			var target := _destination_position()
 			var direction := transition_start.normalized().slerp(
 				target.normalized(), transition_progress
@@ -169,6 +191,54 @@ func _process(delta: float) -> void:
 		CameraState.FLYING, CameraState.ISLAND_ORBIT
 	]:
 		_update_active_title()
+
+## Ponto em volta do barco: ângulo 0 = proa, PI = popa (lado = sinal), distância e altura.
+func _around_boat(angle: float, distance: float, height: float) -> Vector3:
+	var xform := _boat_xform()
+	var up := xform.origin.normalized()
+	var forward := (-xform.basis.z).slide(up).normalized()
+	var right := forward.cross(up).normalized()
+	return xform.origin + (forward * cos(angle) + right * sin(angle)) * distance + up * height
+
+func _arrival_step() -> void:
+	var t := transition_progress
+	var xform := _boat_xform()
+	var up := xform.origin.normalized()
+	var forward := (-xform.basis.z).slide(up).normalized()
+	# Lado do barco mais perto de onde a câmera começa.
+	var right := forward.cross(up).normalized()
+	var side := 1.0 if (transition_start - xform.origin).dot(right) >= 0.0 else -1.0
+	var lateral_distance := follow_distance * 1.45
+	var lateral_height := follow_height * 0.7
+	var lateral := _around_boat(side * PI * 0.5, lateral_distance, lateral_height)
+	var look_end := _boat_focus()
+	var position: Vector3
+	var look: Vector3
+	if t < 0.3:
+		# 1) Vem de onde está até o lado do barco em coordenadas do barco (ângulo, distância,
+		# altura): contorna o barco em vez de passar por cima dele; desce logo no começo.
+		var k := smoothstep(0.0, 1.0, t / 0.3)
+		var rel := transition_start - xform.origin
+		var flat := rel.slide(up)
+		var start_angle := atan2(flat.dot(right), flat.dot(forward))
+		var target_angle := side * PI * 0.5
+		var angle := lerp_angle(start_angle, target_angle, k)
+		var distance := lerpf(flat.length(), lateral_distance, k)
+		var height := lerpf(rel.dot(up), lateral_height, 1.0 - pow(1.0 - k, 2.5))
+		position = _around_boat(angle, distance, height)
+		look = transition_look_start.lerp(look_end, smoothstep(0.0, 1.0, minf(k * 1.4, 1.0)))
+	else:
+		# 2) Volta em torno do barco: lado → proa → outro lado → popa (270°), chegando atrás.
+		var u := smoothstep(0.0, 1.0, (t - 0.3) / 0.7)
+		var angle := side * PI * 0.5 - side * PI * 1.5 * u
+		var distance := lerpf(lateral_distance, follow_distance, u)
+		var height := lerpf(lateral_height, follow_height + pitch, u)
+		position = _around_boat(angle, distance, height)
+		# Final: encaixa na posição de seguir de verdade (com yaw do jogador).
+		position = position.lerp(_boat_position(), smoothstep(0.85, 1.0, t))
+		look = look_end
+	global_position = position
+	_face(look, up)
 
 func _overview_distance() -> float:
 	return Scale.radius() * 2.6

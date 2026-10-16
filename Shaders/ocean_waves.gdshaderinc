@@ -27,8 +27,23 @@ uniform int stroke_count = 0;
 uniform vec4 wake_points[MAX_WAKE];
 uniform int wake_count = 0;
 
+// Tempestades locais (Weather): ondas maiores e água mais escura dentro do raio de cada uma.
+#define MAX_STORMS 6
+uniform vec4 storm_data[MAX_STORMS];      // xyz = centro na superfície, w = raio
+uniform float storm_strengths[MAX_STORMS]; // "badness" 0..4 de cada tempestade (Weather.gd)
+uniform int storm_count = 0;
+uniform vec3 storm_water_tint : source_color = vec3(0.4, 0.56, 0.5);  // verde-acinzentado (Wind Waker)
+
 uniform vec3 island_centers[5];
 uniform float island_radii[5];
+// Mar calmo também em volta das ilhas/rochas do mapa (WorldDecor, só as fixas): as MAX_CALM mais
+// perto do barco, atualizadas pelo main_world. xyz = direção (unitária), w = raio em metros.
+#define MAX_CALM 16
+uniform vec4 calm_spots[MAX_CALM];
+uniform int calm_count = 0;
+// Redemoinho do kraken (KrakenEvent): o próprio mar afunda num funil. xyz = centro, w = raio.
+uniform vec4 whirl_data = vec4(0.0);
+uniform float whirl_depth = 0.0;
 
 uniform vec3 boat_position;
 uniform vec3 boat_forward;
@@ -62,6 +77,13 @@ uniform vec3 night_glow_color : source_color = vec3(0.2, 0.95, 0.85);
 uniform float toon_bands : hint_range(1.0, 8.0) = 3.0;
 uniform float crest_line_amount : hint_range(0.0, 1.0) = 0.4;
 uniform float shoreline_width = 0.45;
+// Ondinhas de contato: anéis animados que saem de tudo o que encosta na água (ilhas, rochas, barco,
+// tartaruga), lidos da mesma distância até a cena que faz a espuma da borda. Ideia do tutorial
+// "Adding Ripples to 3D Water in Godot 4" (bramreth, MIT); conta nossa, no estilo toon do mar.
+uniform float contact_ring_reach = 4.0;   // até onde os anéis vão (m de profundidade vista)
+uniform float contact_ring_count = 3.0;   // anéis dentro desse alcance
+uniform float contact_ring_speed = 0.35;  // anéis por segundo saindo da borda
+uniform float contact_ring_strength = 0.8;
 uniform float far_detail_distance = 10.0; // em comprimentos de onda
 
 const float CALM_INNER = 0.12;
@@ -79,7 +101,34 @@ float coast_factor(vec3 p) {
 			factor = min(factor, smoothstep(island_radii[i] * 0.7, island_radii[i] + 25.0 * wave_scale, chord));
 		}
 	}
+	for (int i = 0; i < MAX_CALM; i++) {
+		if (i >= calm_count) {
+			break;
+		}
+		float chord = distance(p, calm_spots[i].xyz * planet_radius);
+		factor = min(factor, smoothstep(calm_spots[i].w * 0.7, calm_spots[i].w + 25.0 * wave_scale, chord));
+	}
+	// Dentro do redemoinho do kraken as ondas baixam (senão quebram a imagem do funil).
+	if (whirl_depth > 0.0) {
+		factor = min(factor, mix(0.2, 1.0, smoothstep(whirl_data.w * 0.7, whirl_data.w * 1.15, distance(p, whirl_data.xyz))));
+	}
 	return mix(0.08, 1.0, factor);
+}
+
+// x = máscara (0..1) da tempestade mais forte no ponto, y = badness dela (0..4).
+vec2 storm_eval(vec3 p) {
+	vec2 best = vec2(0.0);
+	for (int i = 0; i < MAX_STORMS; i++) {
+		if (i >= storm_count) {
+			break;
+		}
+		// Cheio debaixo da nuvem inteira (que vai até ~1,15 raio) e some logo depois.
+		float m = 1.0 - smoothstep(storm_data[i].w * 0.95, storm_data[i].w * 1.45, distance(p, storm_data[i].xyz));
+		if (m * storm_strengths[i] > best.x * best.y) {
+			best = vec2(m, storm_strengths[i]);
+		}
+	}
+	return best;
 }
 
 // Sulco do arrasto: cavado no centro e cristas laterais que se afastam com a idade.
@@ -122,10 +171,44 @@ void stroke_eval(vec3 p, vec3 n, inout float h, inout vec3 grad, inout float glo
 // p: ponto na esfera (|p| = planet_radius). view_distance < 0 desliga o fade de LOD.
 // h: altura radial; disp: deslocamento tangente; grad: gradiente tangente da altura;
 // crest: compressão horizontal (> 0 nas cristas), usada para as bandas toon.
+// Redemoinho: as ondas são torcidas em espiral em volta do centro (mais perto, mais torção), como
+// num vórtice de verdade. Rotação rígida no tempo fica por conta do disco de espuma; aqui a
+// torção é estática (não "enrola" com o tempo).
+vec3 whirl_twist(vec3 p) {
+	if (whirl_depth <= 0.0) {
+		return p;
+	}
+	float d = distance(p, whirl_data.xyz);
+	float R = whirl_data.w;
+	if (d >= R) {
+		return p;
+	}
+	float k = clamp(1.0 - d / R, 0.0, 1.0);
+	float angle = whirl_depth * 0.22 * pow(k, 1.6) * (1.0 - smoothstep(0.55, 1.0, d / R) * 0.0);
+	vec3 c = normalize(whirl_data.xyz);
+	return p * cos(angle) + cross(c, p) * sin(angle) + c * dot(c, p) * (1.0 - cos(angle));
+}
+
+// Perfil de vórtice de Rankine (normalizado): fundo e íngreme no miolo, plano para fora.
+float whirl_profile(float d, float R, out float slope) {
+	float rc = R * 0.2;
+	float rc2 = rc * rc;
+	float fr = rc2 / (R * R + rc2);
+	float f = (rc2 / (d * d + rc2) - fr) / (1.0 - fr);
+	slope = 2.0 * d * rc2 / ((d * d + rc2) * (d * d + rc2) * (1.0 - fr));
+	return max(f, 0.0);
+}
+
 void ocean_eval(vec3 p, float view_distance, out float h, out vec3 disp, out vec3 grad, out float crest, out float ripple_glow) {
+	p = whirl_twist(p);
 	vec3 n = normalize(p);
 	float t = ocean_clock();
-	float coast = coast_factor(p);
+	vec2 storm = storm_eval(p);
+	// Badness: ondas mais altas e, proporcionalmente, só um pouco mais íngremes. O Q é dividido
+	// pelo ganho de altura para a compressão (crest) não passar muito de 1 e virar laço.
+	float storm_amp = 1.0 + 0.35 * storm.y * storm.x;
+	float storm_q = (1.0 + 0.08 * storm.y * storm.x) / storm_amp;
+	float coast = coast_factor(p) * storm_amp;
 	h = 0.0;
 	disp = vec3(0.0);
 	grad = vec3(0.0);
@@ -152,9 +235,38 @@ void ocean_eval(vec3 p, float view_distance, out float h, out vec3 disp, out vec
 		float c = cos(phi);
 		float a = wp.z * w;
 		h += a * s;
-		disp += g * (wp.w * a * c);
+		disp += g * (wp.w * storm_q * a * c);
 		grad += g * (a * wp.x * c);
-		crest += wp.w * a * wp.x * s;
+		crest += wp.w * storm_q * a * wp.x * s;
+	}
+	// Mar picado da tempestade: uma segunda oitava curta (2,6× mais curta, cruzada com a
+	// direção de outra onda), só onde há badness. Deixa as cristas em bico e cheias de espuma.
+	// Sempre um pouco de mar picado (textura, como no Sea of Thieves); cresce com o badness.
+	float chop = clamp(0.2 + storm.x * storm.y / 4.0, 0.0, 1.0);
+	if (chop > 0.01) {
+		float calm_coast = coast / storm_amp;
+		for (int i = 0; i < MAX_WAVES; i++) {
+			if (i >= wave_count) {
+				break;
+			}
+			vec4 wp = wave_params[i];
+			vec3 d = normalize(wave_dirs[i].xyz + wave_dirs[(i + 1) % max(wave_count, 1)].xyz * 0.6);
+			vec3 g = d - n * dot(n, d);
+			float k = wp.x * 2.6;
+			float w = smoothstep(CALM_INNER, CALM_OUTER, length(g)) * calm_coast * chop;
+			if (view_distance >= 0.0) {
+				float wavelength = 6.2831853 / k;
+				w *= 1.0 - smoothstep(wavelength * far_detail_distance * 0.4, wavelength * far_detail_distance, view_distance);
+			}
+			float phi = k * dot(p, d) - wp.y * 1.6125 * t + wave_dirs[i].w * 3.1;
+			float s = sin(phi);
+			float c = cos(phi);
+			float a = wp.z * 0.3 * w;
+			h += a * s;
+			disp += g * (wp.w * 0.8 * a * c);
+			grad += g * (a * k * c);
+			crest += wp.w * 0.8 * a * k * s;
+		}
 	}
 	// Perturbações do mouse/impactos: pacotes de onda circulares amortecidos.
 	for (int r = 0; r < MAX_RIPPLES; r++) {
@@ -180,6 +292,17 @@ void ocean_eval(vec3 p, float view_distance, out float h, out vec3 disp, out vec
 		grad += (radial_dir - n * dot(n, radial_dir)) * dh;
 	}
 	stroke_eval(p, n, h, grad, ripple_glow);
+	if (whirl_depth > 0.0) {
+		vec3 tp = p - whirl_data.xyz;
+		float d = length(tp);
+		if (d < whirl_data.w) {
+			float slope;
+			float f = whirl_profile(d, whirl_data.w, slope);
+			h -= whirl_depth * f;
+			vec3 rd = d > 0.001 ? tp / d : vec3(0.0);
+			grad += (rd - n * dot(n, rd)) * (whirl_depth * slope);
+		}
+	}
 }
 
 // Sulco do arrasto: cavado no centro e cristas laterais que se afastam com a idade.
@@ -219,7 +342,8 @@ float wake_foam(vec3 p) {
 	}
 	// Esteira discreta (Seagazer): duas linhas finas de espuma que se abrem e se
 	// quebram com a idade, e um rastro suave de água revolta no centro.
-	float spread = 0.55 + (1.0 - life) * 2.2;
+	// Começa na largura das madeiras laterais do casco (~0,95 m do centro).
+	float spread = 0.95 + (1.0 - life) * 2.2;
 	float line_width = 0.07 + (1.0 - life) * 0.16;
 	float edge = 1.0 - smoothstep(line_width * 0.3, line_width, abs(distance_to_wake - spread));
 	// Quebra a linha em pedaços (ruído ao longo do mundo) conforme envelhece.
@@ -243,7 +367,13 @@ float shore_foam_from_depth(float raw_depth, vec2 screen_uv, mat4 inv_projection
 	vec4 scene_view = inv_projection * vec4(screen_uv * 2.0 - 1.0, clip_depth, 1.0);
 	scene_view.xyz /= scene_view.w;
 	float gap = max(0.0, -scene_view.z + vertex_view.z);
-	return (1.0 - smoothstep(0.05, shoreline_width, gap)) * has_geometry;
+	float rim = 1.0 - smoothstep(0.05, shoreline_width, gap);
+	// Anéis: fase pela distância à borda, correndo para fora com o tempo; finos e sumindo com a distância.
+	float x = gap / contact_ring_reach;
+	float phase = fract(x * contact_ring_count - ocean_clock() * contact_ring_speed);
+	float ring = smoothstep(0.0, 0.1, phase) * (1.0 - smoothstep(0.2, 0.38, phase));
+	ring *= (1.0 - smoothstep(0.35, 1.0, x)) * smoothstep(shoreline_width * 0.6, shoreline_width * 1.4, gap);
+	return max(rim, ring * contact_ring_strength) * has_geometry;
 }
 
 // Bandas toon suaves (sem step binário, para não voltar o "polka dot").
@@ -251,6 +381,29 @@ float toon_band(float value) {
 	float scaled = clamp(value, 0.0, 1.0) * toon_bands;
 	float base = floor(scaled);
 	return (base + smoothstep(0.42, 0.58, fract(scaled))) / toon_bands;
+}
+
+// Quatro mares (WorldDecor.gd, biomas): Norte lat ≥ 30, Sul lat ≤ -30, Leste/Oeste na faixa do
+// equador (lon 0–180 / 180–360). Cada um puxa a cor do mar para o seu tom (a = quanto), com
+// transição suave de biome_blend graus nas bordas. Desligado até o WorldDecor ligar.
+uniform bool biome_tint_enabled = false;
+uniform vec4 biome_tints[4];   // N, L, S, O
+uniform float biome_blend = 7.0;
+
+vec3 biome_tint(vec3 p, vec3 color) {
+	if (!biome_tint_enabled) {
+		return color;
+	}
+	vec3 n = normalize(p);
+	float lat = degrees(asin(clamp(n.y, -1.0, 1.0)));
+	float north = smoothstep(30.0 - biome_blend, 30.0 + biome_blend, lat);
+	float south = smoothstep(-30.0 + biome_blend, -30.0 - biome_blend, lat);
+	float band = max(1.0 - north - south, 0.0);
+	// Leste = z > 0 (lon 0–180); a borda vale nos dois meridianos (0° e 180°).
+	float side = n.z / max(length(n.xz), 0.0001);
+	float east = smoothstep(-sin(radians(biome_blend)), sin(radians(biome_blend)), side);
+	vec4 t = biome_tints[0] * north + biome_tints[2] * south + (biome_tints[1] * east + biome_tints[3] * (1.0 - east)) * band;
+	return mix(color, t.rgb, clamp(t.a, 0.0, 1.0));
 }
 
 // Cor final. h e crest normalizados pela escala de amplitude do mar atual.
@@ -262,11 +415,34 @@ vec3 ocean_albedo(vec3 p, vec3 wake_point, float h, float crest, float ripple_gl
 	float crest_line = smoothstep(0.32, 0.62, crest) * crest_line_amount;
 	color = mix(color, crest_color, crest_line);
 	color = mix(color, foam_color, clamp(ripple_glow, 0.0, 1.0) * 0.55);
+	// Dentro da tempestade o mar fica cinza-esverdeado e escuro (as cristas continuam claras).
+	vec2 storm = storm_eval(p);
+	float badness = storm.x * storm.y;
+	color = mix(color, color * storm_water_tint * 1.3, storm.x * clamp(storm.y / 2.5, 0.0, 1.0));
+	color = biome_tint(p, color);
+	// Espuma onde a onda dobra sobre si mesma: crest é a compressão horizontal do Gerstner
+	// (1 - Jacobiano), então crest alto = crista se fechando. Só aparece com badness.
+	// Rasgos orgânicos: a textura de ruído das sombras de nuvem em escala de metros, em duas
+	// escalas que andam em sentidos diferentes (espuma de tempestade é rasgada, não um tapete).
+	vec2 foam_uv = vec2(dot(p, cloud_axis_u), dot(p, cloud_axis_v));
+	float n1 = texture(cloud_shadow_tex, foam_uv * 0.045 + vec2(ocean_clock() * 0.012, 0.0)).x;
+	float n2 = texture(cloud_shadow_tex, foam_uv * 0.11 - vec2(0.0, ocean_clock() * 0.02)).x;
+	float breakup = (n1 * 0.6 + n2 * 0.4) * 2.0 - 1.0;
+	// Calmo: só o topo das cristas mais altas (~5%) quebra; tempestade: muito mais.
+	float cap_threshold = mix(0.38, 0.5, clamp(badness / 4.0, 0.0, 1.0));
+	float breakup_weight = mix(0.22, 0.45, smoothstep(0.3, 1.2, badness));
+	// Recortada em tiras pelo breakup (espuma de tempestade é rasgada, não um tapete).
+	float whitecap = smoothstep(cap_threshold, cap_threshold + 0.08, crest + breakup * breakup_weight) * mix(0.55, 0.9, smoothstep(0.3, 1.2, badness));
+	// Rendado de espuma nas faces que sobem para a crista (textura do mar quebrando, como no
+	// Sea of Thieves): veios finos do ruído só onde a onda está se fechando um pouco.
+	float lace_noise = texture(cloud_shadow_tex, foam_uv * 0.32 + vec2(ocean_clock() * 0.03, -ocean_clock() * 0.02)).x;
+	float lace = (1.0 - smoothstep(0.03, 0.07, abs(lace_noise - 0.55))) * smoothstep(0.12, 0.32, crest) * 0.35;
+	whitecap = max(whitecap, lace * (1.0 - smoothstep(60.0, 160.0, distance(p, boat_position))));
 	vec2 cloud_uv = vec2(dot(p, cloud_axis_u), dot(p, cloud_axis_v)) / cloud_shadow_scale + TIME * 0.0006;
 	float shadow = smoothstep(0.52, 0.62, texture(cloud_shadow_tex, cloud_uv).x);
 	color *= 1.0 - shadow * cloud_shadow_strength;
 	float wake = wake_foam(wake_point);
-	float foam = max(shore, wake * 0.75);
+	float foam = max(max(shore, wake * 0.75), whitecap);
 	foam_out = foam;
 	return mix(color, foam_color, clamp(foam, 0.0, 0.96));
 }

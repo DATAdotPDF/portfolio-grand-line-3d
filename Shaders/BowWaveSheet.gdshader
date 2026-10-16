@@ -17,7 +17,15 @@ uniform float boat_speed = 0.0;
 uniform float turn = 0.0;
 uniform float turn_bias = 0.0;
 uniform float daylight = 1.0;
+// Contato do casco com a água (0 = barco no ar, 1 = navegando): a folha some no salto.
+uniform float contact = 1.0;
+// Altura da linha d'água do casco: a folha nunca passa disso (não invade o convés).
+uniform float hull_height = 0.0;
 uniform float sheet_scale : hint_range(0.3, 2.5) = 0.72;
+// Tamanho do casco em relação à chalupa (x = comprimento, y = largura) e altura da lâmina: o barco usa
+// 1; a tartaruga gigante (WorldDecor) usa a mesma folha esticada em volta da frente do casco.
+uniform vec2 hull_scale = vec2(1.0, 1.0);
+uniform float curl_scale = 1.0;
 uniform sampler2D foam_pattern : repeat_enable, filter_linear_mipmap;
 uniform vec3 water_body_color : source_color = vec3(0.1, 0.52, 0.72);
 uniform vec3 water_deep_color : source_color = vec3(0.03, 0.3, 0.52);
@@ -39,15 +47,17 @@ vec3 curling_sheet(vec2 uv) {
 	float envelope = pow(max(sin(pow(u, 0.75) * 3.14159265), 0.0), 0.8);
 	float bank = clamp(1.0 + side * turn_bias * 0.3, 0.7, 1.3);
 	float size = sheet_scale * (0.75 + 0.55 * fast);
-	float hull_width = 0.24 + 0.62 * smoothstep(0.0, 0.6, u);
-	float curl = envelope * moving * bank * size;
+	// Começa um pouco fora do casco (antes cortava por dentro do navio).
+	float hull_width = 0.42 + 0.66 * smoothstep(0.0, 0.6, u);
+	float curl = envelope * moving * bank * size * curl_scale;
 	float outward = curl * (0.28 * v + 0.85 * pow(v, 2.0));
-	vec3 base = boat_position + boat_forward * (2.0 - u * 3.4)
-		+ boat_right * side * (hull_width + outward);
+	vec3 base = boat_position + boat_forward * (2.0 - u * 3.4) * hull_scale.x
+		+ boat_right * side * (hull_width * hull_scale.y + outward);
 	vec3 radial_up = normalize(base);
 	float edge_wave = mix(0.82, 1.0, scallop(u)) ;
 	float rise = -0.12 + curl * (0.3 * v + 0.85 * sin(v * 1.65)) * mix(1.0, edge_wave, v);
-	float surface_height = mix(water_height_front, water_height_back, u);
+	float surface_height = min(mix(water_height_front, water_height_back, u), hull_height + 0.15);
+	rise *= contact;
 	return radial_up * (ocean_radius + surface_height + rise);
 }
 
@@ -70,5 +80,5 @@ void fragment() {
 	vec3 body = mix(water_deep_color, water_body_color, smoothstep(0.0, 0.7, UV.y));
 	vec3 color = mix(body, sheet_foam_color, max(crest * (0.85 + 0.15 * foam_tex), second_line * 0.9));
 	ALBEDO = color * mix(0.28, 1.0, daylight);
-	ALPHA = clamp(moving * length_fade * height_fade, 0.0, 1.0);
+	ALPHA = clamp(moving * length_fade * height_fade * contact, 0.0, 1.0);
 }

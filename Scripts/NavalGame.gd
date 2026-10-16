@@ -7,6 +7,7 @@ const BALL = preload("res://Assets/Optimized/cannonball.glb")
 const DOPPLER_SFX = preload("res://Assets/Sound/SFX/CANON BALL DOPPLER SFX.wav")
 const EXPLOSION_SFX = preload("res://Assets/Sound/SFX/EXPLOSION SFX.wav")
 const SPLASH_SFX = preload("res://Assets/Sound/SFX/WATER SPLASH CANON BALL SFX.wav")
+const BREAK_SFX = preload("res://Assets/Sound/SFX/Cuts/buoy_break.ogg")
 const Shore = preload("res://Scripts/Shoreline.gd")
 const Scale = preload("res://Scripts/WorldScale.gd")
 var OCEAN_RADIUS := Scale.radius()
@@ -19,7 +20,13 @@ var cannon
 var cannon_pitch: Node3D
 var muzzle: Marker3D
 const Parts = preload("res://Scripts/MeshParts.gd")
-@export var fuse_duration := 1.0
+## Mantido só para o config exportado: o tiro agora sai ao soltar a tecla (sem pavio).
+@export var fuse_duration := 0.0
+## Recarga automática depois de cada tiro (barra no painel do canhão).
+@export var reload_seconds := 1.6
+@export var launch_speed := 25.0
+## Quanto do balanço do barco entra na direção do tiro (0 = mira estabilizada no horizonte).
+@export_range(0.0, 1.0) var sway_influence := 0.15
 @export var target_respawn_seconds := 20.0
 @export var time_attack_duration := 180.0
 var fuse_remaining := 0.0
@@ -46,6 +53,15 @@ var time_attack_hits: Dictionary = {}
 var time_attack_events: Array[Dictionary] = []
 ## Mira vinda dos controles de toque (x = giro, y = inclinação).
 var virtual_aim := Vector2.ZERO
+## Segurando o gatilho (Espaço / FOGO): mostra a parábola; soltar dispara.
+var aiming := false
+## Soltou durante a recarga: dispara assim que carregar.
+var pending_fire := false
+var preview: MultiMeshInstance3D
+var preview_material: StandardMaterial3D
+var landing: MeshInstance3D
+var reload_bar: ProgressBar
+const PREVIEW_DOTS := 26
 
 func start_time_attack() -> void:
 	time_attack_mode = true
@@ -103,10 +119,19 @@ func _ready() -> void:
 	_build_cannon()
 	_build_targets()
 	_build_particles()
+	_build_preview()
 	# O HUD do portfólio fornece o painel do canhão; sem ele, cai no rótulo simples.
 	var portfolio_hud: Variant = world.get("hud")
 	if portfolio_hud != null and portfolio_hud.get("cannon_label") != null:
 		hud = portfolio_hud.cannon_label
+		# Barra de recarga logo abaixo do valor do canhão.
+		reload_bar = ProgressBar.new()
+		reload_bar.show_percentage = false
+		reload_bar.custom_minimum_size = Vector2(54, 4)
+		reload_bar.max_value = 1.0
+		reload_bar.value = 1.0
+		reload_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hud.get_parent().add_child(reload_bar)
 	else:
 		hud = Label.new()
 		hud.position = Vector2(24,124)
@@ -146,8 +171,9 @@ func _update_aim() -> void:
 @export var course_count := 20
 @export var course_radius_inner := 170.0
 @export var course_radius_outer := 230.0
-## Boias livres perto de cada ilha (distâncias da costa medida).
-@export var island_buoy_distances: Array[float] = [25.0, 40.0, 55.0, 70.0]
+## Boias livres perto de cada ilha (distâncias da costa medida). Mais perto da costa e umas
+## das outras que antes (25–70 m): no teste os alvos ficavam longe demais para quem está aprendendo.
+@export var island_buoy_distances: Array[float] = [18.0, 28.0, 38.0, 50.0]
 
 func _build_targets() -> void:
 	var center: Node3D = world.islands[clampi(course_island, 0, world.islands.size() - 1)]
@@ -199,13 +225,18 @@ func _add_target(normal: Vector3, island_index: int, target_id: String) -> void:
 	var visual := TARGET.instantiate() as Node3D
 	body.add_child(visual)
 	fit(visual,2.2,1,0.16)
+	# Área de acerto bem maior que a boia (2,2 m): tiro de raspão conta.
+	var hit_shape := CylinderShape3D.new()
+	hit_shape.radius = 2.1
+	hit_shape.height = 3.4
+	var collision := CollisionShape3D.new()
+	collision.position.y = 0.9
+	collision.shape = hit_shape
+	body.add_child(collision)
+	# Contato físico com o barco continua do tamanho da boia.
 	var shape := CylinderShape3D.new()
 	shape.radius = 1.2
 	shape.height = 2.0
-	var collision := CollisionShape3D.new()
-	collision.position.y = 0.75
-	collision.shape = shape
-	body.add_child(collision)
 	var blocker := AnimatableBody3D.new()
 	blocker.name = "BoatContact"
 	blocker.sync_to_physics = false
@@ -235,15 +266,122 @@ func _build_particles() -> void:
 	wood_mesh.material = wood
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode==KEY_SPACE:
-		fire()
+	if event is InputEventKey and not event.echo and event.physical_keycode==KEY_SPACE:
+		if event.pressed:
+			begin_aim()
+		else:
+			release_aim()
+
+## Segurar: aparece a parábola (R/F ou joystick ajustam a elevação).
+func begin_aim() -> void:
+	# No redemoinho do kraken a mesma tecla (Espaço / FOGO) vira a barra de AÇÃO da fuga.
+	var kraken: Node = world.get("kraken_event")
+	if kraken and kraken.call("action_active"):
+		kraken.call("action_press")
+		return
+	aiming = true
+
+## Soltar: dispara (ou dispara assim que a recarga terminar).
+func release_aim() -> void:
+	if not aiming:
+		return
+	aiming = false
+	if not fire():
+		pending_fire = true
 
 func fire() -> bool:
-	if cooldown>0.0 or fuse_remaining>0.0 or balls.size()>=8: return false
-	fuse_remaining=fuse_duration
-	fuse_light.visible=true
-	fuse_audio.play()
+	if cooldown>0.0 or balls.size()>=8: return false
+	pending_fire = false
+	_launch()
 	return true
+
+## Direção do tiro estabilizada: o rumo horizontal do cano com a elevação escolhida medida a
+## partir do horizonte local; só sway_influence do balanço do casco entra.
+func _launch_direction() -> Vector3:
+	var up := muzzle.global_position.normalized()
+	var raw := (-muzzle.global_basis.z).normalized()
+	var flat := raw.slide(up)
+	if flat.length() < 0.01:
+		return raw
+	flat = flat.normalized()
+	var stable := (flat * cos(aim_elevation) + up * sin(aim_elevation)).normalized()
+	return stable.lerp(raw, sway_influence).normalized()
+
+func _launch_velocity() -> Vector3:
+	var up := muzzle.global_position.normalized()
+	# Só a velocidade de avanço do barco; o sobe-e-desce das ondas não entra no tiro.
+	return _launch_direction() * launch_speed + (world.ship.velocity as Vector3).slide(up)
+
+func _build_preview() -> void:
+	var dot := SphereMesh.new()
+	dot.radius = 0.06
+	dot.height = 0.12
+	dot.radial_segments = 8
+	dot.rings = 4
+	preview_material = StandardMaterial3D.new()
+	preview_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	preview_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	preview_material.albedo_color = Color(1, 1, 1, 0.9)
+	# Depois do mar na fila transparente: com o barco andando, o patch de ondas (também transparente)
+	# era desenhado por cima e a linha da mira sumia.
+	preview_material.render_priority = 20
+	preview_material.disable_fog = true
+	dot.material = preview_material
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = dot
+	multimesh.instance_count = PREVIEW_DOTS
+	preview = MultiMeshInstance3D.new()
+	preview.name = "AimArc"
+	preview.multimesh = multimesh
+	preview.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	preview.top_level = true
+	preview.visible = false
+	add_child(preview)
+	var ring := TorusMesh.new()
+	ring.inner_radius = 1.75
+	ring.outer_radius = 1.85
+	ring.rings = 32
+	ring.ring_segments = 4
+	ring.material = preview_material
+	landing = MeshInstance3D.new()
+	landing.name = "AimLanding"
+	landing.mesh = ring
+	landing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	landing.top_level = true
+	landing.visible = false
+	add_child(landing)
+
+## Simula o voo com a mesma física das balas e espalha os pontos pela parábola.
+func _update_preview() -> void:
+	var show := aiming
+	preview.visible = show
+	landing.visible = show
+	if not show:
+		return
+	var ready := cooldown <= 0.0
+	preview_material.albedo_color = Color(1, 1, 1, 0.9) if ready else Color(1, 1, 1, 0.3)
+	var pos := muzzle.global_position
+	var vel := _launch_velocity()
+	var points: Array[Vector3] = [pos]
+	var step := 0.05
+	for i in 120:
+		vel -= pos.normalized() * 9.8 * step
+		pos += vel * step
+		points.append(pos)
+		if pos.length() <= OCEAN_RADIUS + float(world.ocean.height_at(pos)):
+			break
+	var mm := preview.multimesh
+	for i in PREVIEW_DOTS:
+		var t := float(i + 1) / float(PREVIEW_DOTS + 1) * float(points.size() - 1)
+		var a := points[int(t)]
+		var b := points[mini(int(t) + 1, points.size() - 1)]
+		var shrink := lerpf(1.0, 0.7, float(i) / PREVIEW_DOTS)
+		mm.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * shrink), a.lerp(b, t - floorf(t))))
+	var hit: Vector3 = world.ocean.surface_at(points[points.size() - 1])
+	var up := hit.normalized()
+	var tangent := up.cross(Vector3.RIGHT if absf(up.x) < 0.9 else Vector3.UP).normalized()
+	landing.global_transform = Transform3D(Basis(tangent, up, tangent.cross(up)), hit + up * 0.08)
 
 func _launch() -> void:
 	var visual := BALL.instantiate() as Node3D
@@ -254,8 +392,8 @@ func _launch() -> void:
 	node.add_child(visual)
 	fit(visual,0.22,0,0.5)
 	node.global_position = muzzle.global_position
-	var direction := (-muzzle.global_basis.z).normalized()
-	var launch_velocity: Vector3 = direction*25.0+world.ship.velocity
+	var direction := _launch_direction()
+	var launch_velocity: Vector3 = _launch_velocity()
 	var flyby := AudioStreamPlayer3D.new()
 	flyby.name = "CannonballDoppler"
 	flyby.stream = DOPPLER_SFX
@@ -265,7 +403,7 @@ func _launch() -> void:
 	node.add_child(flyby)
 	flyby.play()
 	balls.append({"node":node,"velocity":launch_velocity,"age":0.0})
-	cooldown = 1.0
+	cooldown = reload_seconds
 	shots_fired += 1
 	shot_audio.play()
 	_emit_gun_smoke(direction)
@@ -283,6 +421,7 @@ func hit_target(index: int, point: Vector3) -> void:
 		hit_manager.call("play_hit", point)
 	else:
 		_play_impact("wood", point)
+	_play_impact("break", point)
 	score += 1
 	if time_attack_running and is_course_target(target):
 		time_attack_hits[index] = true
@@ -340,13 +479,8 @@ func _physics_process(delta: float) -> void:
 		if time_attack_remaining <= 0.0:
 			_finish_time_attack(false)
 	cooldown = maxf(0.0,cooldown-delta)
-	if fuse_remaining>0.0:
-		fuse_remaining=maxf(0.0,fuse_remaining-delta)
-		fuse_light.light_energy=0.8+0.3*sin(elapsed*45.0)
-		if fuse_remaining<=0.0:
-			fuse_light.visible=false
-			fuse_audio.stop()
-			_launch()
+	if pending_fire and cooldown <= 0.0:
+		fire()
 	var pitch_axis := clampf(float(Input.is_physical_key_pressed(KEY_R)) - float(Input.is_physical_key_pressed(KEY_F)) + virtual_aim.y, -1.0, 1.0)
 	# Só eixo vertical: o cano inclina nos munhões; não há giro horizontal.
 	aim_elevation = clampf(aim_elevation + pitch_axis * delta * 0.5, deg_to_rad(float(cannon.get("min_pitch"))), deg_to_rad(float(cannon.get("max_pitch"))))
@@ -430,7 +564,10 @@ func _physics_process(delta: float) -> void:
 			rings.remove_at(i)
 
 func _process(_delta: float) -> void:
-	var state := "PAVIO %.1fs"%fuse_remaining if fuse_remaining>0.0 else ("RECARREGANDO" if cooldown>0.0 else "PRONTO")
+	_update_preview()
+	if reload_bar:
+		reload_bar.value = 1.0 - cooldown / maxf(reload_seconds, 0.01)
+		reload_bar.modulate = Color(1, 1, 1, 0.45) if cooldown > 0.0 else Color(1.0, 0.85, 0.4)
 	if time_attack_mode:
 		# Curto: o placar completo (tempo e boias) já fica no topo da tela.
 		hud.text = "%.0f° · %d/%d" % [rad_to_deg(aim_elevation), time_attack_hits.size(), course_count]
@@ -442,6 +579,10 @@ func _play_impact(kind: String, point: Vector3) -> void:
 	var sound:=AudioStreamPlayer3D.new()
 	if kind == "splash":
 		sound.stream = SPLASH_SFX
+	elif kind == "break":
+		# Alvo de madeira rachando e as lascas caindo na água.
+		sound.stream = BREAK_SFX
+		sound.pitch_scale = rng.randf_range(0.92, 1.08)
 	elif kind == "wood":
 		var wood_path := "res://Assets/Sound/SFX/WOOD IMPACT CANON BALL SFX.wav"
 		sound.stream = load(wood_path) if ResourceLoader.exists(wood_path) else EXPLOSION_SFX

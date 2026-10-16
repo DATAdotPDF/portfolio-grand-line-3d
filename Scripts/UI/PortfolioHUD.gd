@@ -48,6 +48,10 @@ var dest_name: Label
 var dest_sub: Label
 var wind_box: VBoxContainer
 var wind_label: Label
+## Sol/lua do lugar onde o barco está: hora local e quanto falta para o sol nascer ou se pôr.
+var sky_icon: Control
+var sky_caps: Label
+var sky_label: Label
 var carta: PanelContainer
 var carta_open := false
 var carta_button: Button
@@ -123,7 +127,8 @@ const API_BASE := "https://dotpdf.dev"
 
 func _ready() -> void:
 	layer = 10
-	touch = DisplayServer.is_touchscreen_available()
+	# "-- touch" na linha de comando simula tela de toque (testes do layout mobile no desktop).
+	touch = DisplayServer.is_touchscreen_available() or "touch" in OS.get_cmdline_user_args()
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(CONTENT_PATH))
 	if parsed is Dictionary:
 		content = parsed
@@ -385,6 +390,18 @@ func _build_wind() -> void:
 	column.add_child(_label("VENTO", "Caps", 9))
 	wind_label = _label("—", "Body", 13)
 	column.add_child(wind_label)
+	var sky_row := HBoxContainer.new()
+	sky_row.add_theme_constant_override("separation", 8)
+	wind_box.add_child(sky_row)
+	sky_icon = Icon.new("sun", 16.0, MIST)
+	sky_row.add_child(sky_icon)
+	var sky_column := VBoxContainer.new()
+	sky_column.add_theme_constant_override("separation", 0)
+	sky_row.add_child(sky_column)
+	sky_caps = _label("SOL", "Caps", 9)
+	sky_column.add_child(sky_caps)
+	sky_label = _label("—", "Body", 13)
+	sky_column.add_child(sky_label)
 
 func _build_carta() -> void:
 	carta = PanelContainer.new()
@@ -592,7 +609,7 @@ func _build_telemetry() -> void:
 	keys_box.add_theme_constant_override("separation", 5)
 	keys_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(keys_box)
-	for entry in [[["W", "A", "S", "D"], "Leme"], [["Shift"], "Impulso"], [["R", "F"], "Mira"], [["Espaço"], "Canhão"], [["M"], "Mapa"]]:
+	for entry in [[["W", "A", "S", "D"], "Leme"], [["Shift"], "Impulso"], [["R", "F"], "Mira"], [["Espaço"], "Segure e solte: canhão"], [["M"], "Mapa"]]:
 		for key in entry[0]:
 			var cap := PanelContainer.new()
 			cap.add_theme_stylebox_override("panel", _box(Color(1, 1, 1, 0.05), Color(1, 1, 1, 0.45), 4, 3))
@@ -1209,6 +1226,13 @@ func set_island_distances(distances: Array) -> void:
 func set_wind(text: String) -> void:
 	wind_label.text = text
 
+func set_sky(day: bool, caps: String, text: String) -> void:
+	if sky_icon == null:
+		return
+	sky_icon.set("kind", "sun" if day else "moon")
+	sky_caps.text = caps
+	sky_label.text = text
+
 func set_time_mode(mode: String) -> void:
 	for i in range(time_buttons.size()):
 		time_buttons[i].button_pressed = ["auto", "day", "night"][i] == mode
@@ -1285,9 +1309,11 @@ func _layout() -> void:
 	wind_box.visible = playing and not mobile and not island_panel.visible
 	wind_box.size = Vector2.ZERO
 	carta_button.visible = playing and not reading
-	wind_box.position = Vector2(screen.x - wind_box.get_combined_minimum_size().x - margin - (56.0 if carta_button.visible else 0.0), margin)
-	carta_button.position = Vector2(screen.x - 46.0 - margin, margin)
 	map_button.visible = touch and not intro_visible and not reading and (playing or map_layer.visible)
+	# O vento fica à esquerda dos botões do canto (carta e, no toque, mapa) sem passar por baixo.
+	var corner_buttons := (54.0 if carta_button.visible else 0.0) + (54.0 if map_button.visible else 0.0)
+	wind_box.position = Vector2(screen.x - wind_box.get_combined_minimum_size().x - margin - corner_buttons, margin)
+	carta_button.position = Vector2(screen.x - 46.0 - margin, margin)
 	map_button.position = Vector2(screen.x - (46.0 * 2.0 + 8.0) - margin, margin) if carta_button.visible else Vector2(screen.x - 46.0 - margin, margin)
 	peek_button.visible = mobile
 	carta.visible = playing and not reading and carta_open and not (race_result and race_result.visible) and not (challenge_box and challenge_box.visible)
@@ -1305,6 +1331,9 @@ func _layout() -> void:
 	if mobile:
 		# Um pouco à direita do centro para não cobrir a bússola (Log Pose) no canto esquerdo.
 		telemetry.position = Vector2(minf((screen.x - tel.x) * 0.5 + 18.0, screen.x - tel.x - 6.0), screen.y - tel.y - margin - touch_reserve)
+	elif touch:
+		# Celular deitado: a barra fica no meio, entre os dois joysticks.
+		telemetry.position = Vector2((screen.x - tel.x) * 0.5, screen.y - tel.y - margin)
 	else:
 		telemetry.position = Vector2(margin + 140.0, screen.y - tel.y - margin)
 	keys_box.size = Vector2.ZERO

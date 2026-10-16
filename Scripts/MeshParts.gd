@@ -20,9 +20,7 @@ static func extract(model: Node3D, region: AABB, part_name: String) -> Node3D:
 		var base_mesh := ArrayMesh.new()
 		base_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,base_arrays)
 		base_mesh.surface_set_material(0,material)
-		var lod := ImporterMesh.from_mesh(base_mesh)
-		lod.generate_lods(60.0,0.0,[])
-		instance.mesh = lod.get_mesh()
+		instance.mesh = base_mesh
 		var root := Node3D.new()
 		root.name = part_name
 		root.position = region.get_center()
@@ -35,9 +33,7 @@ static func extract(model: Node3D, region: AABB, part_name: String) -> Node3D:
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
 		mesh.surface_set_material(0,material)
 		var part := MeshInstance3D.new()
-		var part_lod := ImporterMesh.from_mesh(mesh)
-		part_lod.generate_lods(60.0,0.0,[])
-		part.mesh = part_lod.get_mesh()
+		part.mesh = mesh
 		root.add_child(part)
 		print("PART_EXTRACTED ",part_name," triangles=",int(chosen.size()/3.0))
 		return root

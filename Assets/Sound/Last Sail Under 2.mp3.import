@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bm6w5sujs2i8s"
+path="res://.godot/imported/Last Sail Under 2.mp3-f51c4345007432c5e9b5e952c0a76661.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Last Sail Under 2.mp3"
+dest_files=["res://.godot/imported/Last Sail Under 2.mp3-f51c4345007432c5e9b5e952c0a76661.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

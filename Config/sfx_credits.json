@@ -1,0 +1,213 @@
+{
+ "note": "Efeitos sonoros do jogo: gravações do Freesound recortadas por Tools/cut_game_sfx.sh (Assets/Sound/SFX/Cuts). CC-BY exige crédito; CC0 listado por cortesia.",
+ "sounds": [
+  {
+   "title": "200806thunderstorm",
+   "author": "daveincamas",
+   "url": "https://freesound.org/s/59028/",
+   "author_url": "https://freesound.org/people/daveincamas/",
+   "license": "CC-BY 4.0",
+   "license_url": "https://creativecommons.org/licenses/by/4.0/",
+   "attribution_required": true,
+   "used_as": [
+    "thunder_crack_a"
+   ],
+   "credit": "\"200806thunderstorm\" by daveincamas (https://freesound.org/s/59028/), CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/); recortado/editado"
+  },
+  {
+   "title": "Cinematic Boom Impact Warning",
+   "author": "eminyildirim",
+   "url": "https://freesound.org/s/541600/",
+   "author_url": "https://freesound.org/people/eminyildirim/",
+   "license": "CC-BY 4.0",
+   "license_url": "https://creativecommons.org/licenses/by/4.0/",
+   "attribution_required": true,
+   "used_as": [
+    "kraken_boom"
+   ],
+   "credit": "\"Cinematic Boom Impact Warning\" by eminyildirim (https://freesound.org/s/541600/), CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/); recortado/editado"
+  },
+  {
+   "title": "1 Impact Wet",
+   "author": "original_sound",
+   "url": "https://freesound.org/s/376819/",
+   "author_url": "https://freesound.org/people/original_sound/",
+   "license": "CC-BY 3.0",
+   "license_url": "https://creativecommons.org/licenses/by/3.0/",
+   "attribution_required": true,
+   "used_as": [
+    "kraken_tentacle_a",
+    "kraken_tentacle_b"
+   ],
+   "credit": "\"1 Impact Wet\" by original_sound (https://freesound.org/s/376819/), CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/); recortado/editado"
+  },
+  {
+   "title": "Thunderstorm Baltic Sea",
+   "author": "borgory",
+   "url": "https://freesound.org/s/870414/",
+   "author_url": "https://freesound.org/people/borgory/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "storm_rain_light_loop",
+    "thunder_near_a",
+    "thunder_near_b",
+    "thunder_far_a",
+    "thunder_far_b",
+    "thunder_far_c"
+   ],
+   "credit": "\"Thunderstorm Baltic Sea\" by borgory (https://freesound.org/s/870414/), CC0"
+  },
+  {
+   "title": "29_07_2013_thunderstorm",
+   "author": "supercell10",
+   "url": "https://freesound.org/s/237036/",
+   "author_url": "https://freesound.org/people/supercell10/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "storm_rain_heavy_loop",
+    "thunder_crack_b",
+    "thunder_near_c"
+   ],
+   "credit": "\"29_07_2013_thunderstorm\" by supercell10 (https://freesound.org/s/237036/), CC0"
+  },
+  {
+   "title": "Ocean beach at night with small waves",
+   "author": "bonnyorbit",
+   "url": "https://freesound.org/s/465435/",
+   "author_url": "https://freesound.org/people/bonnyorbit/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "ocean_bed_loop"
+   ],
+   "credit": "\"Ocean beach at night with small waves\" by bonnyorbit (https://freesound.org/s/465435/), CC0"
+  },
+  {
+   "title": "Vortex",
+   "author": "badoink",
+   "url": "https://freesound.org/s/567241/",
+   "author_url": "https://freesound.org/people/badoink/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "storm_gust",
+    "cyclone_roar_loop",
+    "kraken_whirlpool_loop"
+   ],
+   "credit": "\"Vortex\" by badoink (https://freesound.org/s/567241/), CC0"
+  },
+  {
+   "title": "Charge up",
+   "author": "magnuswaker",
+   "url": "https://freesound.org/s/555060/",
+   "author_url": "https://freesound.org/people/magnuswaker/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "cyclone_lift",
+    "kraken_action_tap",
+    "kraken_breakout"
+   ],
+   "credit": "\"Charge up\" by magnuswaker (https://freesound.org/s/555060/), CC0"
+  },
+  {
+   "title": "Snapped wood",
+   "author": "markdalderup",
+   "url": "https://freesound.org/s/624150/",
+   "author_url": "https://freesound.org/people/markdalderup/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "buoy_break",
+    "kraken_shipwreck"
+   ],
+   "credit": "\"Snapped wood\" by markdalderup (https://freesound.org/s/624150/), CC0"
+  },
+  {
+   "title": "2022-02-06 wood creak 1",
+   "author": "sit_walk",
+   "url": "https://freesound.org/s/618085/",
+   "author_url": "https://freesound.org/people/sit_walk/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "kraken_shipwreck"
+   ],
+   "credit": "\"2022-02-06 wood creak 1\" by sit_walk (https://freesound.org/s/618085/), CC0"
+  },
+  {
+   "title": "water",
+   "author": "halion",
+   "url": "https://freesound.org/s/17341/",
+   "author_url": "https://freesound.org/people/halion/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "kraken_shipwreck"
+   ],
+   "credit": "\"water\" by halion (https://freesound.org/s/17341/), CC0"
+  },
+  {
+   "title": "Ominous horn",
+   "author": "tec_studio",
+   "url": "https://freesound.org/s/385818/",
+   "author_url": "https://freesound.org/people/tec_studio/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "kraken_omen_loop"
+   ],
+   "credit": "\"Ominous horn\" by tec_studio (https://freesound.org/s/385818/), CC0"
+  },
+  {
+   "title": "Sea creature roar",
+   "author": "bikkit99",
+   "url": "https://freesound.org/s/837799/",
+   "author_url": "https://freesound.org/people/bikkit99/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "kraken_roar"
+   ],
+   "credit": "\"Sea creature roar\" by bikkit99 (https://freesound.org/s/837799/), CC0"
+  },
+  {
+   "title": "NPX Deep Roar Echo 1",
+   "author": "noahpardo",
+   "url": "https://freesound.org/s/345736/",
+   "author_url": "https://freesound.org/people/noahpardo/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "kraken_roar_retreat"
+   ],
+   "credit": "\"NPX Deep Roar Echo 1\" by noahpardo (https://freesound.org/s/345736/), CC0"
+  },
+  {
+   "title": "Stomach growls (rumbling bubbles)",
+   "author": "samanthacastleberry",
+   "url": "https://freesound.org/s/696008/",
+   "author_url": "https://freesound.org/people/samanthacastleberry/",
+   "license": "CC0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "attribution_required": false,
+   "used_as": [
+    "kraken_bubbles_loop"
+   ],
+   "credit": "\"Stomach growls (rumbling bubbles)\" by samanthacastleberry (https://freesound.org/s/696008/), CC0"
+  }
+ ]
+}

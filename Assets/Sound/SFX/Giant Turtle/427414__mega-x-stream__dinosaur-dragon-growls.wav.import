@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://dgtr6weoayol1"
+path="res://.godot/imported/427414__mega-x-stream__dinosaur-dragon-growls.wav-564be01078614596dfab589763dc9eb4.sample"
+
+[deps]
+
+source_file="res://Assets/Sound/SFX/Giant Turtle/427414__mega-x-stream__dinosaur-dragon-growls.wav"
+dest_files=["res://.godot/imported/427414__mega-x-stream__dinosaur-dragon-growls.wav-564be01078614596dfab589763dc9eb4.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

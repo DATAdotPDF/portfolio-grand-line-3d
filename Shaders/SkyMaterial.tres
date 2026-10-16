@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" load_steps=10 format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://dmudxryih610r"]
 
-[ext_resource type="Shader" path="res://Shaders/radial_sky.gdshader" id="1_sky_shader"]
+[ext_resource type="Shader" uid="uid://j2b71852i8mf" path="res://Shaders/radial_sky.gdshader" id="1_sky_shader"]
 
 [sub_resource type="Curve" id="Curve_clouds"]
 _data = [Vector2(0, 0), 0.0, 10.0, 0, 1, Vector2(0.1, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.8), -0.222222, 0.0, 1, 0]
@@ -15,18 +15,47 @@ curve = SubResource("Curve_clouds")
 [sub_resource type="NoiseTexture2D" id="NoiseTexture_small"]
 width = 256
 height = 256
-seamless = true
 noise = SubResource("Noise_small")
+seamless = true
 
 [sub_resource type="FastNoiseLite" id="Noise_shape"]
 fractal_octaves = 10
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture_shape"]
-seamless = true
 noise = SubResource("Noise_shape")
+seamless = true
 
 [resource]
 shader = ExtResource("1_sky_shader")
+shader_parameter/local_up = Vector3(0, 1, 0)
+shader_parameter/sun_direction = Vector3(0, 1, 0)
+shader_parameter/space_view = 0.0
+shader_parameter/screen_aspect = 1.7778
+shader_parameter/image_aspect = 1.7917
+shader_parameter/day_zenith_color = Color(0.34, 0.6, 0.95, 1)
+shader_parameter/day_horizon_color = Color(0.74, 0.88, 0.98, 1)
+shader_parameter/sunset_horizon_color = Color(0.98, 0.55, 0.32, 1)
+shader_parameter/night_zenith_color = Color(0.01, 0.02, 0.07, 1)
+shader_parameter/night_horizon_color = Color(0.05, 0.08, 0.18, 1)
+shader_parameter/sun_disk_size = 0.0006
+shader_parameter/sun_bloom = 0.14
+shader_parameter/sun_color = Color(1, 0.96, 0.86, 1)
 shader_parameter/cloud_shape_sampler = SubResource("NoiseTexture_shape")
 shader_parameter/cloud_noise_sampler = SubResource("NoiseTexture_small")
 shader_parameter/cloud_curves = SubResource("CurveTexture_clouds")
+shader_parameter/clouds_samples = 8
+shader_parameter/shadow_samples = 2
+shader_parameter/clouds_density = 0.46
+shader_parameter/clouds_scale = 1.1
+shader_parameter/clouds_smoothness = 0.035
+shader_parameter/clouds_shadow_intensity = 2.5
+shader_parameter/cloud_day_light = Color(1, 1, 1, 1)
+shader_parameter/cloud_day_shade = Color(0.55, 0.64, 0.95, 1)
+shader_parameter/cloud_night_light = Color(0.28, 0.33, 0.5, 1)
+shader_parameter/cloud_night_shade = Color(0.08, 0.1, 0.2, 1)
+shader_parameter/storm_gloom = 0.0
+shader_parameter/storm_flash = 0.0
+shader_parameter/star_density = 280.0
+shader_parameter/star_brightness = 1.0
+shader_parameter/milky_way_strength = 0.6
+shader_parameter/milky_way_axis = Vector3(0.36, 0.48, -0.8)

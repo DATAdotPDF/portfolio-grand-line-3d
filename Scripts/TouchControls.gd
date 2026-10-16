@@ -20,12 +20,16 @@ var touches := {}
 var drive_pad: Control
 var aim_pad: Control
 var controls_root: Control
+## Botões de segurar (IMPULSO, FOGO) tratados por dedo: o Button do Godot só ouve o primeiro
+## toque (mouse emulado), então segurar FOGO enquanto o outro polegar pilota não funcionava.
+var hold_buttons: Array[Button] = []
+var held := {}  # índice do dedo -> Button
 
 func _ready() -> void:
 	layer = 5
 	visible = false
 	set_process(false)
-	if force_visible or DisplayServer.is_touchscreen_available():
+	if force_visible or DisplayServer.is_touchscreen_available() or "touch" in OS.get_cmdline_user_args():
 		enable()
 
 ## Monta os controles (chamado sozinho em telas de toque; os testes podem forçar).
@@ -43,10 +47,9 @@ func enable() -> void:
 	drive_pad = _make_pad(root, Control.PRESET_BOTTOM_LEFT, Vector2(36, -36), "drive")
 	aim_pad = _make_pad(root, Control.PRESET_BOTTOM_RIGHT, Vector2(-36, -36), "aim")
 	# Mão esquerda navega; mão direita: mira + IMPULSO e FOGO lado a lado, acima do joystick direito.
-	var boost_button := _make_button(root, "IMPULSO", -1, Callable())
-	boost_button.button_down.connect(func(): boost = true)
-	boost_button.button_up.connect(func(): boost = false)
-	_make_button(root, "FOGO", 1, func(): if naval: naval.call("fire"))
+	_make_hold_button(root, "IMPULSO", -1, func(): boost = true, func(): boost = false)
+	# FOGO: segurar mostra a parábola (o joystick direito ajusta a elevação); soltar dispara.
+	_make_hold_button(root, "FOGO", 1, func(): if naval: naval.call("begin_aim"), func(): if naval: naval.call("release_aim"))
 
 func _make_pad(parent: Control, preset: int, margin: Vector2, kind: String) -> Control:
 	var pad := Control.new()
@@ -72,7 +75,9 @@ func _make_button(parent: Control, text: String, slot: int, action: Callable) ->
 	var button := Button.new()
 	button.text = text
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(72, 40)
+	# Alvo de polegar (~48 px de altura).
+	button.custom_minimum_size = Vector2(84, 48)
+	button.size = button.custom_minimum_size
 	button.add_theme_font_size_override("font_size", 12)
 	var place := func():
 		var screen := get_viewport().get_visible_rect().size
@@ -85,6 +90,33 @@ func _make_button(parent: Control, text: String, slot: int, action: Callable) ->
 	if action.is_valid():
 		button.pressed.connect(action)
 	return button
+
+func _make_hold_button(parent: Control, text: String, slot: int, on_down: Callable, on_up: Callable) -> Button:
+	var button := _make_button(parent, text, slot, Callable())
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.toggle_mode = true
+	button.set_meta("down", on_down)
+	button.set_meta("up", on_up)
+	hold_buttons.append(button)
+	return button
+
+## Dedo (índice) apertou/soltou: devolve true se era de um botão de segurar.
+func _hold_touch(index: int, position: Vector2, pressed: bool) -> bool:
+	if pressed:
+		for button in hold_buttons:
+			if button.is_visible_in_tree() and button.get_global_rect().grow(6.0).has_point(position):
+				held[index] = button
+				button.set_pressed_no_signal(true)
+				(button.get_meta("down") as Callable).call()
+				return true
+		return false
+	if held.has(index):
+		var button: Button = held[index]
+		held.erase(index)
+		button.set_pressed_no_signal(false)
+		(button.get_meta("up") as Callable).call()
+		return true
+	return false
 
 func _draw_pad(pad: Control) -> void:
 	var center := pad.size * 0.5
@@ -120,6 +152,16 @@ func _pad_input(event: InputEvent, pad: Control) -> void:
 	pad.queue_redraw()
 
 func _input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event is InputEventScreenTouch and _hold_touch(event.index, event.position, event.pressed):
+		get_viewport().set_input_as_handled()
+		return
+	# Teste no desktop (force_visible): o mouse vale como o dedo -1.
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not DisplayServer.is_touchscreen_available():
+		if _hold_touch(-1, event.position, event.pressed):
+			get_viewport().set_input_as_handled()
+			return
 	# Dois dedos fora dos controles: girar a câmera.
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -147,6 +189,8 @@ func _process(delta: float) -> void:
 			drive = Vector2.ZERO
 			aim = Vector2.ZERO
 			boost = false
+			for index in held.keys():
+				_hold_touch(index, Vector2.ZERO, false)
 	if ship:
 		ship.set("virtual_throttle", -drive.y if absf(drive.y) > 0.15 else 0.0)
 		ship.set("virtual_steering", drive.x if absf(drive.x) > 0.15 else 0.0)

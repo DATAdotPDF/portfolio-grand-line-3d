@@ -18,7 +18,17 @@ var wake: Array[Vector4] = []
 var ripples: Array[Vector4] = []
 var ripple_info: Array[Vector4] = []
 var island_centers := PackedVector3Array()
+## Tempestades locais (Weather/StormCell): ondas maiores dentro do raio de cada uma (até 4).
+const MAX_STORMS := 6
+var storm_data: Array[Vector4] = []   # xyz = centro na superfície, w = raio
+var storm_strengths: Array[float] = []
 var island_radii := PackedFloat32Array()
+## Ilhas/rochas do mapa com mar calmo em volta (iguais ao calm_spots do shader): xyz = direção, w = raio.
+const MAX_CALM := 16
+var calm_spots: Array[Vector4] = []
+## Funil do redemoinho do kraken (mesma conta do shader): centro, raio e profundidade.
+var whirl := Vector4.ZERO
+var whirl_depth := 0.0
 var components: Array[Dictionary] = []
 ## Ponto vivo da esteira (popa do barco), ligado ao último ponto gravado:
 ## evita o rastro 'desconectado' do casco.
@@ -60,6 +70,54 @@ func set_islands(centers: PackedVector3Array, radii: PackedFloat32Array) -> void
 	for material in materials:
 		material.set_shader_parameter("island_centers", centers)
 		material.set_shader_parameter("island_radii", radii)
+
+func set_calm_spots(spots: Array[Vector4]) -> void:
+	calm_spots = spots.slice(0, MAX_CALM)
+	var packed: Array[Vector4] = calm_spots.duplicate()
+	packed.resize(MAX_CALM)
+	for i in range(calm_spots.size(), MAX_CALM):
+		packed[i] = Vector4.ZERO
+	for material in materials:
+		material.set_shader_parameter("calm_spots", packed)
+		material.set_shader_parameter("calm_count", calm_spots.size())
+
+func set_whirl(center: Vector3, whirl_radius: float, depth: float) -> void:
+	whirl = Vector4(center.x, center.y, center.z, whirl_radius)
+	whirl_depth = depth
+	for material in materials:
+		material.set_shader_parameter("whirl_data", whirl)
+		material.set_shader_parameter("whirl_depth", whirl_depth)
+
+func set_storms(data: Array[Vector4], strengths: Array[float]) -> void:
+	storm_data = data
+	storm_strengths = strengths
+	var packed := PackedVector4Array(data)
+	packed.resize(MAX_STORMS)
+	var packed_strength := PackedFloat32Array(strengths)
+	packed_strength.resize(MAX_STORMS)
+	for material in materials:
+		material.set_shader_parameter("storm_data", packed)
+		material.set_shader_parameter("storm_strengths", packed_strength)
+		material.set_shader_parameter("storm_count", mini(data.size(), MAX_STORMS))
+
+## x = máscara da tempestade mais forte no ponto, y = badness dela (mesma conta do storm_eval).
+func storm_at(point: Vector3) -> Vector2:
+	var best := Vector2.ZERO
+	for i in mini(storm_data.size(), MAX_STORMS):
+		var s := storm_data[i]
+		var m := 1.0 - smoothstep(s.w * 0.95, s.w * 1.45, point.distance_to(Vector3(s.x, s.y, s.z)))
+		if m * storm_strengths[i] > best.x * best.y:
+			best = Vector2(m, storm_strengths[i])
+	return best
+
+## Badness local (0..4) no ponto.
+func badness_at(point: Vector3) -> float:
+	var s := storm_at(point)
+	return s.x * s.y
+
+## Ganho de altura das ondas: 1 fora das tempestades (mesma conta do shader).
+func storm_factor(point: Vector3) -> float:
+	return 1.0 + 0.35 * badness_at(point)
 
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -115,13 +173,39 @@ func _coast_factor(point: Vector3) -> float:
 			continue
 		var chord := point.distance_to(island_centers[i] * radius)
 		factor = minf(factor, smoothstep(island_radii[i] * 0.7, island_radii[i] + 25.0 * wave_scale, chord))
+	for spot in calm_spots:
+		var spot_chord := point.distance_to(Vector3(spot.x, spot.y, spot.z) * radius)
+		factor = minf(factor, smoothstep(spot.w * 0.7, spot.w + 25.0 * wave_scale, spot_chord))
+	if whirl_depth > 0.0:
+		factor = minf(factor, lerpf(0.2, 1.0, smoothstep(whirl.w * 0.7, whirl.w * 1.15, point.distance_to(Vector3(whirl.x, whirl.y, whirl.z)))))
 	return lerpf(0.08, 1.0, factor)
 
 ## Campo Lagrangiano no ponto de repouso p (|p| = radius):
 ## xyz = deslocamento tangente, w = altura radial (sem as perturbações).
+## Mesma torção em espiral e mesmo perfil de Rankine do shader (whirl_twist/whirl_profile).
+func _whirl_twist(p: Vector3) -> Vector3:
+	if whirl_depth <= 0.0:
+		return p
+	var c3 := Vector3(whirl.x, whirl.y, whirl.z)
+	var d := p.distance_to(c3)
+	if d >= whirl.w:
+		return p
+	var k := clampf(1.0 - d / whirl.w, 0.0, 1.0)
+	var angle := whirl_depth * 0.22 * pow(k, 1.6)
+	return p.rotated(c3.normalized(), angle)
+
+func _whirl_profile(d: float, big_r: float) -> float:
+	var rc2 := (big_r * 0.2) * (big_r * 0.2)
+	var fr := rc2 / (big_r * big_r + rc2)
+	return maxf((rc2 / (d * d + rc2) - fr) / (1.0 - fr), 0.0)
+
 func _swell(p: Vector3) -> Vector4:
+	p = _whirl_twist(p)
 	var n := p.normalized()
-	var coast := _coast_factor(p)
+	var badness := badness_at(p)
+	var storm_amp := 1.0 + 0.35 * badness
+	var storm_q := (1.0 + 0.08 * badness) / storm_amp
+	var coast := _coast_factor(p) * storm_amp
 	var disp := Vector3.ZERO
 	var height := 0.0
 	for idx in range(components.size()):
@@ -134,8 +218,61 @@ func _swell(p: Vector3) -> Vector4:
 		var phi: float = float(item.k) * p.dot(d) - float(item.omega) * simulation_time + float(item.phase)
 		var a: float = float(item.amplitude) * w
 		height += a * sin(phi)
-		disp += g * (float(item.steepness) * a * cos(phi))
+		disp += g * (float(item.steepness) * storm_q * a * cos(phi))
+	var chop_disp: Array = []
+	var chop := _chop(p, n, badness, _coast_factor(p), chop_disp)
+	if not chop_disp.is_empty():
+		disp += chop_disp[0]
+		height += chop.x
+	if whirl_depth > 0.0:
+		var d := p.distance_to(Vector3(whirl.x, whirl.y, whirl.z))
+		if d < whirl.w:
+			height -= whirl_depth * _whirl_profile(d, whirl.w)
 	return Vector4(disp.x, disp.y, disp.z, height)
+
+## Oitava curta do mar picado (mesma conta do shader). Vector2(altura, crest); disp somado em out_disp.
+func _chop(p: Vector3, n: Vector3, badness: float, calm_coast: float, out_disp: Array) -> Vector2:
+	var chop := clampf(0.2 + badness / 4.0, 0.0, 1.0)
+	if chop <= 0.01:
+		return Vector2.ZERO
+	var height := 0.0
+	var crest := 0.0
+	var disp := Vector3.ZERO
+	var count := components.size()
+	for idx in range(count):
+		var item: Dictionary = components[idx]
+		var d: Vector3 = ((item.dir as Vector3) + (components[(idx + 1) % count].dir as Vector3) * 0.6).normalized()
+		var g := d - n * n.dot(d)
+		var k := float(item.k) * 2.6
+		var w := Scale.calm_factor(g.length()) * calm_coast * chop
+		var phi := k * p.dot(d) - float(item.omega) * 1.6125 * simulation_time + float(item.phase) * 3.1
+		var a := float(item.amplitude) * 0.3 * w
+		height += a * sin(phi)
+		disp += g * (float(item.steepness) * 0.8 * a * cos(phi))
+		crest += float(item.steepness) * 0.8 * a * k * sin(phi)
+	out_disp.append(disp)
+	return Vector2(height, crest)
+
+## Compressão da crista no ponto (a mesma 'crest' do shader; > ~0.6 = onda se fechando).
+## Aproximada no ponto de repouso, sem inverter o deslocamento: serve para o spray.
+func crest_at(position: Vector3) -> float:
+	var p := position.normalized() * radius
+	var n := p.normalized()
+	var badness := badness_at(p)
+	var storm_amp := 1.0 + 0.35 * badness
+	var storm_q := (1.0 + 0.08 * badness) / storm_amp
+	var coast := _coast_factor(p) * storm_amp
+	var crest := 0.0
+	for idx in range(components.size()):
+		var item: Dictionary = components[idx]
+		var d: Vector3 = item.dir
+		var g := d - n * n.dot(d)
+		var w := Scale.calm_factor(g.length()) * coast
+		var d2: Vector3 = components[(idx + 2) % components.size()].dir
+		w *= 0.55 + 0.75 * (0.5 + 0.5 * sin(float(item.k) * 0.19 * p.dot(d2) + float(item.k) * 0.07 * p.dot(d) - float(item.omega) * 0.05 * simulation_time + float(item.phase) * 2.7))
+		var phi: float = float(item.k) * p.dot(d) - float(item.omega) * simulation_time + float(item.phase)
+		crest += float(item.steepness) * storm_q * float(item.amplitude) * w * float(item.k) * sin(phi)
+	return crest + _chop(p, n, badness, _coast_factor(p), []).y
 
 func ripple_height_at(p: Vector3) -> float:
 	var result := 0.0

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cs6bvifq2x15r"
+path="res://.godot/imported/Kraken Blackwave 1.mp3-0546f301414c04d2ef49e832aa5ffef0.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound/Kraken Blackwave 1.mp3"
+dest_files=["res://.godot/imported/Kraken Blackwave 1.mp3-0546f301414c04d2ef49e832aa5ffef0.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
