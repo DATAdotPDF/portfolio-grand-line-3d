@@ -339,39 +339,28 @@ def anim_turtle(rig):
 
 
 def anim_whale(rig):
-	"""Swim (12 s, loop), baleia colossal: o RABO fica dentro d'água (o modelo vem com a cauda subindo
-	para fora; os últimos ossos baixam no repouso) com uma ondulação vertical lenta e pequena. Uma vez
-	por ciclo vem a propulsão: a cauda sobe devagar para fora d'água (~4 s), segura no alto e desce
-	numa pancada (~0,6 s), depois volta ao nado. O jogo solta o borrifo quando a ponta sai da água e a
-	pancada quando ela bate (SeaBeasts, osso da ponta Bone_014)."""
+	"""Swim (12 s, loop = 2 batidas), baleia colossal: o movimento vem da CAUDA, batendo devagar de
+	-45° a +45° passando por 0 (o 0 é a cauda na horizontal: o modelo vem com ela subindo para fora e
+	os últimos ossos baixam no repouso). A onda corre do meio do corpo para a ponta (a ponta atrasa),
+	quase nada na cabeça; nadadeiras peitorais remando devagar. Em cada batida a ponta sai da água e
+	volta: o jogo solta o borrifo na saída e a pancada na entrada (SeaBeasts, ponta Bone_014)."""
 	spine = ["Bone_009", "Bone_008", "Bone_018", "Bone_017", "Bone_016", "Bone_015", "Bone_014"]
 	rest_down = {"Bone_017": 10.0, "Bone_016": 26.0, "Bone_015": 24.0, "Bone_014": 14.0}
 	s_of = body_s(rig)
 	frames = 360
 	for f in range(0, frames + 1, 2):
 		t = f / frames
-		# Propulsão: sobe 0,45→0,78 (devagar), segura até 0,82, desce na pancada até 0,87, assenta até 0,95.
-		if t < 0.45:
-			big = 0.0
-		elif t < 0.78:
-			big = _smooth((t - 0.45) / 0.33)
-		elif t < 0.82:
-			big = 1.0
-		elif t < 0.87:
-			u = (t - 0.82) / 0.05
-			big = 1.0 - 1.25 * u * u
-		else:
-			big = -0.25 * (1.0 - _smooth((t - 0.87) / 0.08))
 
 		def field(s):
-			tail = (1.0 - s) ** 1.7
-			swim = 5.0 * tail * math.sin(2 * math.pi * 2 * t - 2.4 * (1.0 - s))
-			return swim - 62.0 * big * tail
+			tail = (1.0 - s) ** 1.5
+			# 2 batidas por volta; a ponta (s ~ 0) chega a ±45°.
+			return 45.0 * tail * math.sin(2 * math.pi * 2 * t - 2.2 * (1.0 - s))
 
 		pose = spine_pose(rig, spine, field, X, s_of, ref=s_of(bone(rig, "Bone_009").head_local))
 		for name, deg in rest_down.items():
 			pose[name][0] = (X, pose[name][0][1] + deg)
-		pose["Bone_001"] = [(X, 1.0 * math.sin(2 * math.pi * 2 * t + 0.8) + 2.0 * big)]
+		# Cabeça (com a torre) quase parada: só acompanha de leve o empuxo da cauda.
+		pose["Bone_001"] = [(X, 1.2 * math.sin(2 * math.pi * 2 * t + 0.8))]
 		for b in ("Bone_005", "Bone_007"):
 			sd = side(rig, b)
 			pose[b] = [(Y, sd * 8 * math.sin(2 * math.pi * 2 * t)), (Z, sd * 6 * math.sin(2 * math.pi * 2 * t - 1.0))]

@@ -33,6 +33,7 @@ SOURCES = {
 	"ship_graveyard": ["World/_src/ship_graveyard_parts.glb", 60.0, "max", 0.12],
 	"abandoned_stilt_waterworks": ["World/_src/abandoned_stilt_waterworks_parts.glb", 42.0, "max", 0.15],
 	"twin_sea_pinnacles": ["Meshy_AI_twin_sea_pinnacles_3d_1009121457_image-to-3d-texture.glb", 42.0, "h", 0.08],
+	"stilt_lookout_post": ["Meshy_AI_stilt_lookout_post_3d_1008215303_image-to-3d-texture.glb", 24.0, "h", 0.15],
 	"split_monolith_runes": ["Meshy_AI_split_monolith_runes__1009111301_image-to-3d-texture.glb", 75.0, "h", 0.08],
 }
 
@@ -315,51 +316,93 @@ def animate_basalt_chain(meshes, draft):
 	return loop
 
 
-def animate_ship_graveyard(meshes, draft):
-	"""Cemitério de navios (partes da segmentação): a bandeira do mastro principal tremula no vento.
-	O mastro fica num osso parado; o peso da bandeira cresce com a distância do mastro, em 3 ossos que
-	balançam em sequência (onda andando para a ponta) e torcem um pouco (tremular)."""
-	loop = 3.0
-	bones_n = 5
-	mast = next(o for o in meshes if o.name == "model_part4")
-
-	# Linha do mastro (do pé ao topo), medida no modelo: x sobe com a altura.
-	def mast_x(z):
-		return 0.05 + 0.2077 * (z + 0.4)
-
-	vs = [mast.matrix_world @ v.co for v in mast.data.vertices]
-	flag = [v for v in vs if v.z > 0.36 and v.x - mast_x(v.z) > 0.04]
-	dmax = max(v.x - mast_x(v.z) for v in flag)
-	y0 = sum(v.y for v in flag) / len(flag)
-	z0 = 0.6
-	root = Vector((mast_x(z0), y0, z0))
-	step = (dmax - 0.04) / bones_n
-	bones = [("Mast", root - Vector((0, 0, 0.1)), root, None)]
+def cloth_flag(mesh, box_min, box_max, rig_name, loop, bones_n=4, amp=0.55, palette=("blue", "dark")):
+	"""Bandeira tremulando SÓ no tecido (Tools/cloth_select.py: faces de pano pela cor da textura e
+	pedaços ligados; peso 0 em tudo que encosta na madeira). Ossos: "Rigid" parado (mastro, verga,
+	cordas, casco: 100%) e uma cadeia do ponto onde o pano prende até a ponta solta; a onda corre da
+	prisão para a ponta (cada osso atrasa) e o pano torce um pouco (tremular)."""
+	import numpy as np
+	sys.path.insert(0, os.path.join(PROJECT_ROOT, "Tools"))
+	import cloth_select as cs
+	cloth, _rigid = cs.cloth_faces(mesh, box_min, box_max, palette)
+	mw = mesh.matrix_world
+	verts = set()
+	for i in cloth:
+		verts.update(mesh.data.polygons[i].vertices)
+	pts = np.array([list(mw @ mesh.data.vertices[i].co) for i in verts])
+	span = float(np.max(np.linalg.norm(pts - pts.mean(axis=0), axis=1))) * 2.0
+	cw = cs.cloth_vertex_weights(mesh, cloth, span * 0.18, box_min, box_max)
+	# Prisão = média do pano colado na madeira; ponta = vértice de pano mais longe dela.
+	fixed = [mw @ mesh.data.vertices[i].co for i in verts if cw.get(i, 0.0) < 0.05]
+	attach = sum(fixed, Vector()) / len(fixed)
+	tip = max((mw @ mesh.data.vertices[i].co for i in verts), key=lambda q: (q - attach).length)
+	along = (tip - attach).normalized()
+	length = (tip - attach).length
+	# Normal do pano (menor variação) e eixo da batida (no plano do pano, perpendicular à cadeia).
+	cov = np.cov((pts - pts.mean(axis=0)).T)
+	normal = Vector(np.linalg.eigh(cov)[1][:, 0]).normalized()
+	flap_axis = along.cross(normal).normalized()
+	step = length / bones_n
+	bones = [("Rigid", attach - Vector((0, 0, step)), attach, None)]
 	for i in range(bones_n):
-		head = root + Vector((0.04 + step * i, 0, 0))
-		bones.append(("Flag%d" % i, head, head + Vector((step, 0, 0)), "Flag%d" % (i - 1) if i else "Mast"))
-	arm = make_armature("FlagRig", bones)
+		bones.append(("Flag%d" % i, attach + along * step * i, attach + along * step * (i + 1), "Flag%d" % (i - 1) if i else "Rigid"))
+	arm = make_armature(rig_name, bones)
 
-	def flag_w(i, p):
-		d = p.x - mast_x(p.z)
-		if p.z <= 0.33 or d <= 0.03:
-			return [("Mast", 1.0)]
-		# Perto da linha de corte só uma parte vai com o pano (sem rasgar).
-		lift = smooth(0.33, 0.4, p.z) * smooth(0.03, 0.06, d)
-		t = min(max((d - 0.04) / (dmax - 0.04), 0.0), 1.0) * (bones_n - 1)
-		out = [("Mast", 1.0 - lift)]
-		for b in range(bones_n):
-			out.append(("Flag%d" % b, lift * max(0.0, 1.0 - abs(t - b))))
+	def weights(i, p):
+		w = cw.get(i, 0.0)
+		if w <= 0.0:
+			return [("Rigid", 1.0)]
+		t = min(max((p - attach).dot(along) / length, 0.0), 1.0) * (bones_n - 1)
+		out = [("Rigid", 1.0 - w)]
+		for k in range(bones_n):
+			out.append(("Flag%d" % k, w * max(0.0, 1.0 - abs(t - k))))
 		return out
 
-	skin(mast, arm, flag_w)
-	fns = {}
-	for b in range(bones_n):
-		# Onda que corre do mastro para a ponta (cada osso atrasa), forte o bastante para ver de longe.
-		amp = 0.3 + 0.08 * b
-		fns["Flag%d" % b] = (lambda b, amp: lambda t: ((0, 0, 0), (0.12 * wave(t, loop, 2, 0.4 - 0.9 * b), 0.2 * wave(t, loop, 3, -1.1 * b), amp * wave(t, loop, 2, -1.0 * b))))(b, amp)
-	bone_keys(arm, loop, fns)
-	print("ANIM bandeira: %d vértices no pano" % len(flag))
+	skin(mesh, arm, weights)
+	frames = int(loop * FPS)
+	from mathutils import Quaternion
+	for pb in arm.pose.bones:
+		pb.rotation_mode = "QUATERNION"
+	for f in range(0, frames + 1, 2):
+		t = f / FPS
+		for k in range(bones_n):
+			pb = arm.pose.bones["Flag%d" % k]
+			rest = pb.bone.matrix_local.to_3x3().inverted()
+			a_flap = (amp * (0.6 + 0.4 * k / max(bones_n - 1, 1))) * wave(t, loop, 2, -1.1 * k)
+			a_twist = 0.35 * amp * wave(t, loop, 3, 0.7 - 0.9 * k)
+			q = Quaternion((rest @ flap_axis).normalized(), a_flap) @ Quaternion((rest @ along).normalized(), a_twist)
+			pb.rotation_quaternion = q
+			pb.keyframe_insert("rotation_quaternion", frame=f)
+	action = arm.animation_data.action
+	action.name = "Idle_" + arm.name
+	track = arm.animation_data.nla_tracks.new()
+	track.name = "Idle"
+	track.strips.new("Idle", 0, action)
+	arm.animation_data.action = None
+	for pb in arm.pose.bones:
+		pb.rotation_quaternion = Quaternion()
+	print("ANIM bandeira %s: %d faces de pano, %d vértices com peso, comprimento %.3f" % (rig_name, len(cloth), len(cw), length))
+	return arm
+
+
+def animate_ship_graveyard(meshes, draft):
+	"""Cemitério de navios (partes da segmentação): a bandeira do mastro principal tremula no vento —
+	só o tecido (pela cor da textura); mastro, cordas e casco ficam rígidos."""
+	loop = 3.0
+	mast = next(o for o in meshes if o.name == "model_part4")
+	cloth_flag(mast, Vector((-5.0, -5.0, 0.2)), Vector((5.0, 5.0, 5.0)), "FlagRig", loop, bones_n=5, amp=0.55)
+	return loop
+
+
+def animate_stilt_lookout_post(meshes, draft):
+	"""Posto de vigia sobre palafitas (Leste): a bandeira azul do topo do mastro tremula — só o tecido
+	(pela cor da textura); o mastro, o telhado e o resto ficam rígidos."""
+	loop = 2.5
+	mesh = max(meshes, key=lambda o: len(o.data.vertices))
+	mn, mx = bounds([mesh])
+	top = mn.z + (mx.z - mn.z) * 0.86
+	cloth_flag(mesh, Vector((mn.x - 1, mn.y - 1, top)), Vector((mx.x + 1, mx.y + 1, mx.z + 1)), "FlagRig", loop, bones_n=4, amp=0.5,
+		palette=("blue",))
 	return loop
 
 
@@ -510,14 +553,20 @@ JOBS = {
 	"cargo_crates": animate_cargo_crates,
 	"floating_basalt_chain": animate_basalt_chain,
 	"ship_graveyard": animate_ship_graveyard,
+	"stilt_lookout_post": animate_stilt_lookout_post,
 	"abandoned_stilt_waterworks": animate_waterworks,
 	"twin_sea_pinnacles": spread_twin_pinnacles,
 	"split_monolith_runes": spread_split_monolith,
 }
 
 
+# Pasta do projeto (run() define): Tools/cloth_select.py é importado dali.
+PROJECT_ROOT = ""
+
+
 def run(project, names):
-	global UNIT
+	global UNIT, PROJECT_ROOT
+	PROJECT_ROOT = project
 	window = bpy.context.window
 	previous = window.scene if window else bpy.context.scene
 	done = {}

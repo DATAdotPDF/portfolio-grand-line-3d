@@ -18,8 +18,9 @@ const CUTS := "res://Assets/Sound/SFX/Cuts/"
 ## e pancada ao bater. glow: runas acesas à noite (Shaders/rune_glow).
 ## Colossos (sensação Shadow of the Colossus): bem maiores que o barco (5 m), lentos e graves.
 const KINDS := {
-	# Baleia de madeira: dorso e torre para fora; o rabo fica na água e só sobe na propulsão.
-	"timber_whale": {"model": "res://Assets/Optimized/Creatures/whale.glb", "size": 320.0, "axis": "max", "draft": 0.45,
+	# Baleia de madeira: metade do corpo para fora (linha d'água na metade entre a barriga e o dorso,
+	# medida no Blender), torre em cima; a cauda bate de -45° a +45° (sai e volta para a água).
+	"timber_whale": {"model": "res://Assets/Optimized/Creatures/whale.glb", "size": 320.0, "axis": "max", "draft": 0.35,
 		"collider": "capsule", "calls": ["whale_call", "whale_creak"], "call_db": 0.0,
 		"splash": [["Bone_014", "Bone_015"]]},
 	# Caranguejo de granito com runas: pernas embaixo, carapaça na linha da água e a torre para fora.

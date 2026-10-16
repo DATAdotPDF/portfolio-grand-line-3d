@@ -65,7 +65,7 @@ const MODELS := {
 	"split_monolith_runes": ["World/split_monolith_runes.glb", 75.0, "h", 0.08],
 	"half_sunken_lighthouse": ["Meshy_AI_half_sunken_lighthous_1008215250_image-to-3d-texture.glb", 34.0, "h", 0.18],
 	"driftwood_merchant": ["Meshy_AI_east_driftwood_mercha_1011001340_image-to-3d-texture.glb", 140.0, "max", 0.12],
-	"stilt_lookout_post": ["Meshy_AI_stilt_lookout_post_3d_1008215303_image-to-3d-texture.glb", 24.0, "h", 0.15],
+	"stilt_lookout_post": ["World/stilt_lookout_post.glb", 24.0, "h", 0.15],
 	"shipwreck_chest": ["Meshy_AI_shipwreck_with_chest__1008225020_image-to-3d-texture.glb", 32.0, "max", 0.12],
 	"coral_paradise": ["Meshy_AI_west_coral_paradise_i_1011000215_image-to-3d-texture.glb", 140.0, "max", 0.12],
 	"mushroom_grotto": ["Meshy_AI_mushroom_grotto_caver_1011005842_image-to-3d-texture.glb", 50.0, "max", 0.1],
@@ -169,7 +169,7 @@ const GLOW_OF := {
 const SEA_TINTS := [Color(0.2, 0.36, 0.8, 0.45), Color(0.0, 0.55, 0.25, 0.38), Color(0.16, 0.05, 0.34, 0.5), Color(0.0, 0.85, 0.7, 0.3)]
 ## Animados que se veem de longe (bandeira do cemitério, roda d'água, correntes): animam até o limite
 ## de desenho, não só perto do barco.
-const WIDE_ANIMATION := ["ship_graveyard", "abandoned_stilt_waterworks", "floating_basalt_chain"]
+const WIDE_ANIMATION := ["ship_graveyard", "abandoned_stilt_waterworks", "floating_basalt_chain", "stilt_lookout_post"]
 ## Fogos-fátuos (fadinhas) à noite nas ilhas com coqueiros.
 const WISPS := ["palm_atoll", "turtle_island"]
 ## Os únicos que se repetem: escala sorteada nesta faixa.
