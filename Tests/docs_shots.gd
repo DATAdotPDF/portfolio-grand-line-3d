@@ -52,7 +52,7 @@ func run() -> void:
 	world.ship.controls_override = true
 	world.ship.test_controls = Vector3.ZERO
 	# Build exportado com --packs: espera os modelos dos setores entrarem.
-	while not world.world_decor.pending.is_empty():
+	while not world.world_decor.pending.is_empty() and not world.world_decor.sectors_marked:
 		await process_frame
 	cam = Camera3D.new()
 	cam.fov = 55.0

@@ -178,7 +178,7 @@ h1 { font: italic 400 clamp(44px, 6.2vw, 124px)/.9 "IM Fell English", Georgia, s
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":233062912,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":233064288,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -388,16 +388,20 @@ const engine = new Engine(GODOT_CONFIG);
 		mark(name);
 		if (!measuring) return;
 		renderMeasure();
-		if (name === 'steer') {
-			let frames = 0;
-			const t0 = performance.now();
-			(function tick() {
-				frames++;
-				if (performance.now() - t0 < 5000) requestAnimationFrame(tick);
-				else { timings.fps = Math.round(frames / ((performance.now() - t0) / 1000)); renderMeasure(); }
-			})();
-		}
+		// FPS em duas janelas de 5 s: logo depois do leme (com os setores ainda chegando) e depois que
+		// os modelos do raio de carga estão no lugar (o jogo em si).
+		if (name === 'steer') measureFps('fps');
+		if (name === 'sectorsPlaced') measureFps('fpsSettled');
 	};
+	function measureFps(key) {
+		let frames = 0;
+		const t0 = performance.now();
+		(function tick() {
+			frames++;
+			if (performance.now() - t0 < 5000) requestAnimationFrame(tick);
+			else { timings[key] = Math.round(frames / ((performance.now() - t0) / 1000)); renderMeasure(); }
+		})();
+	}
 	function transferredMB(until) {
 		const entries = performance.getEntriesByType('resource').filter((e) => until === undefined || e.responseEnd <= until);
 		return entries.reduce((n, e) => n + (e.transferSize || 0), 0) / 1048576;
@@ -428,8 +432,9 @@ const engine = new Engine(GODOT_CONFIG);
 			'primeiros quadros ..... ' + t('worldReady'),
 			'BARCO RESPONDEU ....... ' + t('steer') + (timings.steer ? '  (' + transferredMB(timings.steer).toFixed(1) + ' MB transferidos até aqui)' : ''),
 			'setores baixados ...... ' + t('packsLoaded'),
-			'setores no lugar ...... ' + t('sectorsPlaced'),
+			'modelos perto no lugar  ' + t('sectorsPlaced'),
 			'FPS (5 s após o leme) . ' + (timings.fps || '…'),
+			'FPS (depois, estável) . ' + (timings.fpsSettled || '…'),
 			'total transferido ..... ' + transferredMB().toFixed(1) + ' MB (0 = veio do cache)',
 		];
 		box.textContent = lines.join('\n');

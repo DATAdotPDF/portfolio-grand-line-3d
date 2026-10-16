@@ -279,6 +279,14 @@ const KIND_CACHE := "res://Config/world_kinds.json"
 const CORE_KINDS := ["turtle_island", "basalt_caldera", "volcanic_crag"]
 ## Itens montados por quadro quando um pacote chega (instanciar é o que pesa).
 const ATTACH_PER_FRAME := 2
+## Raio de carga (só no site): fora dele o modelo do marco sai da cena (colisão, luz e efeitos
+## ficam) e, sem nenhum item perto, a cena do modelo é solta da memória. No desktop é o próprio
+## alcance de desenho (nada muda na tela); no celular, mais curto: a curvatura do planeta já esconde
+## quase tudo além disso. Pedro, 2026-10-16: em vez de baixar a qualidade dos modelos.
+const LOAD_RANGE_DESKTOP := DRAW_DISTANCE
+const LOAD_RANGE_MOBILE := 360.0
+## Folga para sair (evita entrar/sair no limite).
+const LOAD_MARGIN := 80.0
 ## Ritmo da roda d'água abandonada (fração do clipe "Idle" do Blender).
 const WATERWHEEL_SPEED := 0.15
 
@@ -352,6 +360,10 @@ var kind_idle := {}
 var pending: Array[Dictionary] = []
 var loading := {}
 var asset_packs: Node
+var streaming := false
+var load_range := LOAD_RANGE_DESKTOP
+var stream_timer := 0.0
+var sectors_marked := false
 var lava_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -422,6 +434,8 @@ func _ready() -> void:
 	if not pending.is_empty():
 		print("WORLD_DECOR esperando os pacotes dos setores: %d itens" % pending.size())
 		_start_packs()
+	streaming = asset_packs != null
+	load_range = LOAD_RANGE_MOBILE if OS.has_feature("mobile_lite") else LOAD_RANGE_DESKTOP
 	print("WORLD_DECOR itens=%d modelos=%d por_setor N=%d L=%d S=%d O=%d pontos_fantasma=%d novos=%s" % [items.size(), scenes.size(),
 		per.get(Sector.NORTH, 0), per.get(Sector.EAST, 0), per.get(Sector.SOUTH, 0), per.get(Sector.WEST, 0), ghost_points.size(), new_kinds])
 
@@ -1061,7 +1075,9 @@ func _dress_model(item: Dictionary, model: Node3D) -> void:
 		# Sombra só nos altos, e mesmo assim ligada/desligada em _update_shadows (perto + sol alto).
 		gi.cast_shadow = shadow
 	if GLOW_OF.has(item.kind):
+		var before := rune_materials.size()
 		_add_rune_glow(model, float(item.phase), NIGHT_GLOW[GLOW_OF[item.kind]])
+		item.rune_mats = rune_materials.slice(before)
 	var player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if player and player.has_animation("Idle") and item.has("idle_seek"):
 		player.get_animation("Idle").loop_mode = Animation.LOOP_LINEAR
@@ -1898,8 +1914,8 @@ func _process(delta: float) -> void:
 	if world == null or world.ship == null:
 		return
 	_update_turtle(delta)
-	if not pending.is_empty():
-		_attach_pending()
+	if streaming or not pending.is_empty():
+		_attach_pending(delta)
 	if not seas_tinted:
 		_tint_seas()
 	if not beasts_glowing:
@@ -2081,16 +2097,49 @@ func _anchor(sector: int) -> Vector3:
 	return _lat_lon(a.x, a.y)
 
 func _on_pack_loaded(_pack: String) -> void:
-	for item in pending:
-		var path := _model_path(item.kind)
-		if not loading.has(path) and not scenes.has(item.kind) and ResourceLoader.exists(path):
-			# O build web é sem threads: lá carrega um modelo por quadro em _attach_pending.
-			if not OS.has_feature("web"):
-				ResourceLoader.load_threaded_request(path)
-			loading[path] = item.kind
+	# Os modelos são pedidos conforme o barco chega perto (_attach_pending).
+	stream_timer = 0.0
 
-## Modelos que acabaram de carregar entram nos itens que esperavam por eles, poucos por quadro.
-func _attach_pending() -> void:
+func _in_range(item: Dictionary, ship_pos: Vector3, margin: float) -> bool:
+	return ship_pos.distance_to((item.dir as Vector3) * planet_radius) < load_range + margin + float(item.radius)
+
+## Tira o modelo da cena (longe do barco); o item continua com colisão, luz e efeitos.
+func _detach_model(item: Dictionary) -> void:
+	for material in item.get("rune_mats", []):
+		rune_materials.erase(material)
+	item.erase("rune_mats")
+	(item.model as Node3D).queue_free()
+	item.model = null
+	item.player = null
+	pending.append(item)
+
+## Carga por proximidade: pede o modelo dos itens que entraram no raio, monta poucos por quadro (os
+## mais perto primeiro), tira os que saíram e solta da memória as cenas sem nenhum item perto.
+func _attach_pending(delta: float) -> void:
+	var ship_pos: Vector3 = world.ship.global_position
+	stream_timer -= delta
+	if stream_timer <= 0.0:
+		stream_timer = 0.25
+		var wanted := {}
+		for item in pending:
+			if not streaming or _in_range(item, ship_pos, 0.0):
+				wanted[item.kind] = true
+		if streaming:
+			for item in items:
+				if item.model != null and not (item.kind in CORE_KINDS) and not _in_range(item, ship_pos, LOAD_MARGIN):
+					_detach_model(item)
+				elif item.model != null:
+					wanted[item.kind] = true
+			for kind in scenes.keys():
+				if not wanted.has(kind) and not (kind in CORE_KINDS):
+					scenes.erase(kind)
+		for kind in wanted:
+			var path := _model_path(kind)
+			if not scenes.has(kind) and not loading.has(path) and ResourceLoader.exists(path):
+				# O build web é sem threads: lá carrega um modelo por quadro, logo abaixo.
+				if not OS.has_feature("web"):
+					ResourceLoader.load_threaded_request(path)
+				loading[path] = kind
 	if OS.has_feature("web"):
 		for path in loading.keys():
 			scenes[loading[path]] = load(path)
@@ -2106,9 +2155,8 @@ func _attach_pending() -> void:
 				push_warning("WorldDecor: não carregou %s" % path)
 				loading.erase(path)
 	var budget := ATTACH_PER_FRAME
-	var ship_pos: Vector3 = world.ship.global_position
-	# Os mais perto do barco primeiro.
-	var ready: Array = pending.filter(func(item: Dictionary) -> bool: return scenes.has(item.kind))
+	var ready: Array = pending.filter(func(item: Dictionary) -> bool:
+		return scenes.has(item.kind) and (not streaming or _in_range(item, ship_pos, 0.0)))
 	ready.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return ship_pos.distance_squared_to(a.dir * planet_radius) < ship_pos.distance_squared_to(b.dir * planet_radius))
 	for item in ready:
@@ -2117,7 +2165,10 @@ func _attach_pending() -> void:
 		budget -= 1
 		pending.erase(item)
 		_dress_model(item, (scenes[item.kind] as PackedScene).instantiate())
-	if pending.is_empty():
-		print("WORLD_DECOR todos os modelos dos setores no lugar")
+	# Página (?medir): os pacotes chegaram e tudo o que está no raio já está no lugar.
+	var near_waiting := pending.any(func(item: Dictionary) -> bool: return not streaming or _in_range(item, ship_pos, 0.0))
+	if not sectors_marked and not near_waiting and (asset_packs == null or asset_packs.queue.is_empty() and asset_packs.current.is_empty()):
+		sectors_marked = true
+		print("WORLD_DECOR modelos no raio de carga no lugar (%d de %d itens com modelo)" % [items.size() - pending.size(), items.size()])
 		if OS.has_feature("web"):
 			JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('sectorsPlaced')", true)
