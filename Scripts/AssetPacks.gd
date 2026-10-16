@@ -18,6 +18,9 @@ var current := ""
 var base_url := ""
 var local_dir := ""
 var http: HTTPRequest
+## Site: o download é um fetch do navegador (anda na velocidade da rede; o HTTPRequest lia um
+## pedaço por quadro, e com a aba em segundo plano ou num celular lento demorava minutos).
+var fetching := false
 
 func start(order: Array) -> void:
 	if not FileAccess.file_exists(MANIFEST):
@@ -39,12 +42,11 @@ func start(order: Array) -> void:
 			if arg.begins_with("--packs="):
 				local_dir = arg.trim_prefix("--packs=")
 	DirAccess.make_dir_recursive_absolute(CACHE_DIR)
-	http = HTTPRequest.new()
-	# O build web é sem threads: com use_threads o pedido não andava. Pedaços de 1 MiB por quadro.
-	http.use_threads = not OS.has_feature("web")
-	http.download_chunk_size = 1 << 20
-	add_child(http)
-	http.request_completed.connect(_on_downloaded)
+	if not OS.has_feature("web"):
+		http = HTTPRequest.new()
+		http.use_threads = true
+		add_child(http)
+		http.request_completed.connect(_on_downloaded)
 	_next()
 
 func _local_path(pack: String) -> String:
@@ -70,16 +72,43 @@ func _next() -> void:
 			DirAccess.remove_absolute(CACHE_DIR + "/" + file)
 	var url := "%s%s/%s?v=%s" % [base_url, manifest.get("dir", "packs"), entry.file, entry.version]
 	print("ASSET_PACKS baixando %s (%.1f MB)" % [current, float(entry.size) / 1048576.0])
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("""window.__portfolioPack = { done: false };
+			fetch(%s).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+			.then(function (b) { window.__portfolioPack = { done: true, ok: true, data: new Uint8Array(b) }; })
+			.catch(function (e) { window.__portfolioPack = { done: true, ok: false, error: String(e) }; });""" % JSON.stringify(url), true)
+		fetching = true
+		return
 	var error := http.request(url)
 	if error != OK:
 		push_warning("AssetPacks: não pediu %s (%d)" % [url, error])
 		_next()
 
+func _process(_delta: float) -> void:
+	if not fetching or not bool(JavaScriptBridge.eval("window.__portfolioPack.done", true)):
+		return
+	fetching = false
+	if not bool(JavaScriptBridge.eval("window.__portfolioPack.ok", true)):
+		push_warning("AssetPacks: falhou %s (%s)" % [current, JavaScriptBridge.eval("window.__portfolioPack.error", true)])
+		_next()
+		return
+	# Uint8Array vira PackedByteArray na volta do eval.
+	var body: PackedByteArray = JavaScriptBridge.eval("window.__portfolioPack.data", true)
+	JavaScriptBridge.eval("window.__portfolioPack = null;", true)
+	_store(body)
+
 ## O corpo vem na memória e é gravado aqui (no navegador o download_file do HTTPRequest não gravava).
 func _on_downloaded(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
+		push_warning("AssetPacks: falhou %s (resultado %d, HTTP %d)" % [current, result, code])
+		_next()
+		return
+	_store(body)
+
+func _store(body: PackedByteArray) -> void:
 	var local := _local_path(current)
-	if result != HTTPRequest.RESULT_SUCCESS or code != 200 or body.size() != int(manifest.packs[current].size):
-		push_warning("AssetPacks: falhou %s (resultado %d, HTTP %d, %d bytes)" % [current, result, code, body.size()])
+	if body.size() != int(manifest.packs[current].size):
+		push_warning("AssetPacks: tamanho errado %s (%d bytes)" % [current, body.size()])
 		_next()
 		return
 	var file := FileAccess.open(local, FileAccess.WRITE)

@@ -216,6 +216,10 @@ a phone, so the site uses generated copies.
   - The download was set to use a thread, and the web build has none: the request never finished.
   - After that fix, the file `HTTPRequest` should have saved to browser storage was never written.
   - Now the game receives the pack in memory, writes it itself, then mounts it.
+  - On the live site, with the browser tab in the background (~1.5 fps), one pack took minutes:
+    Godot's `HTTPRequest` reads one chunk per frame. In the browser the download is now a native
+    `fetch`, which runs at network speed whatever the frame rate. All four packs then arrived in
+    under 30 s even at 1.5 fps.
   - Verified in the browser at phone size: all four packs load, and a second visit loads them from
     cache with no new download.
 - **The "Explore in 3D" button still showed old sizes.** It now shows the real package size,
