@@ -43,3 +43,22 @@
 !/Assets/Sound/SFX/**
 /Assets/Sound/SFX/OCEAN AND SEAGULLS SFX.mp3
 
+
+# Gravações brutas do Freesound (até 330 MB cada) ficam fora: o jogo usa os cortes em SFX/Cuts e
+# SFX/Generated (créditos em Config/sfx_credits.json). Os SFX curtos já versionados continuam.
+/Assets/Sound/SFX/**/*.wav
+/Assets/Sound/SFX/**/*.flac
+/Assets/Sound/SFX/**/*.mp3
+/Assets/Sound/SFX/**/*.m4a
+!/Assets/Sound/SFX/Cuts/**
+!/Assets/Sound/SFX/Generated/**
+
+# Modelos pesados (criaturas com rig, navio fantasma: 16-75 MB por GLB, texturas 4K) ficam fora do
+# Git; o site usa as variantes leves geradas no build (Tools/make_web_variants.py).
+/Assets/Optimized/Creatures/*.glb
+/Assets/Optimized/Creatures/*.png
+/Assets/Optimized/Creatures/*.jpg
+/Assets/Optimized/ghost_ship*.glb
+/Assets/Optimized/ghost_ship*.png
+/Assets/Optimized/ghost_ship*.jpg
+/Assets/Optimized/World/_log*.txt
