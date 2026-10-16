@@ -329,6 +329,33 @@ a phone, so the site uses generated copies.
 
 ---
 
+## 5.7 Original textures in the browser, near the boat (Oct 16)
+
+- **The direction:** I want the browser as close as possible to how the model looks in Blender, with
+  4K textures, on desktop and on phones. Visual quality is not cut before deploy: any reduction
+  happens in the game, and the assets are the last thing to cut.
+- **What changed:**
+  - The site's base models now carry every map: color, metal/roughness and normal. Dropping maps had
+    changed the materials compared with Blender.
+  - The original textures (up to 4096 on desktop, 2048 on phones) are prepared by the build, already
+    in GPU formats (`Tests/export_hd_textures.gd`).
+  - In the game, `Scripts/HDTextures.gd` downloads them when a model comes near the boat and swaps
+    them into its materials. When the boat moves away, the model goes back to its base texture and
+    the GPU memory is freed.
+  - **Limits:** desktop handles up to 10 models at a time within 320 m; phones up to 4 within 180 m.
+- **On the server:** 811 MB (desktop, 47 models) and 284 MB (phones, 53 models). A visitor only
+  downloads what comes near the boat: on average ~17 MB per model on desktop and ~5 MB on a phone.
+- **Exported packages run on my PC:**
+  - **Phone package, Low tier:** 21 original textures came in along the route; video memory
+    162–214 MB, steady 30 fps.
+  - **Desktop package:** 55 textures at 4096; video memory 470–620 MB, 60–75 fps.
+- **Fog:** the exponential fog was replaced by depth fog. In clear weather it starts at 320 m, so
+  models up to that distance keep their colors; storms still close in. Compared side by side with
+  Blender: the remaining difference is the lighting (studio there, daylight here).
+
+<p align="center"><img src="images/process/whale-blender-base-4k.jpg" width="95%" alt="Whale: Blender, site base texture, site with the original 4K texture"></p>
+<p align="center"><sub>Blender (left), the site with the base texture (middle) and with the original 4096 texture loaded near the boat (right).</sub></p>
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**

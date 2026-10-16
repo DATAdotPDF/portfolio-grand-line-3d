@@ -187,6 +187,9 @@ foreach ($pack in $packs.Keys) {
 	Write-Host ("  [$Profile]     {0}: {1} modelos, {2:N1} MB{3}" -f $file, @($packs[$pack]).Count, ($entry.size / 1MB), $(if ($entry.parts) { " em $($entry.parts.Count) partes" } else { "" }))
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $mirror "Config\world_packs.json") -Encoding utf8
+# Manifesto das texturas originais deste perfil (Web/build.ps1 gera em Builds/HD).
+$hd = Join-Path $root ("Builds\HD\hd_" + $Profile + ".json")
+if (Test-Path $hd) { Copy-Item $hd (Join-Path $mirror "Config\hd_textures.json") -Force }
 # O principal fica sem os modelos dos pacotes (e sem as texturas extraídas deles).
 $cfg = $cfg -replace '(\[preset\.0\][^\[]*?exclude_filter=")', ('$1' + (($excluded -join ",") -replace '\$', '$$$$') + ",")
 Set-Content $presets $cfg -NoNewline

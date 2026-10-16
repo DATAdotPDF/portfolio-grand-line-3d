@@ -15,6 +15,13 @@ $root = Split-Path $PSScriptRoot -Parent
 $public = Join-Path $PSScriptRoot "public"
 Set-Location $root
 
+Write-Host "0/5 Texturas originais dos modelos (o jogo baixa perto do barco: Scripts/HDTextures.gd)"
+python -I Tools\make_web_variants.py --list | Set-Content Builds\hd_models.txt -Encoding utf8
+Remove-Item Builds\HD -Recurse -Force -ErrorAction SilentlyContinue
+& $Godot --headless --path $root --script res://Tests/export_hd_textures.gd -- "--list=$(Join-Path $root 'Builds\hd_models.txt')" "--out=$(Join-Path $root 'Builds\HD')" 2>&1 |
+	Select-String "^HD_TOTAL" | ForEach-Object { Write-Host "    $_" }
+if (-not (Test-Path Builds\HD\hd_desktop.json)) { throw "Texturas originais: manifesto não gerado" }
+
 Write-Host "1/5 Exportando Godot (Web desktop, com as variantes web dos modelos)"
 # Variantes em dia (pula as que já estão) e export a partir delas: os originais não vão para o site.
 python -I Tools\make_web_variants.py
@@ -80,6 +87,9 @@ $mobileParts = Split-Pack "Builds\WebMobile\index.pck" "pck-mobile" "index.mobil
 # Pacotes dos setores (carregamento por proximidade): o jogo baixa depois que o mundo abre.
 Copy-Item Builds\Web\packs -Destination (Join-Path $public "packs") -Recurse -Force
 Copy-Item Builds\WebMobile\packs -Destination (Join-Path $public "packs-mobile") -Recurse -Force
+# Texturas originais por modelo (baixadas no jogo, perto do barco).
+Copy-Item Builds\HD\desktop -Destination (Join-Path $public "hd\desktop") -Recurse -Force
+Copy-Item Builds\HD\mobile -Destination (Join-Path $public "hd\mobile") -Recurse -Force
 # Tamanho no botão "Explorar em 3D": o que baixa antes de abrir (os setores chegam depois).
 $sizeNote = "~{0:N0} MB (~{1:N0} MB no celular)" -f ((Get-Item Builds\Web\index.pck).Length / 1MB), ((Get-Item Builds\WebMobile\index.pck).Length / 1MB)
 $page = Join-Path $public "index.html"

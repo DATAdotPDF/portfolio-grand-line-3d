@@ -39,7 +39,10 @@ BUDGETS = [
 	(r".*", 150000, 35000),                    # marcos dos biomas
 ]
 TOOL_ONLY = {"InspectIslandAxes.gd", "MeasureAssets.gd", "InspectIslandAxes.tscn", "MeasureAssets.tscn"}
-LEVELS = {"WebDesktop": (2048, "color_normal", 1), "WebMobile": (1024, "color", 2)}
+# Todos os mapas (cor, metal/rugosidade, normal) nos dois níveis: tirar mapas mudava o material em
+# relação ao modelo (Pedro, 2026-10-16). As texturas originais (até 4096) chegam no jogo, perto do
+# barco (Scripts/HDTextures.gd); estas são a base de abertura.
+LEVELS = {"WebDesktop": (2048, "full", 1), "WebMobile": (1024, "full", 2)}
 
 
 def referenced_models():

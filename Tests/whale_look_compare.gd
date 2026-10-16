@@ -50,8 +50,12 @@ func run() -> void:
 	var up := r.global_position.normalized()
 	var side := r.global_transform.basis.x.slide(up).normalized()
 	cam.look_at_from_position(r.global_position + side * dist + up * 90.0, r.global_position + up * 40.0, up)
+	# O barco fica embaixo da câmera (as texturas originais vêm pela distância do barco).
+	var boat: Vector3 = world.ocean.surface_at(r.global_position + side * dist)
+	world.ship.global_transform = Transform3D(world.ship.global_transform.basis, boat)
 	var env: Environment = world.get("environment")
-	await create_timer(1.0).timeout
+	# Com --hd/--packs (pacote do site): espera as texturas originais da baleia chegarem.
+	await create_timer(6.0 if "--hd" in " ".join(OS.get_cmdline_user_args()) else 1.0).timeout
 	await shot("baleia_nevoa_atual")
 	# A cada quadro o mundo reescreve a densidade: segura o modo de profundidade só durante a foto.
 	world.set_process(false)

@@ -34,6 +34,7 @@ const KrakenEventScript = preload("res://Scripts/KrakenEvent.gd")
 const WorldDecorScript = preload("res://Scripts/WorldDecor.gd")
 const EasterEggScreenScript = preload("res://Scripts/UI/EasterEggScreen.gd")
 const SunFlareScript = preload("res://Scripts/SunFlare.gd")
+const HDTexturesScript = preload("res://Scripts/HDTextures.gd")
 const SkyCloudsScript = preload("res://Scripts/SkyClouds.gd")
 const SHIP_LENGTH := 4.8
 const SEABED_DEPTH := 25.0
@@ -919,6 +920,11 @@ func _build_weather() -> void:
 	sea_beasts.ocean = ocean
 	sea_beasts.planet_radius = planet_radius
 	add_child(sea_beasts)
+	# Site: texturas originais (até 4K) dos modelos perto do barco; sem manifesto (editor) fica parado.
+	var hd_textures := HDTexturesScript.new()
+	hd_textures.name = "HDTextures"
+	hd_textures.world = self
+	add_child(hd_textures)
 	# Navio fantasma: só à noite, em mar aberto.
 	ghost_ship = GhostShipScript.new()
 	ghost_ship.name = "GhostShip"
