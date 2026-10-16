@@ -272,8 +272,35 @@ a phone, so the site uses generated copies.
   (9 → 18 s), not the download.
 - **On a real 4G line (estimate, not measured):** downloading the ~86 MB needed before the helm alone
   would take ~35 s at 20 Mbps, or ~70 s at 10 Mbps.
-- **Still pending:** the same `?medir` run on a real phone. The screen shows everything needed for a
-  screenshot.
+- **Run 2, Oct 16, real phone:**
+  - **Device:** Samsung Galaxy A55 (SM-A556E), Android 16, Samsung Xclipse 530 GPU (Vulkan, through
+    ANGLE), 8 cores, 8 GB.
+  - **Viewport:** 384×832 @1.5, mobile package. The page picked Medium graphics because the phone
+    counts as "strong" (8 GB, 8 cores).
+  - **Network:** Wi-Fi. The browser reports "4g · 9.7 Mbps", a capped estimate; the package actually
+    arrived in 5.1 s.
+  - **Cache:** cold. 126.7 MB transferred in total, 85.0 MB of it before the helm.
+
+| Since the click | PC emulating a phone | Galaxy A55 |
+|---|---|---|
+| Game package downloaded | 4.2 s | 5.1 s |
+| Engine ready | 4.4 s | 5.9 s |
+| Islands built | 9.0 s | 17.0 s |
+| First smooth frames | 18.0 s | 25.2 s |
+| **Boat answers the helm** | **18.0 s** | **25.2 s** |
+| Four sector packs downloaded | 20.2 s | 30.3 s |
+| Every sector model in place | 20.7 s | 35.1 s |
+| FPS in the 5 s after the helm | 39 | **7** |
+
+- **The 7 fps is a real problem, and it is reported as measured.** Two caveats:
+  - On the phone, the 5 s window right after the helm overlaps the sector packs being downloaded and
+    attached (until 35.1 s), so it is a worst case.
+  - The game also lowers the graphics tier by itself after a few slow seconds.
+- **Next fixes, in order:**
+  1. Measure FPS again after every sector model is in place.
+  2. Start phones on the Low tier.
+  3. Spread the model attaching over more frames.
+  4. Revisit the mobile model budgets that grew in the quality pass.
 
 - Every file in the site is under Cloudflare's 25 MiB static-asset limit.
 - The mobile package at the Low graphics tier, run on this PC (not on a phone): a steady 30 fps
