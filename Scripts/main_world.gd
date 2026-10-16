@@ -1,8 +1,13 @@
 @tool
 extends Node3D
 
-## Névoa do ar em dia limpo (exponencial, por metro).
-const FOG_BASE := 0.0007
+## Névoa de profundidade (m): em tempo bom só começa em FOG_BEGIN e fecha em FOG_END — tudo até
+## ~300 m fica com a cor e a textura do modelo (Pedro, 2026-10-16: a névoa exponencial deixava baleia
+## e ilhas quase brancas). Na tempestade ela vem para perto (FOG_STORM_*), como antes.
+const FOG_BEGIN := 320.0
+const FOG_END := 1600.0
+const FOG_STORM_BEGIN := 25.0
+const FOG_STORM_END := 380.0
 const Shore = preload("res://Scripts/Shoreline.gd")
 const NavalGame = preload("res://Scripts/NavalGame.gd")
 const Sign = preload("res://Scenes/IslandTitleSign.tscn")
@@ -976,10 +981,11 @@ func _build_lighting() -> void:
 	environment.ambient_light_energy = 0.45
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.fog_enabled = true
-	environment.fog_mode = Environment.FOG_MODE_EXPONENTIAL
-	# Névoa base leve: com 0,0022 (e cor de céu claro) os modelos a ~150 m ficavam pálidos, quase
-	# brancos (baleia colosso, tartaruga). Fica a névoa da tempestade por cima.
-	environment.fog_density = FOG_BASE
+	# Profundidade (não exponencial): a densidade não conta, só o começo e o fim.
+	environment.fog_mode = Environment.FOG_MODE_DEPTH
+	environment.fog_depth_begin = FOG_BEGIN
+	environment.fog_depth_end = FOG_END
+	environment.fog_depth_curve = 1.0
 	environment.fog_sky_affect = 0.0
 	environment.fog_aerial_perspective = 0.0
 	node.environment = environment
@@ -1375,7 +1381,10 @@ func _process(delta: float) -> void:
 	var in_space := space_view > 0.5
 	space_backdrop.visible = in_space
 	environment.background_mode = Environment.BG_CANVAS if in_space else Environment.BG_SKY
-	environment.fog_density = FOG_BASE * (1.0 - space_view) * (1.0 + 16.0 * storm_gloom)
+	# No mapa (espaço) a névoa sai; na tempestade ela fecha perto do barco.
+	var far := 1.0 + space_view * 20.0
+	environment.fog_depth_begin = lerpf(FOG_BEGIN, FOG_STORM_BEGIN, storm_gloom) * far
+	environment.fog_depth_end = lerpf(FOG_END, FOG_STORM_END, storm_gloom) * far
 	for beacon in map_beacons:
 		beacon.visible = space_view > 0.3
 	# No mapa (M) os ciclones aparecem como as tempestades: o próprio funil, só que maior

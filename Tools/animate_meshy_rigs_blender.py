@@ -340,12 +340,13 @@ def anim_turtle(rig):
 
 def anim_whale(rig):
 	"""Swim (12 s, loop = 2 batidas), baleia colossal: o movimento vem da CAUDA, batendo devagar de
-	-45° a +45° passando por 0 (o 0 é a cauda na horizontal: o modelo vem com ela subindo para fora e
-	os últimos ossos baixam no repouso). A onda corre do meio do corpo para a ponta (a ponta atrasa),
+	-45° a +45° passando por 0 (o 0 é a cauda na horizontal, a pose de repouso reta do arquivo). A onda corre do meio do corpo para a ponta (a ponta atrasa),
 	quase nada na cabeça; nadadeiras peitorais remando devagar. Em cada batida a ponta sai da água e
 	volta: o jogo solta o borrifo na saída e a pancada na entrada (SeaBeasts, ponta Bone_014)."""
 	spine = ["Bone_009", "Bone_008", "Bone_018", "Bone_017", "Bone_016", "Bone_015", "Bone_014"]
-	rest_down = {"Bone_017": 10.0, "Bone_016": 26.0, "Bone_015": 24.0, "Bone_014": 14.0}
+	# Pedro deixou a cauda reta no repouso no Blender (2026-10-16): o 0 já é a cauda na horizontal,
+	# sem a compensação que baixava os últimos ossos da cauda curva do Meshy.
+	rest_down = {}
 	s_of = body_s(rig)
 	frames = 360
 	for f in range(0, frames + 1, 2):
@@ -353,8 +354,9 @@ def anim_whale(rig):
 
 		def field(s):
 			tail = (1.0 - s) ** 1.5
-			# 2 batidas por volta; a ponta (s ~ 0) chega a ±45°.
-			return 45.0 * tail * math.sin(2 * math.pi * 2 * t - 2.2 * (1.0 - s))
+			# 2 batidas por volta. Medido no clipe gerado: com 45 a ponta chegava só a ±28,8° (o
+			# corpo/base compensa parte); 80 leva a ponta a ±45° de verdade (medido).
+			return 80.0 * tail * math.sin(2 * math.pi * 2 * t - 2.2 * (1.0 - s))
 
 		pose = spine_pose(rig, spine, field, X, s_of, ref=s_of(bone(rig, "Bone_009").head_local))
 		for name, deg in rest_down.items():
