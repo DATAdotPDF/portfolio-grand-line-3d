@@ -26,6 +26,16 @@ maps = args[4] if len(args) > 4 else "color_normal"
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
 meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+# Cópia da malha original de cada objeto: depois do Decimate as normais vêm dela (Data Transfer),
+# então a luz cai como no modelo do Meshy, sem facetas (Pedro, 2026-10-16: "poucos polígonos").
+sources = {}
+for obj in meshes:
+	src_obj = obj.copy()
+	src_obj.data = obj.data.copy()
+	src_obj.modifiers.clear()
+	src_obj.name = obj.name + "__normals_src"
+	bpy.context.scene.collection.objects.link(src_obj)
+	sources[obj.name] = src_obj
 
 
 def tri_count(obj):
@@ -59,11 +69,25 @@ for obj in meshes:
 		with bpy.context.temp_override(object=obj):
 			bpy.ops.object.modifier_apply(modifier="web_decimate")
 
-# Sombreamento suave por ângulo: depois do Decimate a malha ficava facetada (cada face com a sua
-# normal). Arestas acima de 40° continuam vivas.
+# Normais do original na malha reduzida: tudo liso e as normais copiadas da cópia original (canto a
+# canto, pela face mais perto) — as arestas vivas do original continuam vivas.
 for obj in meshes:
-	with bpy.context.temp_override(object=obj, active_object=obj, selected_objects=[obj], selected_editable_objects=[obj]):
-		bpy.ops.object.shade_smooth_by_angle(angle=math.radians(40.0), keep_sharp_edges=True)
+	src_obj = sources[obj.name]
+	for poly in obj.data.polygons:
+		poly.use_smooth = True
+	mod = obj.modifiers.new("web_normals", "DATA_TRANSFER")
+	mod.object = src_obj
+	mod.use_object_transform = True
+	mod.use_loop_data = True
+	mod.data_types_loops = {"CUSTOM_NORMAL"}
+	mod.loop_mapping = "POLYINTERP_NEAREST"
+	while obj.modifiers.find("web_normals") > 0:
+		with bpy.context.temp_override(object=obj):
+			bpy.ops.object.modifier_move_up(modifier="web_normals")
+	with bpy.context.temp_override(object=obj, active_object=obj):
+		bpy.ops.object.modifier_apply(modifier="web_normals")
+for src_obj in sources.values():
+	bpy.data.objects.remove(src_obj, do_unlink=True)
 
 # Texturas: reduz e tira os mapas que este nível não usa.
 for mat in bpy.data.materials:

@@ -339,39 +339,50 @@ def anim_turtle(rig):
 
 
 def anim_whale(rig):
-	"""Swim (12 s, loop = 2 batidas), baleia colossal: o movimento vem da CAUDA, batendo devagar de
-	-45° a +45° passando por 0 (o 0 é a cauda na horizontal, a pose de repouso reta do arquivo). A onda corre do meio do corpo para a ponta (a ponta atrasa),
-	quase nada na cabeça; nadadeiras peitorais remando devagar. Em cada batida a ponta sai da água e
-	volta: o jogo solta o borrifo na saída e a pancada na entrada (SeaBeasts, ponta Bone_014)."""
+	"""Swim (24 s, loop), baleia colossal. Pedro, 2026-10-16: ela nada com as NADADEIRAS LATERAIS o
+	tempo todo (4 remadas por volta) e só de tempos em tempos dá uma batida forte de CAUDA: de -45° a
+	+45° passando por 0 (o 0 é a cauda na horizontal, a pose de repouso reta do arquivo). Fora da
+	batida a cauda só balança de leve. Na batida a ponta sai da água e volta: o jogo solta o borrifo
+	na saída e a pancada na entrada (SeaBeasts, ponta Bone_014)."""
 	spine = ["Bone_009", "Bone_008", "Bone_018", "Bone_017", "Bone_016", "Bone_015", "Bone_014"]
-	# Pedro deixou a cauda reta no repouso no Blender (2026-10-16): o 0 já é a cauda na horizontal,
-	# sem a compensação que baixava os últimos ossos da cauda curva do Meshy.
-	rest_down = {}
 	s_of = body_s(rig)
-	frames = 360
+	frames = 720
+	beat_start, beat_len = 0.6, 0.3   # a batida forte: de 14,4 s a 21,6 s da volta
 	for f in range(0, frames + 1, 2):
 		t = f / frames
+		u = (t - beat_start) / beat_len
+		envelope = math.sin(math.pi * u) ** 2 if 0.0 <= u <= 1.0 else 0.0
 
 		def field(s):
 			tail = (1.0 - s) ** 1.5
-			# 2 batidas por volta. Medido no clipe gerado: com 45 a ponta chegava só a ±28,8° (o
-			# corpo/base compensa parte); 80 leva a ponta a ±45° de verdade (medido).
-			return 80.0 * tail * math.sin(2 * math.pi * 2 * t - 2.2 * (1.0 - s))
+			lag = 2.2 * (1.0 - s)
+			# Balanço leve (2 por volta) + a batida forte (uma por volta, sobe e desce). A janela da
+			# batida anda junto com a onda (atraso para a ponta): sem isso a subida saía da janela e a
+			# ponta só descia. Amplitude medida no clipe gerado para a ponta chegar a ±45°.
+			gentle = 9.0 * tail * math.sin(2 * math.pi * 2 * t - lag)
+			uu = u - lag / (2 * math.pi) / 1.0
+			beat = 0.0
+			if 0.0 <= uu <= 1.0:
+				beat = WHALE_BEAT * tail * math.sin(math.pi * uu) ** 2 * math.sin(2 * math.pi * uu)
+			return gentle + beat
 
 		pose = spine_pose(rig, spine, field, X, s_of, ref=s_of(bone(rig, "Bone_009").head_local))
-		for name, deg in rest_down.items():
-			pose[name][0] = (X, pose[name][0][1] + deg)
-		# Cabeça (com a torre) quase parada: só acompanha de leve o empuxo da cauda.
-		pose["Bone_001"] = [(X, 1.2 * math.sin(2 * math.pi * 2 * t + 0.8))]
+		# Cabeça (com a torre) quase parada: só acompanha de leve o empuxo.
+		pose["Bone_001"] = [(X, 1.2 * math.sin(2 * math.pi * 4 * t + 0.8) + 1.5 * envelope * math.sin(2 * math.pi * u))]
+		# Nadadeiras peitorais: remada de verdade (abaixa e varre para trás, volta por cima), 4 por volta.
 		for b in ("Bone_005", "Bone_007"):
 			sd = side(rig, b)
-			pose[b] = [(Y, sd * 8 * math.sin(2 * math.pi * 2 * t)), (Z, sd * 6 * math.sin(2 * math.pi * 2 * t - 1.0))]
-			pose[bone(rig, b).children[0].name] = [(Y, sd * 6 * math.sin(2 * math.pi * 2 * t - 0.8))]
+			ph = 2 * math.pi * 4 * t
+			pose[b] = [(Z, sd * 22 * math.sin(ph)), (Y, sd * 14 * math.sin(ph - 1.2))]
+			pose[bone(rig, b).children[0].name] = [(Z, sd * 12 * math.sin(ph - 0.7)), (Y, sd * 6 * math.sin(ph - 1.6))]
 		for b in ("Bone_011", "Bone_013"):
 			sd = side(rig, b)
-			pose[b] = [(Y, sd * 5 * math.sin(2 * math.pi * 2 * t - 1.5))]
+			pose[b] = [(Y, sd * 7 * math.sin(2 * math.pi * 4 * t - 1.5))]
 		key_world(rig, f, pose)
 	push(rig, "Swim")
+
+
+WHALE_BEAT = 104.0
 
 
 def gait(p, duty, amp):

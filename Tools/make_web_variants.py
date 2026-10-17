@@ -19,24 +19,24 @@ TOOL = os.path.join(ROOT, "Tools", "make_web_variant.py")
 SKIP_BELOW_MB = 6.0
 # (padrão no caminho, triângulos desktop, triângulos celular). O primeiro que casar vale.
 BUDGETS = [
-	# Pedro achou os modelos do site toscos (2026-10-16): orçamentos maiores, sobretudo no desktop.
-	(r"Meshy_AI_island_", 200000, 50000),      # as 5 ilhas do portfólio (o coração do site)
-	# Colossos com rig (~110 mil triângulos no original): no desktop ficam inteiros (sem Decimate,
-	# que mexe nos pesos); no celular, reduzidos com folga.
-	(r"Creatures/(turtle|whale|obsidian|behemoth)", 400000, 60000),
-	(r"ghost_ship", 150000, 40000),
-	(r"Creatures/maw", 80000, 20000),
-	(r"Creatures/tentacle", 120000, 25000),
-	(r"Creatures/(dolphin|fin|flyfish)", 40000, 10000),
-	(r"Creatures/gull", 25000, 6000),
+	# Pedro, 2026-10-16: os modelos do site ainda pareciam com poucos polígonos. Orçamentos altos: o
+	# raio de carga (WorldDecor) deixa poucos modelos na cena por vez, e as normais vêm do original.
+	(r"Meshy_AI_island_", 400000, 100000),     # as 5 ilhas do portfólio (o coração do site)
+	# Colossos com rig (~110 mil triângulos no original): inteiros nos dois perfis (sem Decimate,
+	# que mexe nos pesos).
+	(r"Creatures/(turtle|whale|obsidian|behemoth)", 400000, 400000),
+	(r"ghost_ship", 300000, 80000),
+	(r"Creatures/maw", 200000, 50000),
+	(r"Creatures/tentacle", 400000, 120000),
+	(r"Creatures/(dolphin|fin|flyfish)", 80000, 25000),
+	(r"Creatures/gull", 50000, 15000),
 	# Cidades (vistas de perto, 140 m de lado): o maior orçamento dos marcos.
-	(r"(driftwood_mercha|north_runestone|west_coral_paradise|mushroom_grotto)", 300000, 70000),
-	# Muitas peças pequenas: com pouco orçamento viravam cacos (folha de comparação) — celular maior.
-	(r"cargo_crates", 40000, 20000),
-	(r"abandoned_stilt_waterworks", 150000, 50000),
-	(r"(bell_buoy|spectral_lantern)", 25000, 8000),
-	(r"(coral_reef|palm_atoll|broken_megalithic)", 80000, 20000),
-	(r".*", 150000, 35000),                    # marcos dos biomas
+	(r"(driftwood_mercha|north_runestone|west_coral_paradise|mushroom_grotto)", 800000, 150000),
+	(r"cargo_crates", 80000, 30000),
+	(r"abandoned_stilt_waterworks", 400000, 100000),
+	(r"(bell_buoy|spectral_lantern)", 50000, 15000),
+	(r"(coral_reef|palm_atoll|broken_megalithic)", 250000, 60000),
+	(r".*", 400000, 80000),                    # marcos dos biomas
 ]
 TOOL_ONLY = {"InspectIslandAxes.gd", "MeasureAssets.gd", "InspectIslandAxes.tscn", "MeasureAssets.tscn"}
 # Todos os mapas (cor, metal/rugosidade, normal) nos dois níveis: tirar mapas mudava o material em
@@ -65,7 +65,7 @@ def budget(rel):
 	for pattern, desktop, mobile in BUDGETS:
 		if re.search(pattern, rel):
 			return desktop, mobile
-	return 150000, 35000
+	return 400000, 80000
 
 
 def main():

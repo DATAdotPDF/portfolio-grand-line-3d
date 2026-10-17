@@ -30,7 +30,6 @@ const vec3 G_COL[9] = vec3[9](
 float sun_visible() {
 	// Centro + 2 anéis de 6 pontos dentro do disco (30% e 65% do raio).
 	float v = 0.0;
-	float n = 0.0;
 	for (int i = 0; i < 13; i++) {
 		vec2 o = vec2(0.0);
 		if (i > 0) {
@@ -38,16 +37,17 @@ float sun_visible() {
 			o = vec2(cos(a), sin(a)) * sun_radius * (i > 6 ? 0.65 : 0.3);
 		}
 		vec2 p = sun_uv + o * vec2(1.0 / aspect, 1.0);
-		n += 1.0;
 		if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) {
 			continue;
 		}
 		vec3 c = textureLod(screen_tex, p, 0.0).rgb;
 		// Sol = quase branco; céu, nuvem contra a luz, ilha e vela ficam bem abaixo.
 		// O canal mais fraco decide: nuvem iluminada é creme (azul < 0,9), o sol é branco puro.
-		v += smoothstep(0.92, 0.98, min(c.r, min(c.g, c.b)));
+		v = max(v, smoothstep(0.86, 0.95, min(c.r, min(c.g, c.b))));
 	}
-	return v / n;
+	// O disco tem poucos pixels: basta um ponto acertar (a média apagava o flare quando o disco
+	// ficava entre os pontos). Nuvens em cartões, ilha e casco são testados na CPU (SunFlare.gd).
+	return v;
 }
 
 // Distância com sinal até um hexágono regular (apótema r).
