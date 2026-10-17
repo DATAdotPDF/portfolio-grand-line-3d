@@ -178,7 +178,7 @@ h1 { font: italic 400 clamp(44px, 6.2vw, 124px)/.9 "IM Fell English", Georgia, s
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":269320348,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":269320460,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -391,7 +391,16 @@ const engine = new Engine(GODOT_CONFIG);
 		// FPS em duas janelas de 5 s: logo depois do leme (com os setores ainda chegando) e depois que
 		// os modelos do raio de carga estão no lugar (o jogo em si).
 		if (name === 'steer') measureFps('fps');
-		if (name === 'sectorsPlaced') measureFps('fpsSettled');
+		if (name === 'sectorsPlaced') {
+			measureFps('fpsSettled');
+			setTimeout(() => measureFps('fpsLate'), 20000);
+		}
+	};
+	// Nível de gráficos em uso e as trocas automáticas (o jogo desce sozinho se não segurar).
+	const tierLog = [];
+	window.__portfolioTier = function (name) {
+		tierLog.push(name + (timings.click !== undefined ? ' @' + ((performance.now() - timings.click) / 1000).toFixed(0) + 's' : ''));
+		if (measuring) renderMeasure();
 	};
 	function measureFps(key) {
 		let frames = 0;
@@ -435,10 +444,12 @@ const engine = new Engine(GODOT_CONFIG);
 			'modelos perto no lugar  ' + t('sectorsPlaced'),
 			'FPS (5 s após o leme) . ' + (timings.fps || '…'),
 			'FPS (depois, estável) . ' + (timings.fpsSettled || '…'),
+			'FPS (20 s depois) ..... ' + (timings.fpsLate || '…'),
+			'gráficos em uso ....... ' + (tierLog.join(' → ') || '…'),
 			'total transferido ..... ' + transferredMB().toFixed(1) + ' MB (0 = veio do cache)',
 		];
 		box.textContent = lines.join('\n');
-		console.info('[medir]', JSON.stringify({ timings: timings, transferred_mb: +transferredMB().toFixed(1), profile: prof,
+		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, transferred_mb: +transferredMB().toFixed(1), profile: prof,
 			net: { type: net.effectiveType, downlink: net.downlink, rtt: net.rtt }, ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio] }));
 	}
 	if (new URLSearchParams(location.search).has('debug')) numbers.hidden = false;
@@ -463,11 +474,9 @@ const engine = new Engine(GODOT_CONFIG);
 		const cores = navigator.hardwareConcurrency || 8;
 		const weakGpu = /HD Graphics|UHD Graphics 6\d\d|Mali-[GT]?[0-7]\d\b|Adreno \(TM\) [1-5]\d\d|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu);
 		let tier = 'alto';
-		// Celular forte (6 GB+, 6+ núcleos: iPhone 15, Galaxy A55...) começa no Médio (60 fps) com o pacote leve;
-		// se não segurar, o jogo desce para o Baixo sozinho. Os demais celulares começam no Baixo.
-		const strongPhone = isMobile && memory >= 6 && cores >= 6 && !weakGpu;
-		if (strongPhone) tier = 'medio';
-		else if (isMobile || memory <= 4 || cores <= 2 || weakGpu) tier = 'baixo';
+		// Celular começa no Baixo (resolução e efeitos; modelos e texturas são os mesmos). Medido em
+		// 2026-10-16: o Galaxy A55 (8 GB, 8 núcleos, Xclipse 530) no Médio ficava em 9–13 fps.
+		if (isMobile || memory <= 4 || cores <= 2 || weakGpu) tier = 'baixo';
 		else if (cores <= 4 || /Intel/i.test(gpu)) tier = 'medio';
 		if (saved !== 'auto') tier = saved;
 		window.__portfolioGraphics = { mode: saved, tier: tier };

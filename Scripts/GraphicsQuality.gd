@@ -100,6 +100,9 @@ func _capture_base() -> void:
 
 func apply(new_tier: int) -> void:
 	tier = clampi(new_tier, LOW, HIGH)
+	# Página (?medir): mostra o nível em uso e cada troca.
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.__portfolioTier && window.__portfolioTier('%s')" % TIER_NAMES[tier], true)
 	var viewport: Viewport = world.get_viewport()
 	var low := tier == LOW
 	var high := tier == HIGH

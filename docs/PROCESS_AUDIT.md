@@ -356,6 +356,26 @@ a phone, so the site uses generated copies.
 <p align="center"><img src="images/process/whale-blender-base-4k.jpg" width="95%" alt="Whale: Blender, site base texture, site with the original 4K texture"></p>
 <p align="center"><sub>Blender (left), the site with the base texture (middle) and with the original 4096 texture loaded near the boat (right).</sub></p>
 
+## 5.8 Galaxy A55 again, with the load range and original textures (Oct 16)
+
+- **Conditions:** same phone (SM-A556E, Android 16, Xclipse 530 on Vulkan, 8 cores, 8 GB, 384×832
+  @1.5), mobile package. The page picked Medium graphics. The browser reported "4g · 10 Mbps" (a
+  capped estimate). Cold cache: 137.2 MB transferred in total, 82.5 MB of it before the helm.
+- **Times since the click:**
+  - package downloaded 5 s, engine ready 5 s;
+  - islands built 18.3 s, first frames 26.5 s;
+  - **boat answered the helm 25.5 s**;
+  - sector packs 31.6 s, nearby models in place 31.8 s.
+- **FPS:** 9 in the 5 s after the helm, **13** once the nearby models were in place.
+- **Reading:** the load range shortened the time until the nearby models are in place (35.1 → 31.8 s),
+  but FPS stayed low. The page counted the A55 as a "strong phone" and opened on Medium, which its GPU
+  cannot hold. The game only lowers the tier by itself after a few slow seconds, and the "settled"
+  window came before that.
+- **Change:** phones now open on Low. This affects resolution and effects only: internal scale 0.6,
+  fewer cloud samples, no sky reflection, 30 fps cap. Models and textures stay the same.
+  - `?medir` now also shows the graphics tier in use (and every automatic change), plus a third FPS
+    window 20 s after the nearby models are in place.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**
