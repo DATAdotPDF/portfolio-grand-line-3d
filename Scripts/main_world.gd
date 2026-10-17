@@ -1231,6 +1231,9 @@ func _measure_costs() -> void:
 		["nuvens do céu", get_node_or_null("SkyClouds"), "visible"], ["barco (física)", ship, "physics"]]
 	var results := []
 	var base_ms := 0.0
+	# Sem o teto de quadros (30 no Baixo) enquanto mede: com o teto, desligar uma parte não muda nada.
+	var cap := Engine.max_fps
+	Engine.max_fps = 0
 	for probe in probes:
 		var node: Node = probe[1]
 		if probe[0] != "base" and not is_instance_valid(node):
@@ -1273,6 +1276,7 @@ func _measure_costs() -> void:
 			results.append({"name": probe[0], "saves_ms": snappedf(base_ms - ms, 0.1)})
 		print("MEASURE cost ", results[-1])
 		JavaScriptBridge.eval("window.__portfolioCost && window.__portfolioCost(%s)" % JSON.stringify(results), true)
+	Engine.max_fps = cap
 
 func _leave_intro() -> void:
 	intro_orbit = false

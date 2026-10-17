@@ -401,6 +401,18 @@ a phone, so the site uses generated copies.
   each. It reports how many milliseconds per frame each part costs: scripts and drawing of the biome
   decor, the colossi, weather, sea life, gulls, the near sea and its simulation, sky clouds, and the
   boat physics. The next fix targets whatever measures heaviest; models remain the last thing to cut.
+- **A55 in Chrome, second run with the per-part tool (Low):**
+  - **Times:** package 6.6 s, engine 7.2 s, islands 16.4 s, **helm 23.4 s**, nearby models in place
+    31.1 s.
+  - **FPS:** 23 after the helm, 28 once settled, **30 twenty seconds later**, which is the Low cap.
+  - **Cache:** partly warm, so this is not a cold load: 62.5 MB before the helm, 117.2 MB in total,
+    against 143.9 MB cold.
+  - **Per-part costs:** the base frame was 33.3 ms, exactly the 30 fps cap. Turning parts off can't
+    lower a frame that is already waiting for the cap, so every difference stayed within noise (−0.3
+    to +0.3 ms). Weather showed +6.3 ms, also noise. The tool needs the cap lifted while it measures
+    (next version).
+  - **Reading:** in Chrome the A55 reaches the Low cap of 30 fps after it settles. The low numbers
+    came mostly from Opera (6–15 fps) and from the first seconds while models are still arriving.
 - **iPhone (iOS 26.6, Chrome on WebKit):** helm at 28.8 s with 103.8 MB transferred. The run is
   incomplete (the FPS lines were still empty) and the battery was at 7%, likely in Low Power Mode.
   Not used in conclusions.
