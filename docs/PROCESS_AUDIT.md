@@ -389,6 +389,21 @@ a phone, so the site uses generated copies.
   held 40 fps on the heavier Medium build.
 - **Next measurement:** the same `?medir` run on the A55 in Chrome, to separate the browser from the
   phone before touching anything else.
+- **A55 in Chrome (Chrome 155, Low, cold cache, 143.9 MB):**
+  - **Times:** package 6.3 s, engine 7.3 s, islands 17.5 s, **helm 24.2 s**, nearby models in place
+    28.6 s.
+  - **FPS:** 15 after the helm, 22 once settled, 20 twenty seconds later.
+  - **Reading:** Opera made it worse (6–15 fps), but the A55 stays near 20 fps in Chrome too.
+  - The 40 fps "second Samsung" was a different, stronger phone (10 cores against the A55's 8).
+  - Since a 0.6 render scale barely helps, the suspect is the CPU: in the browser the game runs on
+    a single thread.
+- **Next tool:** `?medir` now turns parts of the game off one at a time, ~30 s after the helm, for 3 s
+  each. It reports how many milliseconds per frame each part costs: scripts and drawing of the biome
+  decor, the colossi, weather, sea life, gulls, the near sea and its simulation, sky clouds, and the
+  boat physics. The next fix targets whatever measures heaviest; models remain the last thing to cut.
+- **iPhone (iOS 26.6, Chrome on WebKit):** helm at 28.8 s with 103.8 MB transferred. The run is
+  incomplete (the FPS lines were still empty) and the battery was at 7%, likely in Low Power Mode.
+  Not used in conclusions.
 
 ## 6. What is not in Git, and why
 

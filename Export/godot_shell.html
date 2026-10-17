@@ -394,6 +394,9 @@ const engine = new Engine(GODOT_CONFIG);
 			setTimeout(() => measureFps('fpsLate'), 20000);
 		}
 	};
+	// Custo de cada parte no quadro (o jogo desliga uma por vez, 3 s cada, ~30 s depois do leme).
+	let costs = [];
+	window.__portfolioCost = function (list) { costs = list; if (measuring) renderMeasure(); };
 	// Nível de gráficos em uso e as trocas automáticas (o jogo desce sozinho se não segurar).
 	const tierLog = [];
 	window.__portfolioTier = function (name) {
@@ -444,10 +447,14 @@ const engine = new Engine(GODOT_CONFIG);
 			'FPS (depois, estável) . ' + (timings.fpsSettled || '…'),
 			'FPS (20 s depois) ..... ' + (timings.fpsLate || '…'),
 			'gráficos em uso ....... ' + (tierLog.join(' → ') || '…'),
+			'',
+			'CUSTO POR PARTE (ms por quadro; começa ~30 s após o leme)',
+			...costs.map((c) => c.name === 'base' ? 'quadro ' + c.ms + ' ms · scripts ' + c.process_ms + ' · física ' + c.physics_ms
+				: '  sem ' + c.name + ': ' + (c.saves_ms >= 0 ? '−' : '+') + Math.abs(c.saves_ms) + ' ms'),
 			'total transferido ..... ' + transferredMB().toFixed(1) + ' MB (0 = veio do cache)',
 		];
 		box.textContent = lines.join('\n');
-		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, transferred_mb: +transferredMB().toFixed(1), profile: prof,
+		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, costs: costs, transferred_mb: +transferredMB().toFixed(1), profile: prof,
 			net: { type: net.effectiveType, downlink: net.downlink, rtt: net.rtt }, ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio] }));
 	}
 	if (new URLSearchParams(location.search).has('debug')) numbers.hidden = false;

@@ -1215,7 +1215,64 @@ func _start_measure() -> void:
 		ship.test_controls = Vector3.ZERO
 		ship.controls_override = false
 		print("MEASURE steer speed=%.2f" % ship.measured_speed)
-		JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('steer')", true))
+		JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('steer')", true)
+		_measure_costs())
+
+## ?medir: quanto cada parte custa no quadro. Espera o mundo assentar e desliga uma parte por vez
+## (3 s cada), medindo o tempo médio de quadro; a diferença para a base é o custo dela. Também manda
+## o tempo de scripts (process) e de física. Resultado na tela da página (__portfolioCost).
+func _measure_costs() -> void:
+	await get_tree().create_timer(30.0).timeout
+	var probes := [["base", null, ""],
+		["decoração (scripts)", world_decor, "process"], ["decoração (desenho)", world_decor, "visible"],
+		["colossos (scripts)", sea_beasts, "process"], ["colossos (desenho)", sea_beasts, "visible"],
+		["clima", weather, "process"], ["vida no mar", sea_life, "process"], ["gaivotas", seagulls, "process"],
+		["mar perto (desenho)", ocean_patch, "visible"], ["mar (simulação)", ocean, "process"],
+		["nuvens do céu", get_node_or_null("SkyClouds"), "visible"], ["barco (física)", ship, "physics"]]
+	var results := []
+	var base_ms := 0.0
+	for probe in probes:
+		var node: Node = probe[1]
+		if probe[0] != "base" and not is_instance_valid(node):
+			continue
+		var mode: String = probe[2]
+		var before: Variant = null
+		if mode == "process":
+			before = [node.is_processing(), node.is_physics_processing()]
+			node.set_process(false)
+			node.set_physics_process(false)
+		elif mode == "visible":
+			before = (node as Node3D).visible
+			(node as Node3D).visible = false
+		elif mode == "physics":
+			before = node.is_physics_processing()
+			node.set_physics_process(false)
+		await get_tree().create_timer(0.6).timeout
+		var frames := 0
+		var t0 := Time.get_ticks_usec()
+		var proc := 0.0
+		var phys := 0.0
+		while Time.get_ticks_usec() - t0 < 3000000:
+			await get_tree().process_frame
+			frames += 1
+			proc += Performance.get_monitor(Performance.TIME_PROCESS)
+			phys += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
+		var ms := (Time.get_ticks_usec() - t0) / 1000.0 / maxi(frames, 1)
+		if mode == "process":
+			node.set_process(before[0])
+			node.set_physics_process(before[1])
+		elif mode == "visible":
+			(node as Node3D).visible = before
+		elif mode == "physics":
+			node.set_physics_process(before)
+		if probe[0] == "base":
+			base_ms = ms
+			results.append({"name": "base", "ms": snappedf(ms, 0.1), "process_ms": snappedf(proc * 1000.0 / maxi(frames, 1), 0.1),
+				"physics_ms": snappedf(phys * 1000.0 / maxi(frames, 1), 0.1)})
+		else:
+			results.append({"name": probe[0], "saves_ms": snappedf(base_ms - ms, 0.1)})
+		print("MEASURE cost ", results[-1])
+		JavaScriptBridge.eval("window.__portfolioCost && window.__portfolioCost(%s)" % JSON.stringify(results), true)
 
 func _leave_intro() -> void:
 	intro_orbit = false
