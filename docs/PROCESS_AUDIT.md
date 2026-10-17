@@ -417,6 +417,34 @@ a phone, so the site uses generated copies.
   incomplete (the FPS lines were still empty) and the battery was at 7%, likely in Low Power Mode.
   Not used in conclusions.
 
+## 5.10 Models that look like the original (Oct 17)
+
+- **What I saw:** in a 15-minute gameplay video in the browser, some models still looked low-poly,
+  faceted and crude: "I did not give you these assets like this."
+- **Cause:** after decimation, the shading came from the reduced mesh. The smooth-by-angle pass left
+  every edge over 40° visible.
+- **Fix in `Tools/make_web_variant.py`:** each reduced mesh now takes its normals from the original
+  high-poly mesh (Blender Data Transfer, custom normals, nearest face interpolated). Light falls as on
+  the Meshy model, and only its own hard edges stay hard.
+- **Budgets raised (desktop / mobile):**
+  - cities 800k / 150k triangles;
+  - landmarks 400k / 80k;
+  - portfolio islands 400k / 100k;
+  - rigged colossi not decimated on either profile.
+  - The load range keeps only nearby models in the scene, so the scene can carry more detail.
+- **Result:**
+  - Packages: mobile 94.7 MB before the helm, desktop 272.5 MB.
+  - Exported mobile package on my PC (Low): 213–252 MB video, 30 fps.
+  - Exported desktop package on my PC: 525–711 MB video, 56–60 fps.
+- **Also in this round:**
+  - **Whale:** swims with its side flippers all the time (4 strokes per 24 s loop); a strong tail
+    beat (tip measured from −44° to +40°) comes once per loop.
+  - **Sun flare:** lights when any sample of the small sun disk is visible. It used to need the
+    average of 13 samples, which went dark when the disk fell between them.
+
+<p align="center"><img src="images/process/coral-normals-original-desktop-mobile.jpg" width="95%" alt="Coral paradise close-up: original, desktop, mobile"></p>
+<p align="center"><sub>Coral paradise up close: original Meshy model (4.9M triangles), desktop (800k, normals from the original), mobile (150k).</sub></p>
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**
