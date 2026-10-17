@@ -496,6 +496,31 @@ a phone, so the site uses generated copies.
   It needs cross-origin isolation headers on the site and has compatibility risks on iPhone, so it is
   a later decision.
 
+## 5.13 Threads test, on a separate address (Oct 17)
+
+- **Setup:**
+  - Threaded Godot build, published only on a separate Worker with no custom domain
+    (`portfolio-threads-test…workers.dev`). dotpdf.dev and its links were not touched.
+  - The test page sends COOP/COEP, the browser reports `crossOriginIsolated = true`, and Godot
+    reports no missing features.
+  - Models load in the background (`load_threaded_request`) instead of one per frame.
+- **Desktop Chrome, cold (521 MB from the network, 0 from cache), same PC:**
+
+| Since the click | dotpdf.dev (no threads, cold) | Threads test (cold) |
+|---|---|---|
+| Package downloaded | 19.2 s | 5.0 s (network varies) |
+| Islands built | 25.7 s | 11.3 s |
+| **Helm** | **54.4 s** | **40.5 s** |
+| Nearby models in place | 70.5 s | **47.5 s** |
+| FPS after helm / settled / 20 s later | 13 / 34 / 43 | 19 / 10 / 29 |
+
+- **Reading:**
+  - With threads, the nearby models arrive in 7 s after the helm instead of 16 s.
+  - The ~29 s of first-visit graphics preparation is still there in both builds; it is now the
+    largest single cost before the helm.
+  - The later FPS windows overlapped the original-texture swaps and the per-part tool, so they are
+    not a clean comparison yet.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**
