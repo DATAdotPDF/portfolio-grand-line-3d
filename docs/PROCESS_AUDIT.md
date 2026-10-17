@@ -376,6 +376,20 @@ a phone, so the site uses generated copies.
   - `?medir` now also shows the graphics tier in use (and every automatic change), plus a third FPS
     window 20 s after the nearby models are in place.
 
+## 5.9 Galaxy A55 on Low (Oct 16)
+
+- **Conditions:** same A55, Low graphics from the start (the page shows "Baixo @22s", applied when
+  the world is built), Wi-Fi ("4g · 10 Mbps" estimate), cold cache (143.9 MB transferred, 89.2 MB of
+  it before the helm).
+- **Times:** package 8.9 s, engine 9.7 s, islands 22.0 s, **helm 27.8 s**, first frames 30.1 s,
+  nearby models in place 35.3 s.
+- **FPS:** 9 after the helm, 6 once the models were in place, **15 twenty seconds later**.
+- **Reading:** lowering resolution and effects barely moved the A55, so its bottleneck is not the
+  graphics tier. Every A55 run so far used Opera, going by its toolbar. The other Samsung, on Chrome,
+  held 40 fps on the heavier Medium build.
+- **Next measurement:** the same `?medir` run on the A55 in Chrome, to separate the browser from the
+  phone before touching anything else.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**
