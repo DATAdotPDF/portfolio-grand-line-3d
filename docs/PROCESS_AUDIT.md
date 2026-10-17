@@ -482,6 +482,16 @@ a phone, so the site uses generated copies.
   - On the web, nearby models then come in one at a time, every 0.25 s, instead of two per frame.
   - **Checked with the exported mobile package on my PC:** the page reports smooth frames first, then
     the 7 nearby packs arrive; 31 packs over the route at 30 fps.
+- **Measured after the fix (desktop Chrome, mostly cold: 477.7 MB from the network, 35.7 MB from
+  cache):**
+  - package 19.2 s, islands 25.7 s, **helm 54.4 s** (was 62.0 s), nearby models in place 70.5 s;
+  - FPS 13 after the helm (was 1), 34 settled, 43 twenty seconds later.
+  - **Per-part costs:** now clean. The frame is 23.9 ms, and no single part costs more than ~3 ms,
+    so nothing on the CPU side dominates.
+  - **What is left:** the 29 s between "islands built" and "first frames" is the browser preparing
+    the graphics (shader compilation through ANGLE/Direct3D) on a first visit. The same package
+    natively warms up in ~1.3 s. A reload should be much faster, because the browser keeps compiled
+    shaders.
 - **The real fix for the freezes** is threads in the web build: models would load in the background.
   It needs cross-origin isolation headers on the site and has compatibility risks on iPhone, so it is
   a later decision.
