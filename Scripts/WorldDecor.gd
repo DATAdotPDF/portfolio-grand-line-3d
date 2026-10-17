@@ -287,6 +287,8 @@ const LOAD_RANGE_DESKTOP := DRAW_DISTANCE
 const LOAD_RANGE_MOBILE := 360.0
 ## Folga para sair (evita entrar/sair no limite).
 const LOAD_MARGIN := 80.0
+## Antecipação do download (m além do raio de carga): o pacote do modelo chega antes de ele entrar.
+const PREFETCH := 220.0
 ## Ritmo da roda d'água abandonada (fração do clipe "Idle" do Blender).
 const WATERWHEEL_SPEED := 0.15
 
@@ -2083,14 +2085,8 @@ func _start_packs() -> void:
 	asset_packs.name = "AssetPacks"
 	add_child(asset_packs)
 	asset_packs.pack_loaded.connect(_on_pack_loaded)
-	var ship_dir: Vector3 = world.ship.global_position.normalized() if world and world.get("ship") else Vector3.UP
-	var anchors := {"north": Sector.NORTH, "east": Sector.EAST, "south": Sector.SOUTH, "west": Sector.WEST}
-	var order := ["shared"]
-	var rest := anchors.keys()
-	rest.sort_custom(func(a: String, b: String) -> bool:
-		return _anchor(anchors[a]).angle_to(ship_dir) < _anchor(anchors[b]).angle_to(ship_dir))
-	order.append_array(rest)
-	asset_packs.start(order)
+	# Um pacote por modelo: _attach_pending diz quais pedir (os perto do barco, o mais perto primeiro).
+	asset_packs.start([])
 
 func _anchor(sector: int) -> Vector3:
 	var a: Vector2 = BIOMES[sector].anchor
@@ -2133,6 +2129,18 @@ func _attach_pending(delta: float) -> void:
 			for kind in scenes.keys():
 				if not wanted.has(kind) and not (kind in CORE_KINDS):
 					scenes.erase(kind)
+		# Pacotes por modelo (site): pede os que estão no raio de carga + a folga, o mais perto primeiro.
+		if asset_packs != null:
+			var nearest := {}
+			for item in items:
+				if item.kind in CORE_KINDS:
+					continue
+				var d := ship_pos.distance_to((item.dir as Vector3) * planet_radius) - float(item.radius)
+				if d < load_range + PREFETCH:
+					nearest[item.kind] = minf(float(nearest.get(item.kind, INF)), d)
+			var order: Array = nearest.keys()
+			order.sort_custom(func(a: String, b: String) -> bool: return float(nearest[a]) < float(nearest[b]))
+			asset_packs.want(order)
 		for kind in wanted:
 			var path := _model_path(kind)
 			if not scenes.has(kind) and not loading.has(path) and ResourceLoader.exists(path):
@@ -2167,7 +2175,7 @@ func _attach_pending(delta: float) -> void:
 		_dress_model(item, (scenes[item.kind] as PackedScene).instantiate())
 	# Página (?medir): os pacotes chegaram e tudo o que está no raio já está no lugar.
 	var near_waiting := pending.any(func(item: Dictionary) -> bool: return not streaming or _in_range(item, ship_pos, 0.0))
-	if not sectors_marked and not near_waiting and (asset_packs == null or asset_packs.queue.is_empty() and asset_packs.current.is_empty()):
+	if not sectors_marked and not near_waiting and (asset_packs == null or not asset_packs.is_busy()):
 		sectors_marked = true
 		print("WORLD_DECOR modelos no raio de carga no lugar (%d de %d itens com modelo)" % [items.size() - pending.size(), items.size()])
 		if OS.has_feature("web"):

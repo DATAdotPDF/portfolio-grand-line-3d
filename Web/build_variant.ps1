@@ -128,8 +128,9 @@ $cfg = Get-Content $presets -Raw
 $cfg = $cfg.Replace("Assets/Optimized/island_*,", "").Replace("Assets/Meshy_AI_*,", "")
 if ($Profile -eq "mobile") { $cfg = $cfg.Replace('custom_features=""', 'custom_features="mobile_lite"') }
 
-# Pacotes dos setores (carregamento por proximidade, Scripts/AssetPacks.gd): os modelos de cada setor
-# vão para world-<setor>.pck e saem do pacote principal; o jogo baixa depois que o mundo abre.
+# Um pacote por modelo (carregamento por proximidade, Scripts/AssetPacks.gd): world-<modelo>.pck sai do
+# pacote principal e o jogo só baixa quando um item dele chega perto do barco (antes eram 4 pacotes de
+# setor baixados de uma vez: ~470 MB no desktop travavam a abertura, Pedro 2026-10-17).
 $packDir = Join-Path $outDir "packs"
 Remove-Item $packDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $packDir | Out-Null
@@ -137,8 +138,7 @@ $kinds = (Get-Content (Join-Path $mirror "Config\world_kinds.json") -Raw | Conve
 $packs = [ordered]@{}
 foreach ($k in $kinds.PSObject.Properties) {
 	if (-not $k.Value.pack) { continue }
-	if (-not $packs.Contains($k.Value.pack)) { $packs[$k.Value.pack] = @() }
-	$packs[$k.Value.pack] += $k.Value.path
+	$packs[$k.Name] = @($k.Value.path)
 }
 $options = [regex]::Match($cfg, '(?s)\[preset\.0\.options\](.*?)(?=\n\[preset\.|\z)').Groups[1].Value
 $excluded = @()
@@ -161,7 +161,7 @@ foreach ($pack in $packs.Keys) {
 	if (-not (Test-Path $path)) { throw "Pacote $pack falhou" }
 	# Pacote vazio = os modelos não foram importados no espelho (já aconteceu com um .blend solto em
 	# Assets travando o import): para aqui em vez de publicar um mundo sem os setores.
-	if ((Get-Item $path).Length -lt 1MB) { throw "Pacote $pack vazio ($((Get-Item $path).Length) bytes): import do espelho falhou" }
+	if ((Get-Item $path).Length -lt 200KB) { throw "Pacote $pack vazio ($((Get-Item $path).Length) bytes): import do espelho falhou" }
 	$entry = [ordered]@{ file = $file; size = (Get-Item $path).Length
 		version = (Get-FileHash $path -Algorithm SHA256).Hash.Substring(0, 12).ToLower() }
 	# Acima de 20 MiB: em partes (o Cloudflare aceita até 25 MiB por arquivo); o jogo junta no navegador.
@@ -184,8 +184,10 @@ foreach ($pack in $packs.Keys) {
 		Copy-Item $path (Join-Path $full $file) -Force
 	}
 	$manifest.packs[$pack] = $entry
-	Write-Host ("  [$Profile]     {0}: {1} modelos, {2:N1} MB{3}" -f $file, @($packs[$pack]).Count, ($entry.size / 1MB), $(if ($entry.parts) { " em $($entry.parts.Count) partes" } else { "" }))
 }
+$sizes = @($manifest.packs.Values | ForEach-Object { $_.size })
+Write-Host ("  [$Profile]     {0} pacotes de modelo, {1:N1} MB no total (de {2:N1} a {3:N1} MB)" -f $sizes.Count,
+	(($sizes | Measure-Object -Sum).Sum / 1MB), (($sizes | Measure-Object -Minimum).Minimum / 1MB), (($sizes | Measure-Object -Maximum).Maximum / 1MB))
 $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $mirror "Config\world_packs.json") -Encoding utf8
 # Manifesto das texturas originais deste perfil (Web/build.ps1 gera em Builds/HD).
 $hd = Join-Path $root ("Builds\HD\hd_" + $Profile + ".json")

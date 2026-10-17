@@ -445,6 +445,28 @@ a phone, so the site uses generated copies.
 <p align="center"><img src="images/process/coral-normals-original-desktop-mobile.jpg" width="95%" alt="Coral paradise close-up: original, desktop, mobile"></p>
 <p align="center"><sub>Coral paradise up close: original Meshy model (4.9M triangles), desktop (800k, normals from the original), mobile (150k).</sub></p>
 
+## 5.11 One pack per model, and what "cache" means (Oct 17)
+
+- **What I measured:** desktop, Chrome, right after a new deploy. The helm took 62.6 s, FPS was 1
+  right after it and 44 twenty seconds later, and 841 MB crossed the network.
+- **Why it was so slow:**
+  - The four desktop sector packs (~470 MB) all started downloading at once.
+  - Each pack was written to the browser's persistent storage (IndexedDB) on the main thread.
+  - The per-part costs in that run were noise caused by those stalls.
+- **Why nothing came from the cache:**
+  - The visit came right after a deploy. Every file carries its version in the URL (`?v=…`), so all
+    the URLs were new.
+  - On a repeat visit without a new deploy, the browser revalidates and reuses the files.
+  - `?medir` now shows "from the network" and "from the browser cache" separately.
+- **Fix:**
+  - **One pack per model:** 34 per profile; desktop 8.7–23.4 MB each, mobile 1.1–4.3 MB.
+  - **Downloads follow the boat:** the game only downloads the models within the load range plus a
+    220 m look-ahead, nearest first. At the start only 7 packs are needed; the rest arrive while you
+    sail (31 along the test route).
+  - **No persistent storage:** packs and original textures stay in the tab's memory (`/tmp`), not
+    IndexedDB. If that fails, the game falls back to the old path.
+- **Exported mobile package on my PC:** 195–250 MB video, 30 fps on Low.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**

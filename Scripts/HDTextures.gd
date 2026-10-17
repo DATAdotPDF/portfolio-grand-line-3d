@@ -16,7 +16,8 @@ const MARGIN := 70.0
 ## Quantos modelos ao mesmo tempo com textura original (memória de vídeo).
 const ACTIVE_DESKTOP := 10
 const ACTIVE_MOBILE := 4
-const TMP := "user://hd_tmp.res"
+## Na memória da aba (/tmp): em user:// o navegador sincroniza com o IndexedDB a cada gravação.
+const TMP := "/tmp/portfolio_hd.res"
 
 var world: Node3D
 var models := {}

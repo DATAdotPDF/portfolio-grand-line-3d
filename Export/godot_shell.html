@@ -447,6 +447,11 @@ const engine = new Engine(GODOT_CONFIG);
 		const entries = performance.getEntriesByType('resource').filter((e) => until === undefined || e.responseEnd <= until);
 		return entries.reduce((n, e) => n + (e.transferSize || 0), 0) / 1048576;
 	}
+	// O que o navegador entregou do próprio cache (não passou pela rede): transferSize ~0 com corpo.
+	function cachedMB() {
+		return performance.getEntriesByType('resource').filter((e) => (e.transferSize || 0) < 1024 && e.decodedBodySize > 0)
+			.reduce((n, e) => n + e.decodedBodySize, 0) / 1048576;
+	}
 	function renderMeasure() {
 		let box = document.getElementById('measure');
 		if (!box) {
@@ -472,7 +477,7 @@ const engine = new Engine(GODOT_CONFIG);
 			'ilhas montadas ........ ' + t('worldBuilt'),
 			'primeiros quadros ..... ' + t('worldReady'),
 			'BARCO RESPONDEU ....... ' + t('steer') + (timings.steer ? '  (' + transferredMB(timings.steer).toFixed(1) + ' MB transferidos até aqui)' : ''),
-			'setores baixados ...... ' + t('packsLoaded'),
+			'modelos perto baixados  ' + t('packsLoaded'),
 			'modelos perto no lugar  ' + t('sectorsPlaced'),
 			'FPS (5 s após o leme) . ' + (timings.fps || '…'),
 			'FPS (depois, estável) . ' + (timings.fpsSettled || '…'),
@@ -482,7 +487,8 @@ const engine = new Engine(GODOT_CONFIG);
 			'CUSTO POR PARTE (ms por quadro; começa ~30 s após o leme)',
 			...costs.map((c) => c.name === 'base' ? 'quadro ' + c.ms + ' ms · scripts ' + c.process_ms + ' · física ' + c.physics_ms
 				: '  sem ' + c.name + ': ' + (c.saves_ms >= 0 ? '−' : '+') + Math.abs(c.saves_ms) + ' ms'),
-			'total transferido ..... ' + transferredMB().toFixed(1) + ' MB (0 = veio do cache)',
+			'pela rede ............. ' + transferredMB().toFixed(1) + ' MB',
+			'do cache do navegador . ' + cachedMB().toFixed(1) + ' MB',
 		];
 		box.textContent = lines.join('\n');
 		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, costs: costs, transferred_mb: +transferredMB().toFixed(1), profile: prof,
