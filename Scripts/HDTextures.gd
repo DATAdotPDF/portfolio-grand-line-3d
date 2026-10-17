@@ -72,6 +72,9 @@ func _targets(ship_pos: Vector3) -> Array:
 func _process(delta: float) -> void:
 	if world == null or world.get("ship") == null:
 		return
+	# Só depois que o mundo roda liso (o leme primeiro; os modelos chegam antes das texturas).
+	if not bool(world.get("ready_reported")):
+		return
 	if not fetching.is_empty():
 		_poll_fetch()
 	timer -= delta

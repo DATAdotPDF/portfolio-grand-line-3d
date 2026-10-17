@@ -467,6 +467,25 @@ a phone, so the site uses generated copies.
     IndexedDB. If that fails, the game falls back to the old path.
 - **Exported mobile package on my PC:** 195–250 MB video, 30 fps on Low.
 
+## 5.12 The helm first, then the models (Oct 17)
+
+- **What I measured:** desktop Chrome, cold cache, per-model packs.
+  - The package arrived in 16.3 s and the islands were built at 23.1 s.
+  - The first smooth frames only came at 62.0 s, with the helm at the same time and FPS 1 right
+    after; 525 MB crossed the network.
+- **Reading:** the web build runs on a single thread, and three heavy jobs ran together right after
+  the islands: shader preparation on a first visit, loading the nearby models (one 800k-triangle city
+  takes seconds) and the original-texture swaps. Each one froze the frame.
+- **Fix:**
+  - Models and original textures now wait until the world is running smoothly, plus 1.5 s, so the
+    helm is free first.
+  - On the web, nearby models then come in one at a time, every 0.25 s, instead of two per frame.
+  - **Checked with the exported mobile package on my PC:** the page reports smooth frames first, then
+    the 7 nearby packs arrive; 31 packs over the route at 30 fps.
+- **The real fix for the freezes** is threads in the web build: models would load in the background.
+  It needs cross-origin isolation headers on the site and has compatibility risks on iPhone, so it is
+  a later decision.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**

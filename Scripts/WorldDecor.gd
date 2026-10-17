@@ -289,6 +289,10 @@ const LOAD_RANGE_MOBILE := 360.0
 const LOAD_MARGIN := 80.0
 ## Antecipação do download (m além do raio de carga): o pacote do modelo chega antes de ele entrar.
 const PREFETCH := 220.0
+## Espera depois que o mundo roda liso antes de começar a trazer modelos (s), e o intervalo entre um
+## modelo montado e o próximo no site (s).
+const STREAM_SETTLE := 1.5
+const ATTACH_GAP := 0.25
 ## Ritmo da roda d'água abandonada (fração do clipe "Idle" do Blender).
 const WATERWHEEL_SPEED := 0.15
 
@@ -366,6 +370,8 @@ var streaming := false
 var load_range := LOAD_RANGE_DESKTOP
 var stream_timer := 0.0
 var sectors_marked := false
+var settle_left := STREAM_SETTLE
+var attach_wait := 0.0
 var lava_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -2113,6 +2119,15 @@ func _detach_model(item: Dictionary) -> void:
 ## mais perto primeiro), tira os que saíram e solta da memória as cenas sem nenhum item perto.
 func _attach_pending(delta: float) -> void:
 	var ship_pos: Vector3 = world.ship.global_position
+	# Site: nada de baixar/montar modelos antes de o mundo rodar liso (a página avisa; main_world
+	# ready_reported) e mais STREAM_SETTLE s: o leme fica livre primeiro (Pedro, 2026-10-17: com tudo
+	# carregando junto, o leme só respondia aos 62 s).
+	if streaming:
+		if not bool(world.get("ready_reported")):
+			return
+		settle_left -= delta
+		if settle_left > 0.0:
+			return
 	stream_timer -= delta
 	if stream_timer <= 0.0:
 		stream_timer = 0.25
@@ -2163,6 +2178,10 @@ func _attach_pending(delta: float) -> void:
 				push_warning("WorldDecor: não carregou %s" % path)
 				loading.erase(path)
 	var budget := ATTACH_PER_FRAME
+	# Web (sem threads): montar um modelo trava o quadro; um a cada ATTACH_GAP s, não dois por quadro.
+	if OS.has_feature("web"):
+		attach_wait -= delta
+		budget = 1 if attach_wait <= 0.0 else 0
 	var ready: Array = pending.filter(func(item: Dictionary) -> bool:
 		return scenes.has(item.kind) and (not streaming or _in_range(item, ship_pos, 0.0)))
 	ready.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -2173,6 +2192,7 @@ func _attach_pending(delta: float) -> void:
 		budget -= 1
 		pending.erase(item)
 		_dress_model(item, (scenes[item.kind] as PackedScene).instantiate())
+		attach_wait = ATTACH_GAP
 	# Página (?medir): os pacotes chegaram e tudo o que está no raio já está no lugar.
 	var near_waiting := pending.any(func(item: Dictionary) -> bool: return not streaming or _in_range(item, ship_pos, 0.0))
 	if not sectors_marked and not near_waiting and (asset_packs == null or not asset_packs.is_busy()):
