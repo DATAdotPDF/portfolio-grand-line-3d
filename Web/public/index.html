@@ -72,6 +72,8 @@ h1 { font: italic 400 clamp(44px, 6.2vw, 124px)/.9 "IM Fell English", Georgia, s
 .cta.primary small { color: color-mix(in srgb, var(--paper) 72%, var(--ink)); }
 .cta.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
 .cta:disabled { opacity: .5; cursor: default; }
+a.cta { text-decoration: none; box-sizing: border-box; }
+.opera-tip { margin: 0 0 4px; color: var(--muted); font: 500 clamp(12px, .8vw, 15px)/1.45 "Inter", sans-serif; }
 .world[hidden] { display: none; }
 /* Números da apresentação (como na landing antiga). */
 .stats { display: flex; gap: clamp(24px, 3vw, 56px); margin: 22px 0 0; padding-top: 16px; border-top: 1px solid var(--line); }
@@ -178,7 +180,7 @@ h1 { font: italic 400 clamp(44px, 6.2vw, 124px)/.9 "IM Fell English", Georgia, s
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":269322108,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":269322188,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -306,7 +308,36 @@ const engine = new Engine(GODOT_CONFIG);
 		document.getElementById('open-3d-note').textContent = 'não roda neste navegador';
 		readerEnd.remove();
 	} else {
-		open3d.forEach((button) => button.addEventListener('click', start3D));
+		open3d.forEach((button) => button.addEventListener('click', ask3D));
+	}
+
+	// Opera no Android: no mesmo aparelho o mundo 3D rodava bem pior que no Chrome (Galaxy A55: 6–15 fps
+	// contra 30). Antes de abrir, oferece o Chrome por um link de intent (só funciona com um toque; sem
+	// Chrome instalado, o Android volta para este mesmo endereço). Quem escolhe ficar não é perguntado de novo.
+	const ua = navigator.userAgent;
+	const brands = ((navigator.userAgentData && navigator.userAgentData.brands) || []).map((b) => b.brand).join(' ');
+	const androidOpera = /Android/i.test(ua) && (/(OPR|OPT|OPX)\//.test(ua) || /Opera/i.test(brands));
+	window.__portfolioBrowser = androidOpera ? 'Opera (Android)' : (/CriOS|Chrome\//.test(ua) ? 'Chrome' : (/Safari\//.test(ua) ? 'Safari' : '?'));
+	function ask3D() {
+		let stay = false;
+		try { stay = localStorage.getItem('portfolioStayOpera') === '1'; } catch (e) {}
+		if (!androidOpera || stay || started) return start3D();
+		const target = new URL(location.href);
+		target.searchParams.set('3d', '');
+		const intent = 'intent://' + target.host + target.pathname + target.search +
+			'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(target.href) + ';end';
+		const box = document.createElement('div');
+		box.className = 'choose';
+		box.innerHTML = '<p class="opera-tip">No Chrome o mundo 3D roda bem mais liso que no Opera.</p>' +
+			'<a class="cta primary" id="open-chrome">Abrir no Chrome<small>abre direto no 3D</small></a>' +
+			'<button class="cta" type="button" id="stay-opera">Continuar no Opera<small>pode ficar mais lento</small></button>';
+		choose.replaceWith(box);
+		box.querySelector('#open-chrome').href = intent;
+		box.querySelector('#stay-opera').addEventListener('click', () => {
+			try { localStorage.setItem('portfolioStayOpera', '1'); } catch (e) {}
+			box.replaceWith(choose);
+			start3D();
+		});
 	}
 
 	function start3D() {
@@ -436,7 +467,7 @@ const engine = new Engine(GODOT_CONFIG);
 			'tela: ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1).toFixed(2) + ' · núcleos ' + (prof.cores || '?') + ' · memória ' + (prof.memory ? prof.memory + ' GB' : '?'),
 			'gpu: ' + (prof.gpu || '?').slice(0, 60),
 			'rede: ' + (net.effectiveType || '?') + (net.downlink ? ' · ' + net.downlink + ' Mbps' : '') + (net.rtt ? ' · rtt ' + net.rtt + ' ms' : '') + (net.saveData ? ' · economia' : ''),
-			'pacote: ' + (prof.lite ? 'celular' : 'desktop') + ' · gráficos ' + (prof.tier || '?'),
+			'pacote: ' + (prof.lite ? 'celular' : 'desktop') + ' · gráficos ' + (prof.tier || '?') + ' · navegador ' + (window.__portfolioBrowser || '?'),
 			'',
 			'pacote baixado ........ ' + t('downloaded'),
 			'motor pronto .......... ' + t('engineInit'),
