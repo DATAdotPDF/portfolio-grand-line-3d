@@ -8,11 +8,17 @@
 # Uso:  pwsh Web/build.ps1            (a partir da raiz do projeto Godot)
 param(
 	[string]$Godot = "D:\Godot\Godot.exe",
-	[int]$PartMB = 20
+	[int]$PartMB = 20,
+	# Pasta do site (o oficial é Web/public; um teste vai para outra, ex.: public-test).
+	[string]$PublicDir = "public",
+	# Godot com threads (modelos e texturas carregam em segundo plano): o site manda COOP/COEP (_headers).
+	[switch]$Threads
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-$public = Join-Path $PSScriptRoot "public"
+$public = Join-Path $PSScriptRoot $PublicDir
+New-Item -ItemType Directory -Force $public | Out-Null
+if (-not (Test-Path (Join-Path $public "404.html"))) { Copy-Item (Join-Path $PSScriptRoot "public/404.html") $public }
 Set-Location $root
 
 Write-Host "0/5 Texturas originais dos modelos (o jogo baixa perto do barco: Scripts/HDTextures.gd)"
@@ -25,7 +31,7 @@ if (-not (Test-Path Builds\HD\hd_desktop.json)) { throw "Texturas originais: man
 Write-Host "1/5 Exportando Godot (Web desktop, com as variantes web dos modelos)"
 # Variantes em dia (pula as que já estão) e export a partir delas: os originais não vão para o site.
 python -I Tools\make_web_variants.py
-pwsh -NoProfile -File (Join-Path $PSScriptRoot "build_variant.ps1") -Profile desktop -Godot $Godot
+pwsh -NoProfile -File (Join-Path $PSScriptRoot "build_variant.ps1") -Profile desktop -Godot $Godot -Threads:$Threads
 if (-not (Test-Path Builds\Web\index.pck)) { throw "Export falhou: Builds/Web/index.pck ausente" }
 
 Write-Host "2/5 Limpando saída anterior"
@@ -82,7 +88,7 @@ function Split-Pack([string]$pckPath, [string]$partsDir, [string]$manifestName) 
 	return $names.Count
 }
 $parts = 1..(Split-Pack "Builds\Web\index.pck" "pck" "index.pck.parts.json")
-pwsh -NoProfile -File (Join-Path $PSScriptRoot "build_variant.ps1") -Profile mobile -Godot $Godot
+pwsh -NoProfile -File (Join-Path $PSScriptRoot "build_variant.ps1") -Profile mobile -Godot $Godot -Threads:$Threads
 $mobileParts = Split-Pack "Builds\WebMobile\index.pck" "pck-mobile" "index.mobile.pck.parts.json"
 # Pacotes dos setores (carregamento por proximidade): o jogo baixa depois que o mundo abre.
 Copy-Item Builds\Web\packs -Destination (Join-Path $public "packs") -Recurse -Force
@@ -101,6 +107,10 @@ Write-Host "5/5 Música"
 $tracks = (Get-Content Config\music_playlist.json -Raw | ConvertFrom-Json).tracks
 foreach ($t in $tracks) { Copy-Item -LiteralPath "Assets\Sound\$t" (Join-Path $public "music\$t") }
 
+if ($Threads) {
+	# Isolamento de origem: sem ele o navegador não libera as threads (SharedArrayBuffer).
+	Set-Content (Join-Path $public "_headers") "/*`n  Cross-Origin-Opener-Policy: same-origin`n  Cross-Origin-Embedder-Policy: require-corp`n" -NoNewline
+}
 $big = Get-ChildItem $public -Recurse -File | Where-Object { $_.Length -gt 25MB }
 if ($big) { throw "Arquivos acima de 25 MiB: $($big.FullName -join ', ')" }
 $total = (Get-ChildItem $public -Recurse -File | Measure-Object Length -Sum).Sum / 1MB

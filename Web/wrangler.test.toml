@@ -1,0 +1,14 @@
+# Teste das threads (Godot com SharedArrayBuffer): Worker SEPARADO, só no endereço *.workers.dev.
+# Não tem domínio próprio nem rota: o dotpdf.dev (Web/wrangler.toml) não é tocado.
+# Uso: pwsh Web/build.ps1 -Threads -PublicDir public-test
+#      npx wrangler deploy --config Web/wrangler.test.toml
+name = "portfolio-threads-test"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[assets]
+directory = "./public-test"
+binding = "ASSETS"
+not_found_handling = "404-page"
+run_worker_first = ["/index.pck", "/index.wasm", "/world", "/world/*", "/api/*"]

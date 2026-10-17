@@ -6,7 +6,9 @@
 # cenas e os scripts continuam achando tudo). Os originais nunca vão para o site.
 param(
 	[ValidateSet("desktop", "mobile")][string]$Profile = "desktop",
-	[string]$Godot = "D:\Godot\Godot.exe"
+	[string]$Godot = "D:\Godot\Godot.exe",
+	# Build com threads (o site precisa dos cabeçalhos COOP/COEP; Web/build.ps1 -Threads).
+	[switch]$Threads
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
@@ -127,6 +129,7 @@ $cfg = Get-Content $presets -Raw
 # No espelho só está o que o jogo usa: os modelos do Meshy e das ilhas entram (antes eram excluídos).
 $cfg = $cfg.Replace("Assets/Optimized/island_*,", "").Replace("Assets/Meshy_AI_*,", "")
 if ($Profile -eq "mobile") { $cfg = $cfg.Replace('custom_features=""', 'custom_features="mobile_lite"') }
+if ($Threads) { $cfg = $cfg.Replace('variant/thread_support=false', 'variant/thread_support=true') }
 
 # Um pacote por modelo (carregamento por proximidade, Scripts/AssetPacks.gd): world-<modelo>.pck sai do
 # pacote principal e o jogo só baixa quando um item dele chega perto do barco (antes eram 4 pacotes de

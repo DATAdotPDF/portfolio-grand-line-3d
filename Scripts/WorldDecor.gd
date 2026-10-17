@@ -2102,6 +2102,10 @@ func _on_pack_loaded(_pack: String) -> void:
 	# Os modelos são pedidos conforme o barco chega perto (_attach_pending).
 	stream_timer = 0.0
 
+## Sem threads (build web normal) o carregamento em segundo plano não anda: carrega direto.
+func _sync_loads() -> bool:
+	return OS.has_feature("web") and not OS.has_feature("threads")
+
 func _in_range(item: Dictionary, ship_pos: Vector3, margin: float) -> bool:
 	return ship_pos.distance_to((item.dir as Vector3) * planet_radius) < load_range + margin + float(item.radius)
 
@@ -2159,11 +2163,12 @@ func _attach_pending(delta: float) -> void:
 		for kind in wanted:
 			var path := _model_path(kind)
 			if not scenes.has(kind) and not loading.has(path) and ResourceLoader.exists(path):
-				# O build web é sem threads: lá carrega um modelo por quadro, logo abaixo.
-				if not OS.has_feature("web"):
+				# Build web sem threads: lá carrega um modelo por quadro, logo abaixo. Com threads
+				# (Web/build.ps1 -Threads) carrega em segundo plano, sem travar o quadro.
+				if not _sync_loads():
 					ResourceLoader.load_threaded_request(path)
 				loading[path] = kind
-	if OS.has_feature("web"):
+	if _sync_loads():
 		for path in loading.keys():
 			scenes[loading[path]] = load(path)
 			loading.erase(path)
@@ -2178,8 +2183,8 @@ func _attach_pending(delta: float) -> void:
 				push_warning("WorldDecor: não carregou %s" % path)
 				loading.erase(path)
 	var budget := ATTACH_PER_FRAME
-	# Web (sem threads): montar um modelo trava o quadro; um a cada ATTACH_GAP s, não dois por quadro.
-	if OS.has_feature("web"):
+	# Web sem threads: montar um modelo trava o quadro; um a cada ATTACH_GAP s, não dois por quadro.
+	if _sync_loads():
 		attach_wait -= delta
 		budget = 1 if attach_wait <= 0.0 else 0
 	var ready: Array = pending.filter(func(item: Dictionary) -> bool:

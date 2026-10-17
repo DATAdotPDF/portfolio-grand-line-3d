@@ -66,3 +66,4 @@
 # Cenas de trabalho do Blender (fontes locais, pesadas)
 *.blend
 *.blend1
+/Web/public-test/
