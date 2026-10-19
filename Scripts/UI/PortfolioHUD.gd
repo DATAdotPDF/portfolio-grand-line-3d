@@ -557,7 +557,7 @@ func _controls_text() -> String:
 		return "\n".join([
 			"Joystick esquerdo — leme; para a frente navega na velocidade máxima",
 			"Joystick direito — para os lados gira a câmera; para cima e para baixo mira o canhão",
-			"IMPULSO — arranque (BURST); recarrega em alguns segundos",
+			"IMPULSO — carrega e arranca (BURST); recarrega em 30 s",
 			"FOGO — dispara o canhão nas boias",
 			"Dois dedos — giram a câmera",
 			"Globo (canto superior) — mapa 3D; arraste para girar",
@@ -566,7 +566,7 @@ func _controls_text() -> String:
 			"Chegue perto de uma ilha para abrir a seção"])
 	return "\n".join([
 		"W A S D — navegar",
-		"Shift — impulso (BURST, recarrega em 5 s)",
+		"Shift — impulso: carrega, arranca (BURST) e recarrega em 30 s",
 		"R / F — sobe e desce a mira",
 		"Espaço — dispara o canhão",
 		"M ou Tab — mapa  ·  1–5 — visitar ilha",
@@ -1213,7 +1213,9 @@ func _distance_text(meters: float) -> String:
 
 func set_status(_section: String, distance: float, speed: float, _fps: int, burst_wait := 0.0) -> void:
 	stat_speed.text = "%.1f m/s" % speed
-	if burst_wait > 0.0:
+	if burst_wait < 0.0:
+		stat_speed.text += "  ·  carregando impulso"
+	elif burst_wait > 0.0:
 		stat_speed.text += "  ·  impulso %d s" % ceili(burst_wait)
 	stat_distance.text = _distance_text(distance)
 

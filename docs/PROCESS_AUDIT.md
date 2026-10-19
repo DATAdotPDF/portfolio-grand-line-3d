@@ -526,7 +526,7 @@ a phone, so the site uses generated copies.
 Feedback from a first-time player (Pedro's son, on the Galaxy A55): the boat was too slow, and the
 turtle and crab colossi had wrong collisions.
 
-- **Speed (`Scripts/sloop.gd`):**
+- **Speed (`Scripts/sloop.gd`; replaced the next day by 5.15):**
   - Forward is always full speed: 15 m/s, no half throttle (the touch joystick used to give a
     fraction of it), no wind slowing it down. Before, cruise was 4.2 m/s and Shift 12.5 m/s.
   - Shift / the touch IMPULSO button is now a **BURST**: 30 m/s for 1.5 s, then back to 15 m/s.
@@ -563,6 +563,38 @@ turtle and crab colossi had wrong collisions.
 - **?medir:** "modelos perto baixados / no lugar" now covers only the models near the boat when
   the world opened. Before, the list kept growing as the boat moved, which produced the 180–203 s
   readings.
+
+## 5.15 Burst with a charge, 11 m/s, and the runes at night (Oct 19)
+
+- **Speed, second pass:** 15 m/s was too fast. The new values:
+  - Forward is always 11 m/s.
+  - The IMPULSO works as "charge > burst > recharge". One press starts a 1.5 s charge, during
+    which the boat slows to 70% and the button reads CARREGANDO. Then it bursts to 32 m/s for
+    2 s, with a splash and the bow lifting, and comes back to 11 m/s.
+  - The next charge is possible only 30 s after the burst. `Tests/burst_probe.gd` checks this
+    cycle, including a press during the recharge, which does nothing.
+- **Events retuned for one burst every 30 s.** The ghost ship chases at 13.5–15 m/s and lets go
+  at 120 m; the kraken pulls 11.3–12 m/s (stronger near the core); the cyclone pulls up to 22 m/s.
+
+| Event | Cruise only (11 m/s) | With the burst |
+|---|---|---|
+| Ghost ship | caught in 25 s | escapes in 5.5 s (burst used early) |
+| Cyclone, 20–26 m from the axis | escapes in 5–8 s, steering out | escapes in 3.7 s |
+| Kraken | sinks in 11 s | reaches the edge and is held there; with the action bar, escapes in 37.5 s |
+
+- **Runes at night looked smeared on the site.** Three causes:
+  - **The original textures never reached the reduced models.** The web variants are re-exported
+    by Blender, which renames the Meshy material `material_0` to `Material_0`.
+    `Scripts/HDTextures.gd` compared the exact name, so it downloaded the original textures near
+    the boat but never applied them to any reduced model, on desktop or phone. It now compares
+    names without letter case or Blender's `.001` suffix.
+  - **The glow layer kept the base texture.** The night glow is a separate layer, and it now gets
+    the original texture together with the material under it.
+  - **The rune outline came out in steps.** On the base texture (512 px on phones), the outline
+    of the glowing area came out as texel steps. Up close, the glow now reads the texture with
+    bicubic filtering, and a faint halo sits around the strokes.
+
+![Watchtower rune at night: original model, the site on a phone before, and after](images/process/rune-original-site-mobile-fixed.jpg)
 
 ## 6. What is not in Git, and why
 

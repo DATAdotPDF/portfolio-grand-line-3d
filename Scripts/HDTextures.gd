@@ -166,14 +166,31 @@ func _apply(glb: String, model: Node) -> void:
 			if mat == null:
 				continue
 			for entry in models[glb]:
-				if entry.material != mat.resource_name or not have.has(entry.file):
+				if _mat_key(entry.material) != _mat_key(mat.resource_name) or not have.has(entry.file):
 					continue
 				var key := "%d|%s" % [mat.get_instance_id(), entry.prop]
-				if done.has(key):
-					continue
-				done[key] = [mat, entry.prop, mat.get(entry.prop)]
-				mat.set(entry.prop, have[entry.file])
+				if not done.has(key):
+					done[key] = [mat, entry.prop, mat.get(entry.prop)]
+					mat.set(entry.prop, have[entry.file])
+				# Brilho noturno das runas (camada por cima de cada malha) lê a mesma cor: troca junto
+				# (o material pode ser o mesmo em várias malhas, cada uma com a sua camada).
+				var overlay := mi.material_overlay as ShaderMaterial
+				if entry.prop == "albedo_texture" and overlay and overlay.get("shader_parameter/albedo_map") == done[key][2]:
+					var okey := "%d|overlay" % overlay.get_instance_id()
+					if not done.has(okey):
+						done[okey] = [overlay, "shader_parameter/albedo_map", done[key][2]]
+						overlay.set("shader_parameter/albedo_map", have[entry.file])
 	swapped[glb] = done
+
+## Nome do material sem caixa nem sufixo do Blender: a variante web (Tools/make_web_variant.py, Blender)
+## exporta "material_0" do original como "Material_0" (ou "material_0.001"); com o nome exato a
+## textura original baixava e nunca entrava nos modelos reduzidos do site (achado em 2026-10-19).
+static func _mat_key(name: String) -> String:
+	var key := name.to_lower()
+	var dot := key.rfind(".")
+	if dot > 0 and key.substr(dot + 1).is_valid_int():
+		key = key.left(dot)
+	return key
 
 func _release(glb: String) -> void:
 	for key in swapped.get(glb, {}):

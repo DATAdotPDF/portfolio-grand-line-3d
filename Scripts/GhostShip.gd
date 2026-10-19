@@ -3,7 +3,7 @@ extends Node3D
 ## Navio fantasma (Documentation/Plano_Clima_Eventos_Mar.md, item 4). Mora no bioma fantasma
 ## (WorldDecor: cemitério de navios, vulcão e lanternas no ar): só surge quando o barco está lá,
 ## a qualquer hora, a 90–200 m dele em mar livre do bioma, cruzando a frente do barco. Se o jogador chega a CHASE_DISTANCE, ele vira e
-## PERSEGUE (mais rápido que o cruzeiro de 15 m/s: só o BURST do IMPULSO despista). Se alcança o barco,
+## PERSEGUE (mais rápido que o cruzeiro de 11 m/s: só o BURST do IMPULSO despista). Se alcança o barco,
 ## easter egg Red Team: o jogador vai para o "Baú do Davy Jones" (cartão com o tempo de aventura,
 ## a distância navegada e os dias no mar) e volta ao mar longe dali. Despistou (passou de
 ## ESCAPE_DISTANCE) ou amanheceu: se desfaz na névoa e volta um tempo depois.
@@ -19,14 +19,14 @@ const GHOST := preload("res://Shaders/ghost_ship_spectral.gdshader")
 ## Distância em que ele começa a perseguir, alcança e desiste (m).
 @export var chase_distance := 90.0
 @export var catch_distance := 9.0
-@export var escape_distance := 130.0
+@export var escape_distance := 120.0
 ## Quem aguenta isto de perseguição sem ser pego também escapa (contra o vento o impulso rende
 ## pouco e a distância cresce devagar).
 @export var give_up_seconds := 50.0
-## Velocidade na perseguição (m/s): x = mínimo (acima do cruzeiro de 15: quem só navega é
-## alcançado), y = teto (abaixo do BURST de 30: cada impulso abre distância). Entre os dois segue
-## player_ratio da velocidade atual do jogador.
-@export var chase_speed := Vector2(19.0, 21.0)
+## Velocidade na perseguição (m/s): x = mínimo (acima do cruzeiro de 11: quem só navega é
+## alcançado), y = teto (abaixo do BURST de 32: o impulso, usado cedo, abre a distância de fuga;
+## usado tarde, não dá e só volta em 30 s). Entre os dois segue player_ratio da velocidade do jogador.
+@export var chase_speed := Vector2(13.5, 15.0)
 @export var player_ratio := 1.15
 ## Aceleração e giro máximos (como um navio: não vira na hora).
 @export var acceleration := 4.0

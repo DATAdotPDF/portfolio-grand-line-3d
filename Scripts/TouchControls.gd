@@ -199,8 +199,9 @@ func _process(delta: float) -> void:
 		# BURST recarregando: o botão mostra os segundos que faltam.
 		if boost_button:
 			var wait := float(ship.get("burst_ready_in"))
-			boost_button.text = "IMPULSO" if wait <= 0.0 else "%d s" % ceili(wait)
-			boost_button.modulate.a = 1.0 if wait <= 0.0 else 0.55
+			var charging := float(ship.get("burst_charge")) > 0.0
+			boost_button.text = "CARREGANDO" if charging else ("IMPULSO" if wait <= 0.0 else "%d s" % ceili(wait))
+			boost_button.modulate.a = 1.0 if wait <= 0.0 or charging else 0.55
 	# Joystick direito: horizontal gira a câmera em volta do barco; vertical inclina o canhão.
 	if camera and absf(aim.x) > 0.15:
 		camera.call("drag_orbit", Vector2(aim.x * 520.0 * delta, 0.0))

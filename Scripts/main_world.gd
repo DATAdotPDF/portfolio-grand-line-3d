@@ -1372,7 +1372,7 @@ func _update_hud(section: String, nearest: float, nearest_index: int) -> void:
 			target_node = buoy
 			target_name = "Boia"
 			target_distance = up.angle_to(buoy.global_position.normalized()) * planet_radius
-	hud.set_status(section, target_distance, ship.measured_speed, Engine.get_frames_per_second(), ship.burst_ready_in)
+	hud.set_status(section, target_distance, ship.measured_speed, Engine.get_frames_per_second(), -1.0 if ship.burst_charge > 0.0 else ship.burst_ready_in)
 	hud.set_route(target_name, target_distance)
 	if is_instance_valid(log_pose) and target_node != null:
 		log_pose.target_override = target_node
@@ -1428,7 +1428,7 @@ func _process(delta: float) -> void:
 		rudder.basis = rudder_rest * Basis(Vector3.UP, ship.turn_input * RUDDER_MAX_ANGLE)
 	# Fase das ondas do pano acumulada aqui: no shader era TIME * (velocidade…), e quando o barco
 	# desacelerava a fase pulava e a bandeira tremulava "desesperada".
-	var speed_ratio := clampf(ship.measured_speed / 15.0, 0.0, 1.0)
+	var speed_ratio := clampf(ship.measured_speed / 11.0, 0.0, 1.0)
 	smoothed_cloth_speed = lerpf(smoothed_cloth_speed, speed_ratio, 1.0 - exp(-1.5 * delta))
 	flag_phase += delta * (3.0 + smoothed_cloth_speed * 6.0 + wind_world.length() * 1.5)
 	sail_phase += delta * (5.0 + ship.measured_speed * 0.4)

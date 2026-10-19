@@ -1,9 +1,9 @@
 extends SceneTree
 
-## Balanceamento das fugas com o barco a 15 m/s e o BURST (Pedro, 2026-10-18): para cada evento,
+## Balanceamento das fugas com o barco a 11 m/s e o BURST com carga e recarga de 30 s (Pedro, 2026-10-19): para cada evento,
 ## só cruzeiro x BURST sempre que recarrega (proa sempre para fora / para longe).
 ##   fantasma: só cruzeiro deve ser pego; com BURST, despista.
-##   tornado (a 20 e 26 m do eixo, chegando a 15 m/s): perto, só cruzeiro é capturado; com BURST, escapa.
+##   tornado (a 20 e 26 m do eixo, chegando a 11 m/s): perto, só cruzeiro é capturado; com BURST, escapa.
 ##   kraken: só cruzeiro fica preso; com BURST chega à beirada; BURST + barra de ação escapa.
 ## Uso: Godot.exe --path . --headless --script res://Tests/escape_balance.gd [-- --only=fantasma|tornado|kraken]
 
@@ -44,6 +44,7 @@ func _place(p: Vector3, forward: Vector3) -> void:
 	ship.heading = f
 	ship.drive_speed = ship.cruise_speed
 	ship.burst_left = 0.0
+	ship.burst_charge = 0.0
 	ship.burst_ready_in = 0.0
 	ship.global_transform = Transform3D(Basis(f.cross(up).normalized(), up, -f), up * (world.planet_radius + 0.3))
 	ship.reset_physics_interpolation()
@@ -135,7 +136,7 @@ func _kraken(mode: String) -> void:
 	var t := 0.0
 	var max_r := 0.0
 	var result := "preso"
-	while t < 50.0:
+	while t < 75.0:
 		await physics_frame
 		frame += 1
 		t += 1.0 / Engine.physics_ticks_per_second

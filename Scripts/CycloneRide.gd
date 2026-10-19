@@ -20,11 +20,11 @@ const WHOOSH := preload("res://Assets/Sound/SFX/Cuts/cyclone_lift.ogg")
 
 ## Começa logo fora do anel de água visível do ciclone (swirl_radius 30 m): antes era 80 m, número
 ## do tornado antigo, e o barco era puxado sem ver nada por perto.
-## Puxão para o barco a 15 m/s (2026-10-18): de longe o cruzeiro sai; perto do anel só o BURST.
+## Puxão para o barco a 11 m/s (2026-10-19): de longe o cruzeiro sai; perto do anel só o BURST.
 @export var pull_radius := 60.0
 @export var capture_radius := 12.0
-@export var pull_in := 30.0
-@export var pull_swirl := 12.0
+@export var pull_in := 22.0
+@export var pull_swirl := 10.0
 @export var base_radius := 11.0
 @export var tangential_speed := 9.0
 @export var shrink_speed := 6.0

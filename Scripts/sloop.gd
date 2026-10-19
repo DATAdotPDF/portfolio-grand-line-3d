@@ -36,20 +36,25 @@ var surf_speed := 0.0
 var virtual_throttle := 0.0
 var virtual_steering := 0.0
 var virtual_boost := false
-## IMPULSO (BURST): segundos que faltam do arranque e da recarga (o HUD e o botão de toque mostram).
+## IMPULSO (BURST): segundos que faltam da carga, do arranque e da recarga (o HUD e o botão de
+## toque mostram).
+var burst_charge := 0.0
 var burst_left := 0.0
 var burst_ready_in := 0.0
 var _boost_was := false
 @export_group("Navegação")
-## Pedro, 2026-10-18 (feedback do filho no A55): o barco anda sempre na velocidade máxima (15 m/s,
-## sem meio acelerador nem vento segurando) e o Shift/IMPULSO é um BURST curto com recarga.
-@export var cruise_speed := 15.0
+## Pedro, 2026-10-18/19 (feedback do filho no A55): para a frente o barco anda sempre na velocidade
+## máxima (11 m/s, sem meio acelerador nem vento segurando). Shift/IMPULSO é um BURST no estilo
+## "carrega > dispara > recarrega": aperta, o barco junta força (burst_charge_seconds), arranca e
+## só volta a carregar depois de burst_cooldown.
+@export var cruise_speed := 11.0
 @export var reverse_speed := 3.0
-@export var cruise_acceleration := 6.0
-@export var burst_speed := 30.0
-@export var burst_seconds := 1.5
-@export var burst_cooldown := 5.0
-@export var burst_acceleration := 40.0
+@export var cruise_acceleration := 5.0
+@export var burst_speed := 32.0
+@export var burst_seconds := 2.0
+@export var burst_charge_seconds := 1.5
+@export var burst_cooldown := 30.0
+@export var burst_acceleration := 45.0
 @export var yaw_speed := 0.72
 ## Quanto o vento global (WindManager) altera a velocidade: 0 = nada, 1 = 72%–100%.
 @export_range(0.0, 1.0, 0.05) var wind_strength := 1.0
@@ -133,14 +138,26 @@ func _physics_process(delta: float) -> void:
 	current_turn_rate = -turn_input*yaw_speed
 	heading = heading.rotated(up, current_turn_rate * delta).normalized()
 	var previous_speed := drive_speed
-	# BURST: só no aperto (não segurando) e com a recarga pronta; preso no kraken não arranca.
+	# BURST: um aperto com a recarga pronta começa a carga (não precisa segurar); no fim da carga
+	# arranca. Preso no kraken não carrega nem arranca. A recarga conta a partir do arranque.
 	burst_left = maxf(0.0, burst_left - delta)
 	burst_ready_in = maxf(0.0, burst_ready_in - delta)
-	if boost and not _boost_was and burst_ready_in <= 0.0 and not held:
-		burst_left = burst_seconds
-		burst_ready_in = burst_cooldown
-		splash.emit(global_position + heading * hull_half_length, 1.2)
+	if boost and not _boost_was and burst_ready_in <= 0.0 and burst_charge <= 0.0 and burst_left <= 0.0 and not held:
+		burst_charge = burst_charge_seconds
 	_boost_was = boost
+	var charging := burst_charge > 0.0
+	if charging:
+		burst_charge -= delta
+		if held:
+			burst_charge = 0.0
+		elif burst_charge <= 0.0:
+			burst_charge = 0.0
+			burst_left = burst_seconds
+			burst_ready_in = burst_cooldown
+			splash.emit(global_position - heading * hull_half_length, 1.8)
+			# O arranco levanta a proa do mar por um instante.
+			if not calm_ride:
+				vertical_speed = maxf(vertical_speed, 2.5)
 	var bursting := burst_left > 0.0 and not held
 	if held:
 		# Preso (kraken): para em ~1 s, sem embalo de surfe.
@@ -148,6 +165,9 @@ func _physics_process(delta: float) -> void:
 		surf_speed = move_toward(surf_speed, 0.0, 5.0 * delta)
 	elif bursting:
 		drive_speed = move_toward(drive_speed, burst_speed, burst_acceleration * delta)
+	elif charging:
+		# Juntando força: o barco segura um pouco (a vela enche, o casco assenta).
+		drive_speed = move_toward(drive_speed, cruise_speed * 0.7, cruise_acceleration * delta)
 	elif throttle > 0.15:
 		# Para a frente é sempre a velocidade máxima; depois do burst volta a ela aos poucos.
 		drive_speed = move_toward(drive_speed, cruise_speed, cruise_acceleration * delta)
