@@ -180,7 +180,7 @@ a.cta { text-decoration: none; box-sizing: border-box; }
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":285718340,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":285718372,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -436,6 +436,46 @@ const engine = new Engine(GODOT_CONFIG);
 		tierLog.push(name + (timings.click !== undefined ? ' @' + ((performance.now() - timings.click) / 1000).toFixed(0) + 's' : ''));
 		if (measuring) renderMeasure();
 	};
+	// Preparo gráfico: o tempo que o navegador passa compilando cada programa de shader (no Windows o
+	// Chrome converte para HLSL e compila na hora; ~30 s na primeira visita). Cronometra compile, link
+	// e a primeira leitura do status (onde o ANGLE costuma terminar o trabalho) e marca cada programa
+	// pelos uniforms próprios do shader (m_*), para achar os mais caros.
+	const shaderStats = { count: 0, ms: 0, list: [] };
+	if (measuring && window.WebGL2RenderingContext) {
+		const gl2 = WebGL2RenderingContext.prototype;
+		const sources = new WeakMap();
+		const pending = new WeakMap();
+		const timed = (fn, after) => function () {
+			const t0 = performance.now();
+			const out = fn.apply(this, arguments);
+			after.call(this, performance.now() - t0, arguments);
+			return out;
+		};
+		const tagOf = (program, gl) => {
+			const names = new Set();
+			for (const sh of gl.getAttachedShaders(program) || []) {
+				const re = /uniform\s+[^;]*?\b(m_\w+)/g;
+				let m;
+				while ((m = re.exec(sources.get(sh) || '')) && names.size < 4) names.add(m[1].slice(2));
+			}
+			return names.size ? [...names].join(',') : 'interno';
+		};
+		gl2.shaderSource = timed(gl2.shaderSource, function (ms, args) { sources.set(args[0], String(args[1])); });
+		gl2.compileShader = timed(gl2.compileShader, function (ms) { shaderStats.ms += ms; });
+		gl2.linkProgram = timed(gl2.linkProgram, function (ms, args) {
+			shaderStats.ms += ms;
+			shaderStats.count++;
+			pending.set(args[0], ms);
+		});
+		gl2.getProgramParameter = timed(gl2.getProgramParameter, function (ms, args) {
+			if (!pending.has(args[0])) return;
+			const total = pending.get(args[0]) + ms;
+			pending.delete(args[0]);
+			shaderStats.ms += ms;
+			shaderStats.list.push({ ms: total, tag: tagOf(args[0], this), at: timings.click !== undefined ? (performance.now() - timings.click) / 1000 : 0 });
+		});
+		setInterval(() => { if (shaderStats.count) renderMeasure(); }, 3000);
+	}
 	function measureFps(key) {
 		let frames = 0;
 		const t0 = performance.now();
@@ -489,11 +529,16 @@ const engine = new Engine(GODOT_CONFIG);
 			'CUSTO POR PARTE (ms por quadro; começa ~30 s após o leme)',
 			...costs.map((c) => c.name === 'base' ? 'quadro ' + c.ms + ' ms · scripts ' + c.process_ms + ' · física ' + c.physics_ms
 				: '  sem ' + c.name + ': ' + (c.saves_ms >= 0 ? '−' : '+') + Math.abs(c.saves_ms) + ' ms'),
+			'',
+			'SHADERS: ' + shaderStats.count + ' programas, ' + (shaderStats.ms / 1000).toFixed(1) + ' s compilando' +
+				(timings.steer ? ' (' + (shaderStats.list.filter((s) => s.at <= (timings.steer - timings.click) / 1000).reduce((n, s) => n + s.ms, 0) / 1000).toFixed(1) + ' s antes do leme)' : ''),
+			...shaderStats.list.slice().sort((a, b) => b.ms - a.ms).slice(0, 8)
+				.map((s) => '  ' + (s.ms / 1000).toFixed(2) + ' s  ' + s.tag.slice(0, 48)),
 			'pela rede ............. ' + transferredMB().toFixed(1) + ' MB',
 			'do cache do navegador . ' + cachedMB().toFixed(1) + ' MB',
 		];
 		box.textContent = lines.join('\n');
-		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, costs: costs, transferred_mb: +transferredMB().toFixed(1), profile: prof,
+		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, costs: costs, shaders: { count: shaderStats.count, ms: Math.round(shaderStats.ms), slowest: shaderStats.list.slice().sort((x, y) => y.ms - x.ms).slice(0, 15) }, transferred_mb: +transferredMB().toFixed(1), profile: prof,
 			net: { type: net.effectiveType, downlink: net.downlink, rtt: net.rtt }, ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio] }));
 	}
 	if (new URLSearchParams(location.search).has('debug')) numbers.hidden = false;

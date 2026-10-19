@@ -623,6 +623,16 @@ turtle and crab colossi had wrong collisions.
 - **Ghost ship with the heavier hull:** cruise only is caught in 27 s; with the burst it escapes in
   5 s.
 
+- **Whale and obsidian colossus collisions:**
+  - Before: the whale used a capsule that covered only part of the body near the head, plus the
+    tail tip, so the boat could sail through the middle. The obsidian giant was a small cylinder
+    in the center, with the arms left outside it.
+  - Now: both use the same outline as the crab and the turtle (`BeastOutline.gd`).
+  - Check: `Tests/beast_collision_probe.gd` finds a collision edge in all 24 directions on all
+    four colossi.
+
+![Whale and obsidian giant from above, collision edge in red](images/process/whale-obsidian-collision-outline.jpg)
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**

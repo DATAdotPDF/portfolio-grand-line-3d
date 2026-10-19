@@ -21,7 +21,7 @@ const KINDS := {
 	# Baleia de madeira: metade do corpo para fora (linha d'água na metade entre a barriga e o dorso,
 	# medida no Blender), torre em cima; a cauda bate de -45° a +45° (sai e volta para a água).
 	"timber_whale": {"model": "res://Assets/Optimized/Creatures/whale.glb", "size": 320.0, "axis": "max", "draft": 0.35,
-		"collider": "capsule", "calls": ["whale_call", "whale_creak"], "call_db": 0.0,
+		"collider": "outline", "calls": ["whale_call", "whale_creak"], "call_db": 0.0,
 		"splash": [["Bone_014", "Bone_015"]]},
 	# Caranguejo de granito com runas: pernas embaixo, carapaça na linha da água e a torre para fora.
 	"abyssal_behemoth": {"model": "res://Assets/Optimized/Creatures/behemoth.glb", "size": 220.0, "axis": "max", "draft": 0.4,
@@ -29,7 +29,7 @@ const KINDS := {
 		"stride": 0.3136, "loop": 10.0, "tempo": 0.6, "glow": true},
 	# Colosso de obsidiana e ossos: anda como gorila (nos nós dos dedos), água pela cintura.
 	"abyssal_obsidian": {"model": "res://Assets/Optimized/Creatures/obsidian.glb", "size": 190.0, "axis": "h", "draft": 0.44,
-		"collider": "cylinder", "calls": ["obsidian_roar", "obsidian_rumble"], "call_db": -1.0,
+		"collider": "outline", "calls": ["obsidian_roar", "obsidian_rumble"], "call_db": -1.0,
 		"stride": 0.1966, "loop": 10.0, "tempo": 0.6, "spectral": true},
 }
 const RUNE_GLOW := preload("res://Shaders/rune_glow.gdshader")

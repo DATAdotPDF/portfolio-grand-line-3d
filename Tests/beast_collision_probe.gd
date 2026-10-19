@@ -18,9 +18,10 @@ func run() -> void:
 	world._start_sailing()
 	world.ship.controls_override = true
 	world.ship.test_controls = Vector3.ZERO
+	var names := {"abyssal_behemoth": "caranguejo", "timber_whale": "baleia", "abyssal_obsidian": "obsidiana"}
 	for beast in world.sea_beasts.beasts:
-		if beast.name == "abyssal_behemoth":
-			await _probe("caranguejo", beast.root, beast.model)
+		if names.has(beast.name):
+			await _probe(names[beast.name], beast.root, beast.model)
 	var turtle: Dictionary = world.world_decor.turtle
 	if not turtle.is_empty():
 		var item: Dictionary = turtle.item
@@ -75,9 +76,10 @@ func _probe(label: String, node: Node3D, model: Node3D, item := {}) -> void:
 				best = maxf(best, flat.length())
 		visual.append(int(best))
 		var reach := 0.0
-		var r := 260.0
+		var r := 200.0
 		while r > 0.0:
 			var q := PhysicsPointQueryParameters3D.new()
+			# No mar de verdade (esfera), onde o barco está.
 			q.position = (node.global_position + dir * r).normalized() * (water + 1.0)
 			q.collision_mask = 1
 			q.collide_with_bodies = true

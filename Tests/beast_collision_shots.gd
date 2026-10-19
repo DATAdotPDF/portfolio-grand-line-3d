@@ -1,6 +1,7 @@
 extends SceneTree
 
-## Foto de cima (ortográfica) do caranguejo e da tartaruga com as formas de colisão desenhadas.
+## Foto de cima (ortográfica) dos colossos (caranguejo, baleia, obsidiana) e da tartaruga com a borda da
+## colisão em pontos vermelhos.
 ## Uso: Godot.exe --path . --resolution 1200x1200 --script res://Tests/beast_collision_shots.gd -- [--out=<pasta>]
 
 var world: Node3D
@@ -21,9 +22,10 @@ func run() -> void:
 	world._start_sailing()
 	world.ship.controls_override = true
 	world.ship.test_controls = Vector3.ZERO
+	var names := {"abyssal_behemoth": "caranguejo", "timber_whale": "baleia", "abyssal_obsidian": "obsidiana"}
 	for beast in world.sea_beasts.beasts:
-		if beast.name == "abyssal_behemoth":
-			await _shot("caranguejo", beast.root, 300.0)
+		if names.has(beast.name):
+			await _shot(names[beast.name], beast.root, 360.0)
 	if not world.world_decor.turtle.is_empty():
 		await _shot("tartaruga", world.world_decor.turtle.item.root, 300.0)
 	quit()
