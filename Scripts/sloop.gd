@@ -36,12 +36,20 @@ var surf_speed := 0.0
 var virtual_throttle := 0.0
 var virtual_steering := 0.0
 var virtual_boost := false
+## IMPULSO (BURST): segundos que faltam do arranque e da recarga (o HUD e o botão de toque mostram).
+var burst_left := 0.0
+var burst_ready_in := 0.0
+var _boost_was := false
 @export_group("Navegação")
-@export var cruise_speed := 4.2
-@export var boost_speed := 12.5
-@export var reverse_speed := 2.0
-@export var cruise_acceleration := 2.5
-@export var boost_acceleration := 4.0
+## Pedro, 2026-10-18 (feedback do filho no A55): o barco anda sempre na velocidade máxima (15 m/s,
+## sem meio acelerador nem vento segurando) e o Shift/IMPULSO é um BURST curto com recarga.
+@export var cruise_speed := 15.0
+@export var reverse_speed := 3.0
+@export var cruise_acceleration := 6.0
+@export var burst_speed := 30.0
+@export var burst_seconds := 1.5
+@export var burst_cooldown := 5.0
+@export var burst_acceleration := 40.0
 @export var yaw_speed := 0.72
 ## Quanto o vento global (WindManager) altera a velocidade: 0 = nada, 1 = 72%–100%.
 @export_range(0.0, 1.0, 0.05) var wind_strength := 1.0
@@ -125,24 +133,28 @@ func _physics_process(delta: float) -> void:
 	current_turn_rate = -turn_input*yaw_speed
 	heading = heading.rotated(up, current_turn_rate * delta).normalized()
 	var previous_speed := drive_speed
-	var target_speed := 0.0 if held else throttle * (boost_speed if boost else cruise_speed)
-	if throttle > 0.0 and not ignore_wind:
-		var wind_tangent := _wind_at(global_position)
-		if wind_tangent.length_squared() > 0.0001:
-			var wind_alignment := heading.dot(wind_tangent.normalized())
-			var local_strength := clampf(wind_tangent.length(), 0.0, 1.0)
-			var sail_factor := lerpf(1.0, 0.72 + 0.28 * wind_alignment, wind_strength * local_strength)
-			target_speed *= sail_factor
-	if throttle < 0.0:
-		target_speed = -reverse_speed
+	# BURST: só no aperto (não segurando) e com a recarga pronta; preso no kraken não arranca.
+	burst_left = maxf(0.0, burst_left - delta)
+	burst_ready_in = maxf(0.0, burst_ready_in - delta)
+	if boost and not _boost_was and burst_ready_in <= 0.0 and not held:
+		burst_left = burst_seconds
+		burst_ready_in = burst_cooldown
+		splash.emit(global_position + heading * hull_half_length, 1.2)
+	_boost_was = boost
+	var bursting := burst_left > 0.0 and not held
 	if held:
 		# Preso (kraken): para em ~1 s, sem embalo de surfe.
 		drive_speed = move_toward(drive_speed, 0.0, 5.0 * delta)
 		surf_speed = move_toward(surf_speed, 0.0, 5.0 * delta)
-	elif is_zero_approx(throttle):
-		drive_speed *= exp(-0.7 * delta)
+	elif bursting:
+		drive_speed = move_toward(drive_speed, burst_speed, burst_acceleration * delta)
+	elif throttle > 0.15:
+		# Para a frente é sempre a velocidade máxima; depois do burst volta a ela aos poucos.
+		drive_speed = move_toward(drive_speed, cruise_speed, cruise_acceleration * delta)
+	elif throttle < -0.15:
+		drive_speed = move_toward(drive_speed, -reverse_speed, cruise_acceleration * delta)
 	else:
-		drive_speed = move_toward(drive_speed, target_speed, (boost_acceleration if boost else cruise_acceleration) * delta)
+		drive_speed *= exp(-0.7 * delta)
 	var right := heading.cross(up).normalized()
 	var front: Vector3 = ocean.surface_at(global_position + heading * hull_half_length)
 	var rear: Vector3 = ocean.surface_at(global_position - heading * hull_half_length)
@@ -269,7 +281,7 @@ func _wind_at(point: Vector3) -> Vector3:
 	return Scale.wind_at(point)
 
 func update_attitude(delta: float, acceleration: float) -> void:
-	var speed_ratio := clampf(absf(drive_speed)/maxf(boost_speed, 0.1),0.0,1.0)
+	var speed_ratio := clampf(absf(drive_speed)/maxf(cruise_speed, 0.1),0.0,1.0)
 	var target_roll := -turn_input*max_bank_angle*speed_ratio
 	# Positive X raises the -Z bow in Godot. Braking briefly dips it.
 	var target_pitch := deg_to_rad(1.4)*speed_ratio + deg_to_rad(1.1)*clampf(acceleration/3.0,-1.0,1.0)

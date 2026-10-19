@@ -260,11 +260,12 @@ func _physics_process(delta: float) -> void:
 			var r := rel.length()
 			var radial := rel / maxf(r, 0.01)
 			var tangent := up.cross(radial).normalized()
-			# Puxão forte (difícil mesmo com IMPULSO) e mais forte perto do miolo.
-			var inflow := lerpf(4.0, 9.0, smoothstep(0.0, 25.0, timer)) * strength * (1.0 + 0.3 * (1.0 - smoothstep(core_radius, whirl_radius, r)))
+			# Puxão entre o cruzeiro e o BURST: só navegando (15 m/s) o barco desce; com BURST a cada
+			# recarga (30 m/s por 1,5 s a cada 5 s: ~24 m/s na média) sai devagar até a beirada.
+			var inflow := lerpf(15.5, 19.0, smoothstep(0.0, 25.0, timer)) * strength * (1.0 + 0.12 * (1.0 - smoothstep(core_radius, whirl_radius, r)))
 			# Beirada: a correnteza segura até o impulso; só o arranque da barra de ação passa.
-			inflow += 14.0 * smoothstep(action_radius, action_radius + 22.0, r) * strength
-			var swirl := 10.0 * strength * (1.0 - smoothstep(whirl_radius, escape_radius, r) * 0.6)
+			inflow += 16.0 * smoothstep(action_radius, action_radius + 22.0, r) * strength
+			var swirl := 13.0 * strength * (1.0 - smoothstep(whirl_radius, escape_radius, r) * 0.6)
 			var push := -radial * inflow + tangent * swirl + slam_push
 			slam_push = slam_push.lerp(Vector3.ZERO, 1.0 - exp(-2.5 * delta))
 			_update_slams(delta)

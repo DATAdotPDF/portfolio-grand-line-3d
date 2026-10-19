@@ -27,6 +27,7 @@ extends Node3D
 ##   e água fervendo gerados aqui (_build_volcano_fx).
 ## - Weather.gd evita os itens (items[].root/height) ao pôr ciclones e tempestades.
 
+const BeastOutline := preload("res://Scripts/BeastOutline.gd")
 const ASSETS := "res://Assets/"
 ## Pasta dos derivados (animados/segmentados, feitos a partir dos originais).
 const DERIVED := "res://Assets/World/"
@@ -370,6 +371,10 @@ var streaming := false
 var load_range := LOAD_RANGE_DESKTOP
 var stream_timer := 0.0
 var sectors_marked := false
+## ?medir: os itens no raio de carga quando o mundo abriu (o barco anda e o raio muda; a marca é
+## deste conjunto).
+var first_near: Array = []
+var first_near_taken := false
 var settle_left := STREAM_SETTLE
 var attach_wait := 0.0
 var lava_rng := RandomNumberGenerator.new()
@@ -1707,6 +1712,12 @@ func _place_turtle() -> void:
 		player.get_animation("Swim").loop_mode = Animation.LOOP_LINEAR
 		player.play("Swim")
 	_add_turtle_waterfalls(model)
+	# Colisão pelo contorno da tartaruga como ela fica no mar (afundada e inclinada acima, na pose do
+	# nado): o contorno geral do _spawn era medido antes disso e deixava buracos (Pedro, 2026-10-18).
+	get_tree().create_timer(0.6).timeout.connect(func():
+		var body := (item.root as Node3D).get_node_or_null("Footprint") as StaticBody3D
+		if body and is_instance_valid(model):
+			BeastOutline.fill(body, BeastOutline.radii(model, item.root), -3.0, FOOT_TOP))
 
 ## Cachoeiras saindo das duas bicas do casco (os toquinhos do aro nos lados, x = ±0,94 no espaço do
 ## casco, na altura dos anéis): presas no nó Shell, acompanham o balanço da tartaruga.
@@ -2199,9 +2210,12 @@ func _attach_pending(delta: float) -> void:
 		_dress_model(item, (scenes[item.kind] as PackedScene).instantiate())
 		attach_wait = ATTACH_GAP
 	# Página (?medir): os pacotes chegaram e tudo o que está no raio já está no lugar.
-	var near_waiting := pending.any(func(item: Dictionary) -> bool: return not streaming or _in_range(item, ship_pos, 0.0))
-	if not sectors_marked and not near_waiting and (asset_packs == null or not asset_packs.is_busy()):
+	if not first_near_taken:
+		first_near_taken = true
+		first_near = pending.filter(func(item: Dictionary) -> bool: return not streaming or _in_range(item, ship_pos, 0.0))
+	var near_waiting := first_near.any(func(item: Dictionary) -> bool: return pending.has(item))
+	if not sectors_marked and not near_waiting:
 		sectors_marked = true
-		print("WORLD_DECOR modelos no raio de carga no lugar (%d de %d itens com modelo)" % [items.size() - pending.size(), items.size()])
+		print("WORLD_DECOR modelos no raio de carga no lugar (%d itens perto quando o mundo abriu)" % first_near.size())
 		if OS.has_feature("web"):
 			JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('sectorsPlaced')", true)

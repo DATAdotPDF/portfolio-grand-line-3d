@@ -31,7 +31,7 @@ func export_world() -> void:
 		"units": "meters",
 		"coordinate_system": "right-handed, Y up, -Z forward",
 		"planet": {"center": [0.0, 0.0, 0.0], "water_radius": world.planet_radius, "bed_radius": world.planet_radius - world.SEABED_DEPTH},
-		"boat": {"model": world.SHIP_PATH.trim_prefix("res://"), "length": world.SHIP_LENGTH, "spawn": transform_data(world.ship.global_transform), "model_local": transform_data(world.sail_model.transform), "cruise_speed": 4.2, "shift_speed": 12.5},
+		"boat": {"model": world.SHIP_PATH.trim_prefix("res://"), "length": world.SHIP_LENGTH, "spawn": transform_data(world.ship.global_transform), "model_local": transform_data(world.sail_model.transform), "cruise_speed": 15.0, "shift_speed": 30.0},
 		"waves": {"strength": Scale.layout().wave_strength, "swell_wavelength": Scale.layout().swell_wavelength, "speed": Scale.layout().wave_speed, "wind_axis": vec3(Scale.wind_axis()), "components": []},
 		"islands": [],
 		"naval_targets": [],

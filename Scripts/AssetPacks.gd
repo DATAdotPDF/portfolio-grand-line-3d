@@ -24,6 +24,9 @@ var local_dir := ""
 var fetching := false
 var http: HTTPRequest
 var all_wanted_marked := false
+## ?medir: os pacotes da primeira lista (perto do barco quando o mundo abriu). A lista cresce com o
+## barco andando; a marca vale para o conjunto inicial, não para o que entrou depois.
+var first_wanted: Array = []
 
 func start(order: Array = []) -> void:
 	if not FileAccess.file_exists(MANIFEST):
@@ -50,6 +53,8 @@ func start(order: Array = []) -> void:
 ## Os pacotes que importam agora, do mais urgente para o menos (o WorldDecor chama a cada ~0,25 s).
 func want(names: Array) -> void:
 	wanted = names.filter(func(name: String) -> bool: return manifest.get("packs", {}).has(name))
+	if first_wanted.is_empty():
+		first_wanted = wanted.duplicate()
 	if current.is_empty():
 		_next()
 
@@ -58,16 +63,16 @@ func is_busy() -> bool:
 
 func _next() -> void:
 	current = ""
+	if not all_wanted_marked and not first_wanted.is_empty() and first_wanted.all(func(name: String) -> bool: return mounted.has(name)):
+		all_wanted_marked = true
+		print("ASSET_PACKS modelos perto baixados (%d pacotes)" % first_wanted.size())
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('packsLoaded')", true)
 	for name in wanted:
 		if not mounted.has(name):
 			current = name
 			break
 	if current.is_empty():
-		if not wanted.is_empty() and not all_wanted_marked:
-			all_wanted_marked = true
-			print("ASSET_PACKS modelos perto baixados (%d pacotes)" % mounted.size())
-			if OS.has_feature("web"):
-				JavaScriptBridge.eval("window.__portfolioMark && window.__portfolioMark('packsLoaded')", true)
 		return
 	var entry: Dictionary = manifest.packs[current]
 	if not local_dir.is_empty():

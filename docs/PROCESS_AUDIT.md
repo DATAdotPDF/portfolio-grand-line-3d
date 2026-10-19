@@ -521,6 +521,49 @@ a phone, so the site uses generated copies.
   - The later FPS windows overlapped the original-texture swaps and the per-part tool, so they are
     not a clean comparison yet.
 
+## 5.14 Boat speed and colossus collisions (Oct 18)
+
+Feedback from a first-time player (Pedro's son, on the Galaxy A55): the boat was too slow, and the
+turtle and crab colossi had wrong collisions.
+
+- **Speed (`Scripts/sloop.gd`):**
+  - Forward is always full speed: 15 m/s, no half throttle (the touch joystick used to give a
+    fraction of it), no wind slowing it down. Before, cruise was 4.2 m/s and Shift 12.5 m/s.
+  - Shift / the touch IMPULSO button is now a **BURST**: 30 m/s for 1.5 s, then back to 15 m/s.
+    It recharges in 5 s, and the button and the HUD speed show the seconds left.
+  - `Tests/burst_probe.gd`: 0 → 15 m/s in 2.5 s; the burst reaches 30 m/s. A second press while
+    recharging does nothing, and a press after 5 s fires again.
+- **Events retuned for the new speed:**
+  - Ghost ship chases at 19–21 m/s and gives up after 50 s.
+  - Kraken whirlpool pulls 15.5–19 m/s; the edge still holds the boat until the action bar.
+  - Cyclone pull reaches 30 m/s near the axis, starting 60 m out.
+  - `Tests/escape_balance.gd` runs each event with only cruising, and with a burst at every
+    recharge (bow always pointed away):
+
+| Event | Cruise only (15 m/s) | Burst at every recharge |
+|---|---|---|
+| Ghost ship | caught in 14 s | escapes in 12 s |
+| Cyclone, 20–26 m from the axis | escapes in 4–6 s (closer in: captured at 12 m) | escapes in 2–2.5 s |
+| Kraken | sinks in 12 s | reaches the edge in ~16 s and is held there; with the action bar, escapes in 15 s |
+
+- **Collisions (`Scripts/BeastOutline.gd`):**
+  - The crab was a 72 m cylinder. Its body runs from ~47 m (front and back) to ~115 m (legs), so
+    the boat hit an invisible wall in front and sailed through the legs.
+  - The turtle's outline was measured before the game sank and tilted the model into its final
+    pose, which left gaps in 6 of 24 directions.
+  - Both now use an outline measured from the skinned pose. In each of 48 slices around the
+    center, the outline takes the farthest vertex from 3 m below the water to 40 m above it.
+  - The world is a small planet (~800 m radius). At 107 m from the center, the sea is ~7 m below
+    the creature's flat plane, so the boat sailed under the old shapes at the edges. The new
+    shapes follow that drop.
+  - `Tests/beast_collision_shots.gd` takes top-down shots with the collision edge marked in red;
+    both edges sit on the visible body (shell rim, head, legs, claws).
+
+![Crab and turtle seen from above, with the collision edge in red](images/process/colossus-collision-outline.jpg)
+- **?medir:** "modelos perto baixados / no lugar" now covers only the models near the boat when
+  the world opened. Before, the list kept growing as the boat moved, which produced the 180–203 s
+  readings.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**
@@ -546,6 +589,11 @@ a phone, so the site uses generated copies.
 Godot.exe --headless --path . --script res://Tests/biome_layout_dump.gd
 # Memory and fps while sailing past every island and sector ("-- low" = mobile tier)
 Godot.exe --path . --resolution 1280x720 --script res://Tests/stress_sail.gd -- low
+# Boat speed, burst and escapes (ghost ship, cyclone, kraken)
+Godot.exe --headless --path . --script res://Tests/burst_probe.gd
+Godot.exe --headless --path . --script res://Tests/escape_balance.gd -- --only=fantasma
+# Colossus collision against the model (top-down shots, red = where the boat stops)
+Godot.exe --path . --resolution 1200x1200 --script res://Tests/beast_collision_shots.gd -- --out=<folder>
 # Full site build: variants, sector packs, chunked packages
 pwsh Web/build.ps1
 # The exported mobile package with its sector packs, outside the editor (run inside Builds/WebMobile)

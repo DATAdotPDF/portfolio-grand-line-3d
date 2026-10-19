@@ -25,7 +25,7 @@ const KINDS := {
 		"splash": [["Bone_014", "Bone_015"]]},
 	# Caranguejo de granito com runas: pernas embaixo, carapaça na linha da água e a torre para fora.
 	"abyssal_behemoth": {"model": "res://Assets/Optimized/Creatures/behemoth.glb", "size": 220.0, "axis": "max", "draft": 0.4,
-		"collider": "cylinder", "calls": ["behemoth_roar", "behemoth_clack"], "call_db": -1.0,
+		"collider": "outline", "calls": ["behemoth_roar", "behemoth_clack"], "call_db": -1.0,
 		"stride": 0.3136, "loop": 10.0, "tempo": 0.6, "glow": true},
 	# Colosso de obsidiana e ossos: anda como gorila (nos nós dos dedos), água pela cintura.
 	"abyssal_obsidian": {"model": "res://Assets/Optimized/Creatures/obsidian.glb", "size": 190.0, "axis": "h", "draft": 0.44,
@@ -33,6 +33,7 @@ const KINDS := {
 		"stride": 0.1966, "loop": 10.0, "tempo": 0.6, "spectral": true},
 }
 const RUNE_GLOW := preload("res://Shaders/rune_glow.gdshader")
+const BeastOutline := preload("res://Scripts/BeastOutline.gd")
 const BEAST_WATER := preload("res://Shaders/beast_water.gdshader")
 const BEAST_WAKE := preload("res://Shaders/beast_wake.gdshader")
 ## Rastro: quanto tempo um trecho dura (s) e de quantos em quantos metros guarda um ponto (fração da
@@ -130,6 +131,11 @@ func _spawn(name: String, spec: Dictionary, path: Array, speed: float) -> void:
 		shape.shape = cylinder
 	body.add_child(shape)
 	root.add_child(body)
+	if spec.collider == "outline":
+		# Contorno real na linha d'água (BeastOutline.gd), medido já na pose da animação; até lá, o cilindro.
+		get_tree().create_timer(0.6).timeout.connect(func():
+			if is_instance_valid(body) and is_instance_valid(model):
+				BeastOutline.fill(body, BeastOutline.radii(model, root), -4.0, 16.0))
 	# Água empurrada (loop) e os sons próprios.
 	var wake := AudioStreamPlayer3D.new()
 	wake.name = "Wake"

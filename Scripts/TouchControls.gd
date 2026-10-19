@@ -16,6 +16,7 @@ var camera: Node
 var drive := Vector2.ZERO
 var aim := Vector2.ZERO
 var boost := false
+var boost_button: Button
 var touches := {}
 var drive_pad: Control
 var aim_pad: Control
@@ -47,7 +48,7 @@ func enable() -> void:
 	drive_pad = _make_pad(root, Control.PRESET_BOTTOM_LEFT, Vector2(36, -36), "drive")
 	aim_pad = _make_pad(root, Control.PRESET_BOTTOM_RIGHT, Vector2(-36, -36), "aim")
 	# Mão esquerda navega; mão direita: mira + IMPULSO e FOGO lado a lado, acima do joystick direito.
-	_make_hold_button(root, "IMPULSO", -1, func(): boost = true, func(): boost = false)
+	boost_button = _make_hold_button(root, "IMPULSO", -1, func(): boost = true, func(): boost = false)
 	# FOGO: segurar mostra a parábola (o joystick direito ajusta a elevação); soltar dispara.
 	_make_hold_button(root, "FOGO", 1, func(): if naval: naval.call("begin_aim"), func(): if naval: naval.call("release_aim"))
 
@@ -194,7 +195,12 @@ func _process(delta: float) -> void:
 	if ship:
 		ship.set("virtual_throttle", -drive.y if absf(drive.y) > 0.15 else 0.0)
 		ship.set("virtual_steering", drive.x if absf(drive.x) > 0.15 else 0.0)
-		ship.set("virtual_boost", boost or drive.length() > 0.92)
+		ship.set("virtual_boost", boost)
+		# BURST recarregando: o botão mostra os segundos que faltam.
+		if boost_button:
+			var wait := float(ship.get("burst_ready_in"))
+			boost_button.text = "IMPULSO" if wait <= 0.0 else "%d s" % ceili(wait)
+			boost_button.modulate.a = 1.0 if wait <= 0.0 else 0.55
 	# Joystick direito: horizontal gira a câmera em volta do barco; vertical inclina o canhão.
 	if camera and absf(aim.x) > 0.15:
 		camera.call("drag_orbit", Vector2(aim.x * 520.0 * delta, 0.0))
