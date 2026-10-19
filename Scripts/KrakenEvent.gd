@@ -260,10 +260,10 @@ func _physics_process(delta: float) -> void:
 			var r := rel.length()
 			var radial := rel / maxf(r, 0.01)
 			var tangent := up.cross(radial).normalized()
-			# Puxão um pouco acima do cruzeiro (11 m/s): só navegando o barco desce (rápido perto do
-			# miolo, devagar fora). Cada BURST (32 m/s por 2 s, recarga de 30 s) leva o barco para fora;
-			# com dois chega à beirada.
-			var inflow := lerpf(11.3, 12.0, smoothstep(0.0, 25.0, timer)) * strength * (1.0 + 0.5 * (1.0 - smoothstep(core_radius, whirl_radius * 0.6, r)))
+			# Perto do miolo o puxão passa do cruzeiro (11 m/s) e só navegando o barco desce. Fora (além
+			# de ~110 m) fica um pouco abaixo: o BURST (32 m/s por 2 s, um a cada 90 s) leva o barco até
+			# lá e ele vence devagar até a beirada, onde a barra de ação dá o arranque.
+			var inflow := lerpf(10.6, 11.0, smoothstep(0.0, 25.0, timer)) * strength * (1.0 + 0.5 * (1.0 - smoothstep(core_radius, whirl_radius * 0.6, r)))
 			# Beirada: a correnteza segura até o impulso; só o arranque da barra de ação passa.
 			inflow += 16.0 * smoothstep(action_radius, action_radius + 22.0, r) * strength
 			var swirl := 10.0 * strength * (1.0 - smoothstep(whirl_radius, escape_radius, r) * 0.6)

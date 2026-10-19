@@ -557,7 +557,7 @@ func _controls_text() -> String:
 		return "\n".join([
 			"Joystick esquerdo — leme; para a frente navega na velocidade máxima",
 			"Joystick direito — para os lados gira a câmera; para cima e para baixo mira o canhão",
-			"IMPULSO — carrega e arranca (BURST); recarrega em 30 s",
+			"IMPULSO — carrega e arranca (BURST); recarrega em 90 s",
 			"FOGO — dispara o canhão nas boias",
 			"Dois dedos — giram a câmera",
 			"Globo (canto superior) — mapa 3D; arraste para girar",
@@ -566,7 +566,7 @@ func _controls_text() -> String:
 			"Chegue perto de uma ilha para abrir a seção"])
 	return "\n".join([
 		"W A S D — navegar",
-		"Shift — impulso: carrega, arranca (BURST) e recarrega em 30 s",
+		"Shift — impulso: carrega, arranca (BURST) e recarrega em 90 s",
 		"R / F — sobe e desce a mira",
 		"Espaço — dispara o canhão",
 		"M ou Tab — mapa  ·  1–5 — visitar ilha",

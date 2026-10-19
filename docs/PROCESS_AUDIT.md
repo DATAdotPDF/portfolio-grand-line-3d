@@ -571,7 +571,7 @@ turtle and crab colossi had wrong collisions.
   - The IMPULSO works as "charge > burst > recharge". One press starts a 1.5 s charge, during
     which the boat slows to 70% and the button reads CARREGANDO. Then it bursts to 32 m/s for
     2 s, with a splash and the bow lifting, and comes back to 11 m/s.
-  - The next charge is possible only 30 s after the burst. `Tests/burst_probe.gd` checks this
+  - The next charge is possible only 30 s after the burst (90 s since 5.16). `Tests/burst_probe.gd` checks this
     cycle, including a press during the recharge, which does nothing.
 - **Events retuned for one burst every 30 s.** The ghost ship chases at 13.5–15 m/s and lets go
   at 120 m; the kraken pulls 11.3–12 m/s (stronger near the core); the cyclone pulls up to 22 m/s.
@@ -595,6 +595,33 @@ turtle and crab colossi had wrong collisions.
     bicubic filtering, and a faint halo sits around the strokes.
 
 ![Watchtower rune at night: original model, the site on a phone before, and after](images/process/rune-original-site-mobile-fixed.jpg)
+
+## 5.16 A heavier hull, and the burst every 90 s (Oct 19)
+
+- **Recharge:** the burst now recharges in 90 s (it was 30 s).
+- **A heavier hull (`Scripts/sloop.gd`):**
+  - At 11 m/s the water under the hull rises and falls much faster. With real gravity (9.8 m/s²)
+    and a spring that only pushes up, the boat left the water at every crest.
+  - The vertical movement of the hull now uses `hull_gravity` = 22 m/s², so the boat falls with
+    the water.
+  - Jumps need bigger crests (`launch_gain` 0.15 instead of 0.35).
+  - The hull follows the wave tilt more slowly (`wave_follow_rate` 4 instead of 7).
+  - The surf push down a wave face is 0.6 of gravity instead of 0.9.
+- **`Tests/hull_weight_probe.gd`**, 40 s at cruise speed:
+
+| Sea | Before | After |
+|---|---|---|
+| Open sea | 1.9% of the time in the air, highest 0.49 m | 0%, no jumps |
+| With bursts | 5.4%, 1.07 m | 0.1% |
+| Bigger waves | 22.0%, 11 jumps, 3.18 m | 4.4%, 5 jumps, 1.34 m |
+
+- **Kraken, with one burst per 90 s:** out past ~110 m the pull is now slightly below cruise speed
+  (10.6–11 m/s). Near the core it is still stronger than cruise.
+  - Cruise only: sinks in 12 s.
+  - With the burst: the boat reaches the edge (163 m) and is held there.
+  - Burst plus the action bar: escapes in 14 s.
+- **Ghost ship with the heavier hull:** cruise only is caught in 27 s; with the burst it escapes in
+  5 s.
 
 ## 6. What is not in Git, and why
 

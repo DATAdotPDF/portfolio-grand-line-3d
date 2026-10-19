@@ -136,7 +136,7 @@ func _kraken(mode: String) -> void:
 	var t := 0.0
 	var max_r := 0.0
 	var result := "preso"
-	while t < 75.0:
+	while t < 120.0:
 		await physics_frame
 		frame += 1
 		t += 1.0 / Engine.physics_ticks_per_second

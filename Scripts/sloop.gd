@@ -53,7 +53,7 @@ var _boost_was := false
 @export var burst_speed := 32.0
 @export var burst_seconds := 2.0
 @export var burst_charge_seconds := 1.5
-@export var burst_cooldown := 30.0
+@export var burst_cooldown := 90.0
 @export var burst_acceleration := 45.0
 @export var yaw_speed := 0.72
 ## Quanto o vento global (WindManager) altera a velocidade: 0 = nada, 1 = 72%–100%.
@@ -63,7 +63,13 @@ var _boost_was := false
 @export var hull_half_length := 2.0
 @export var hull_half_beam := 0.8
 ## Quão rápido o casco acompanha a inclinação da onda (menor = mais peso/inércia).
-@export var wave_follow_rate := 7.0
+@export var wave_follow_rate := 4.0
+## Peso do casco na vertical (m/s², no lugar dos 9,8): a 11 m/s a água sob o casco sobe e desce bem
+## mais rápido e, com a gravidade de verdade, o barco "voava" pelas cristas (Pedro, 2026-10-19).
+## Pesado, ele cai junto com a água; os saltos ficam para as ondas grandes.
+@export var hull_gravity := 22.0
+## Quanto da velocidade de subida da crista vira salto (antes 0,35 + 0,25 × badness).
+@export var launch_gain := 0.15
 ## Ajuste fino da linha d'água (m): positivo levanta o casco.
 @export var draft_offset := 0.05
 @export var buoyancy_spring := 46.0
@@ -187,7 +193,7 @@ func _physics_process(delta: float) -> void:
 	# baixa que a popa = descendo a face). Só com o casco na água e andando para a frente.
 	var slope := (rear.length() - front.length()) / (2.0 * hull_half_length)
 	if not airborne and drive_speed > 1.0 and not calm_ride:
-		surf_speed += GRAVITY * slope * 0.9 * delta
+		surf_speed += GRAVITY * slope * 0.6 * delta
 	surf_speed *= exp(-0.7 * delta)
 	surf_speed = clampf(surf_speed, -3.0, 7.0)
 	velocity = heading * (drive_speed + surf_speed) + external_velocity.slide(up) + storm_push.slide(up)
@@ -217,11 +223,11 @@ func _physics_process(delta: float) -> void:
 	# junto com o quanto o casco está dentro dela: na crista, quando a água "foge" por baixo,
 	# o barco segue subindo com a velocidade que tinha e faz um salto curto (v²/2g).
 	var depth := target_radius - current
-	var buoyancy := buoyancy_spring * depth + GRAVITY
+	var buoyancy := buoyancy_spring * depth + hull_gravity
 	var in_water := buoyancy > 0.0
-	var accel := -GRAVITY
+	var accel := -hull_gravity
 	if in_water:
-		var wet := clampf(buoyancy / GRAVITY, 0.0, 1.0)
+		var wet := clampf(buoyancy / hull_gravity, 0.0, 1.0)
 		accel += buoyancy - buoyancy_damping * wet * wet * (vertical_speed - surface_speed)
 	vertical_speed += accel * delta
 	var radius := current + vertical_speed * delta
@@ -242,9 +248,10 @@ func _physics_process(delta: float) -> void:
 	rise_peak = maxf(rise_peak * exp(-0.5 * delta), clampf(surface_speed, 0.0, 6.0))
 	var badness: float = ocean.badness_at(global_position) if ocean.has_method("badness_at") else 0.0
 	if in_water and not airborne and not calm_ride and rise_peak > 1.2 and measured_speed > 5.0 and surface_speed < rise_peak * 0.35:
-		# Ganho cresce com o badness: no calmo não chega ao mínimo (sem salto), na tormenta ~0,5–1 m.
-		var launch := clampf(rise_peak * (0.35 + 0.25 * badness), 0.0, 4.5)
-		if launch > 1.8:
+		# Ganho cresce com o badness: no calmo e no mar aberto comum não chega ao mínimo (sem salto); na
+		# tormenta, saltos curtos.
+		var launch := clampf(rise_peak * (launch_gain + 0.25 * badness), 0.0, 4.5)
+		if launch > 2.2:
 			vertical_speed = maxf(vertical_speed, launch)
 			radius = maxf(radius, target_radius + 0.05)
 			in_water = false
