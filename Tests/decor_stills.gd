@@ -3,13 +3,15 @@ extends SceneTree
 ## Prints dos modelos do mapa (WorldDecor), de dia ou à noite, gráficos no Alto, sem HUD: um
 ## enquadramento de 3/4 por modelo (primeiro exemplar), barco parado perto (animações ativas).
 ## "mar": câmera rente à água (~2,5 m), para conferir a linha d'água de cada um.
-## Uso: Godot.exe --path . --resolution 1280x720 --script res://Tests/decor_stills.gd -- noite [mar] [tipo ...]
+## "longe=<m>": câmera a essa distância do modelo (ex.: runas à noite vistas do mar).
+## Uso: Godot.exe --path . --resolution 1280x720 --script res://Tests/decor_stills.gd -- noite [mar] [longe=280] [tipo ...]
 ## Saída: Builds/DecorStills/<dia|noite>[_mar]_<tipo>.jpg
 
 var world: Node3D
 var decor: Node3D
 var camera: Camera3D
 var sea_level := false
+var far_distance := 0.0
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -18,7 +20,10 @@ func run() -> void:
 	var args := OS.get_cmdline_user_args()
 	var night := args.size() > 0 and args[0] == "noite"
 	var sea := "mar" in args
-	var kinds: Array = Array(args.slice(1)).filter(func(a): return a != "mar") if args.size() > 1 else []
+	for a in args:
+		if a.begins_with("longe="):
+			far_distance = float(a.trim_prefix("longe="))
+	var kinds: Array = Array(args.slice(1)).filter(func(a): return a != "mar" and not a.begins_with("longe=")) if args.size() > 1 else []
 	sea_level = sea
 	var out := "res://Builds/DecorStills"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
@@ -69,7 +74,7 @@ func _shot(item: Dictionary, path: String) -> void:
 		first = false
 	var width := maxf(box.size.x, box.size.z)
 	var tall := box.end.y
-	var dist := maxf(maxf(width, tall) * 1.35, 9.0)
+	var dist := far_distance if far_distance > 0.0 else maxf(maxf(width, tall) * 1.35, 9.0)
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 2200:
 		for layer in world.find_children("*", "CanvasLayer", true, false):

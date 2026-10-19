@@ -150,7 +150,7 @@ const RUNED := ["shattered_runed_bastion", "obsidian_rib_spire", "floating_basal
 ## Brilho noturno por modelo (Shaders/rune_glow.gdshader): runas, megálitos, corais
 ## bioluminescentes e o vidro da lanterna. band = faixa de altura (fração) que pode acender.
 const NIGHT_GLOW := {
-	"rune": {"day_strength": 0.08, "night_strength": 3.0, "hue_band": Vector3(150.0, 205.0, 1.0)},
+	"rune": {"day_strength": 0.08, "night_strength": 2.2, "hue_band": Vector3(150.0, 205.0, 1.0)},
 	"stone": {"day_strength": 0.0, "night_strength": 1.8, "hue_band": Vector3(150.0, 205.0, 1.0)},
 	"coral": {"day_strength": 0.0, "night_strength": 1.4, "value_range": Vector2(0.35, 0.65), "saturation_range": Vector2(0.35, 0.6), "pulse_speed": 0.8},
 	"lantern": {"day_strength": 0.0, "night_strength": 2.6, "value_range": Vector2(0.45, 0.75), "saturation_range": Vector2(0.05, 0.25),

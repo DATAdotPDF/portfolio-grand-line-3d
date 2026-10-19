@@ -94,5 +94,10 @@ void fragment() {
 	float pulse = 0.82 + 0.18 * sin(TIME * pulse_speed + phase + UV.y * 9.0);
 	vec3 glow = mix(c, tint.rgb * max(hi, 0.6), tint.a);
 	vec3 halo_color = mix(soft, tint.rgb * 0.8, tint.a);
-	ALBEDO = (glow * mask + halo_color * halo * 0.18) * mix(day_strength, night_strength, night) * pulse;
+	// De longe a textura vem de um mip borrado: a máscara cobre a runa inteira e, com a força da noite,
+	// virava uma mancha branca (Pedro, 2026-10-19). O brilho cai com o mip (cada nível acima do
+	// tamanho real tira ~30%) e o pico fica abaixo de 1 (sem estourar no bloom).
+	float far = 1.0 / (1.0 + 0.45 * max(lod, 0.0));
+	vec3 light = (glow * mask + halo_color * halo * 0.18) * mix(day_strength, night_strength, night) * pulse * far;
+	ALBEDO = min(light, vec3(0.85));
 }

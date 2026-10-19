@@ -650,6 +650,18 @@ turtle and crab colossi had wrong collisions.
   - `?medir` now groups the programs by shader (count and total time). The next measurement
     shows where the 21 s goes, instead of only the 8 slowest programs.
 
+- **Second measurement (same PC, cold):** 278 programs and 11.2 s, down from 339 and 21.2 s.
+  - The rune glow is now ~0.2 s per program (13 programs, 2.6 s); it was ~1.1 s.
+  - The next costs: particles with a color ramp (2 programs, 2.0 s), then the sea and cloud-shadow
+    shaders (~1 s each group), then 70 variants of the imported model material (1.0 s in total).
+- **Runes still blown out at night, seen from far:**
+  - From far away the texture is read from a blurred mip, so the glow mask covers the whole
+    rune; at 3× night strength it turned into a white blob.
+  - The glow now fades with the mip level, has a peak below 1 (so the bloom does not blow it
+    out), and the rune profile's night strength is 2.2 instead of 3.0.
+  - `Tests/decor_stills.gd` takes a `longe=<m>` option for this check; at 280 m the rune is cyan,
+    no longer white.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**
