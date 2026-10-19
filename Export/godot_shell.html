@@ -474,6 +474,16 @@ const engine = new Engine(GODOT_CONFIG);
 		});
 		setInterval(() => { if (shaderStats.count) renderMeasure(); }, 3000);
 	}
+	// Programas agrupados pelo shader (mesma marca): quantos e quanto tempo somado, do maior ao menor.
+	function shaderGroups() {
+		const groups = {};
+		for (const s of shaderStats.list) {
+			const g = groups[s.tag] || (groups[s.tag] = { tag: s.tag, count: 0, ms: 0 });
+			g.count++;
+			g.ms += s.ms;
+		}
+		return Object.values(groups).sort((a, b) => b.ms - a.ms);
+	}
 	function measureFps(key) {
 		let frames = 0;
 		const t0 = performance.now();
@@ -530,13 +540,13 @@ const engine = new Engine(GODOT_CONFIG);
 			'',
 			'SHADERS: ' + shaderStats.count + ' programas, ' + (shaderStats.ms / 1000).toFixed(1) + ' s compilando' +
 				(timings.steer ? ' (' + (shaderStats.list.filter((s) => s.at <= (timings.steer - timings.click) / 1000).reduce((n, s) => n + s.ms, 0) / 1000).toFixed(1) + ' s antes do leme)' : ''),
-			...shaderStats.list.slice().sort((a, b) => b.ms - a.ms).slice(0, 8)
-				.map((s) => '  ' + (s.ms / 1000).toFixed(2) + ' s  ' + s.tag.slice(0, 48)),
+			...shaderGroups().slice(0, 12)
+				.map((g) => '  ' + (g.ms / 1000).toFixed(1).padStart(5) + ' s  ' + String(g.count).padStart(3) + 'x  ' + g.tag.slice(0, 44)),
 			'pela rede ............. ' + transferredMB().toFixed(1) + ' MB',
 			'do cache do navegador . ' + cachedMB().toFixed(1) + ' MB',
 		];
 		box.textContent = lines.join('\n');
-		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, costs: costs, shaders: { count: shaderStats.count, ms: Math.round(shaderStats.ms), slowest: shaderStats.list.slice().sort((x, y) => y.ms - x.ms).slice(0, 15) }, transferred_mb: +transferredMB().toFixed(1), profile: prof,
+		console.info('[medir]', JSON.stringify({ timings: timings, tiers: tierLog, costs: costs, shaders: { count: shaderStats.count, ms: Math.round(shaderStats.ms), groups: shaderGroups().map((g) => ({ tag: g.tag, count: g.count, ms: Math.round(g.ms) })) }, transferred_mb: +transferredMB().toFixed(1), profile: prof,
 			net: { type: net.effectiveType, downlink: net.downlink, rtt: net.rtt }, ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio] }));
 	}
 	if (new URLSearchParams(location.search).has('debug')) numbers.hidden = false;

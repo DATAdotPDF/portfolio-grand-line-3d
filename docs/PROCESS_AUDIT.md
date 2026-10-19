@@ -633,6 +633,23 @@ turtle and crab colossi had wrong collisions.
 
 ![Whale and obsidian giant from above, collision edge in red](images/process/whale-obsidian-collision-outline.jpg)
 
+## 5.17 Where the first-visit graphics preparation goes (Oct 19)
+
+- **How it is measured:** `?medir` times every WebGL program the browser compiles: compile,
+  link, and the first status read, where ANGLE finishes the work on Windows. Each program is
+  tagged by the shader's own uniforms.
+- **First measurement, desktop Chrome, cold:**
+  - The helm responded at 11.9 s.
+  - 339 programs took 21.2 s, all of it after the helm.
+  - The cost shows up as stutter while sailing: settled FPS 22, and the automatic tier dropped
+    to Medium at 33 s.
+  - The single most expensive programs, ~1 s each and each compiled twice: the rune/lantern
+    night glow, an emissive material, a glow shader and particles.
+- **Changes:**
+  - The rune glow halo uses a simpler brightness test, so the browser has less code to compile.
+  - `?medir` now groups the programs by shader (count and total time). The next measurement
+    shows where the 21 s goes, instead of only the 8 slowest programs.
+
 ## 6. What is not in Git, and why
 
 - **Not versioned:**

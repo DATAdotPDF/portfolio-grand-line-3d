@@ -84,8 +84,12 @@ void fragment() {
 	vec3 c = lod < 0.5 ? sample_bicubic(UV) : texture(albedo_map, UV).rgb;
 	float mask = glow_mask(c);
 	// Halo fraco: a máscara num mip 2 níveis acima, uma luz em volta do traço (sem apagar o desenho).
+	// Conta simples (só claridade e saturação, sem a faixa de matiz): menos código para o navegador
+	// compilar (no Windows cada programa deste shader custava ~1 s).
 	vec3 soft = textureLod(albedo_map, UV, max(lod, 0.0) + 2.0).rgb;
-	float halo = glow_mask(soft);
+	float soft_hi = max(soft.r, max(soft.g, soft.b));
+	float soft_sat = soft_hi > 0.001 ? (soft_hi - min(soft.r, min(soft.g, soft.b))) / soft_hi : 0.0;
+	float halo = smoothstep(0.3, 0.6, soft_hi) * smoothstep(0.25, 0.5, soft_sat);
 	float hi = max(c.r, max(c.g, c.b));
 	float pulse = 0.82 + 0.18 * sin(TIME * pulse_speed + phase + UV.y * 9.0);
 	vec3 glow = mix(c, tint.rgb * max(hi, 0.6), tint.a);
