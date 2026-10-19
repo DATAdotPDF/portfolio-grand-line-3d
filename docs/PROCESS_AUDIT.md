@@ -520,6 +520,11 @@ a phone, so the site uses generated copies.
     largest single cost before the helm.
   - The later FPS windows overlapped the original-texture swaps and the per-part tool, so they are
     not a clean comparison yet.
+- **Decision (Oct 19):** the site stays on the single-thread build. Threads need the COOP/COEP
+  headers, show an error instead of the game where a browser cannot enable them, and use more
+  memory on phones. After the shader and loading fixes (5.17), the single-thread site reaches the
+  helm in 12–25 s on a first visit. The threads build stays only as a build option
+  (`Web/build.ps1 -Threads -PublicDir public-test`).
 
 ## 5.14 Boat speed and colossus collisions (Oct 18)
 
